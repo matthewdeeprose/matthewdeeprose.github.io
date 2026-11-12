@@ -123,25 +123,19 @@ const MathPixAltTextCloudAdapter = (function () {
    * anywhere could see one — which is exactly how the third copy drifts. The
    * absence is asserted against this file's own source text instead.
    *
-   * THE IDS ARE MEASURED, NOT PREFERRED, AND THEY HAVE NOT CHANGED.
-   * `anthropic/claude-sonnet-5` on openrouter and `azure-openai/gpt-5.6-sol`
-   * on azure-openai, settled across AW-4r to AW-7ck on 3 September 2026 —
-   * three survivors over all eleven capacitors images, on the shipped
-   * configuration, judged blind by a judge sharing a vendor with none of them,
-   * `gpt-5.6-sol` first outright at 18.91 of 20. The openrouter entry is
-   * sonnet rather than opus because that round did not separate second from
-   * third and sonnet is the cheaper and markedly faster of the pair. The
-   * evidence now lives in the registry entry beside the ids, together with the
-   * round and the date, rather than in a comment here that a re-point would
-   * leave behind.
+   * THE IDS ARE MEASURED, NOT PREFERRED, AND THEY LIVE IN ONE PLACE. The
+   * `alt-text` entry in `PURPOSES` in `mathpix-model-registry.js` is the only
+   * place that names the ids, the measuring rounds and their dates. This
+   * comment names none of them on purpose: an earlier version did, claimed
+   * they had not changed, and went stale when the registry was re-pointed.
+   * Read the registry entry, not a copy of it.
    *
-   * THE DIVERGENCE IS CORRECT AND MUST SURVIVE. Alt text prefers sonnet-5 on
-   * openrouter where the `mmd-correction` and `context` purposes both prefer
-   * `anthropic/claude-fable-5` on the same provider. Different tasks, measured
-   * in different rounds, with different winners. The purpose dimension is what
-   * makes that EXPRESSIBLE rather than accidental, and a later parcel must not
-   * collapse the three to one value on the grounds that it looks like a
-   * tidy-up.
+   * THE DIVERGENCE IS CORRECT AND MUST SURVIVE. The `alt-text`,
+   * `mmd-correction` and `context` purposes may prefer different models on the
+   * same provider. Different tasks, measured in different rounds, with
+   * different winners. The purpose dimension is what makes that EXPRESSIBLE
+   * rather than accidental, and a later parcel must not collapse the three to
+   * one value on the grounds that it looks like a tidy-up.
    *
    * AN ENTRY IS A PREFERENCE, NEVER A GUARANTEE. The id it names is used only
    * when it appears in the vision-filtered eligible list for the active

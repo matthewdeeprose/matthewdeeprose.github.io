@@ -184,6 +184,19 @@
         body.parallel_tool_calls = options.parallel_tool_calls;
       }
 
+      // Provider routing (WF-8b, 11 November 2026): OpenRouter's `provider`
+      // object (zdr, data_collection, allow_fallbacks, ...) passed through
+      // unchanged, ONLY WHEN GIVEN AS A PLAIN OBJECT, so a request without it
+      // keeps a byte-identical body. Its keys are not checked here; the caller
+      // decides what it sends. Reads options only, so a second build agrees.
+      if (
+        options.provider &&
+        typeof options.provider === "object" &&
+        !Array.isArray(options.provider)
+      ) {
+        body.provider = options.provider;
+      }
+
       return body;
     },
 

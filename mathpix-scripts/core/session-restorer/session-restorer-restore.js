@@ -17,6 +17,84 @@
     window._SRShared;
   const proto = MathPixSessionRestorer.prototype;
 
+  // ── Resume chemistry copy buttons (MRC-66) ──────────────────────────────
+  // The button's text sits in an aria-hidden span (built on the first press
+  // from the markup's own text) and only that span and the icon are swapped,
+  // so the swap is not spoken. The constant aria-label is the button's name.
+  const COPY_LABEL_CLASS = "code-copy-button-label";
+  const COPIED_TEXT = "Copied!";
+  const COPY_RESET_MS = 2000;
+  const COPY_IDENTIFIER_RESET_MS = 1500;
+  const ICON_MODE = Object.freeze({ CHECK: "check", HIDE: "hide" });
+  const ANNOUNCE_SMILES_COPIED = "SMILES notation copied to clipboard";
+  const ANNOUNCE_INCHI_COPIED = "InChI identifier copied to clipboard";
+
+  /**
+   * Wrap the button's visible text in an aria-hidden span, once.
+   * @param {HTMLElement} button - Copy button element
+   * @returns {HTMLElement|null} The label span, or null when the button has no text
+   */
+  function ensureCopyLabel(button) {
+    const existing = button.querySelector(`.${COPY_LABEL_CLASS}`);
+    if (existing) return existing;
+
+    const textNodes = Array.from(button.childNodes).filter(
+      (node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim(),
+    );
+    const textNode = textNodes[textNodes.length - 1];
+    if (!textNode) return null;
+
+    const label = document.createElement("span");
+    label.className = COPY_LABEL_CLASS;
+    label.setAttribute("aria-hidden", "true");
+    label.dataset.copyText = textNode.textContent.trim().replace(/\s+/g, " ");
+    label.textContent = label.dataset.copyText;
+    textNode.replaceWith(" ", label);
+    return label;
+  }
+
+  /**
+   * Show "Copied!" on a copy button, then restore the configured text and icon.
+   * @param {HTMLElement} button - Copy button element
+   * @param {{iconMode: string, resetMs: number}} options - Icon swap and delay
+   */
+  function showCopiedLabel(button, { iconMode, resetMs }) {
+    const label = ensureCopyLabel(button);
+    if (!label) return;
+
+    const iconEl = button.querySelector("[data-icon]");
+    if (iconEl && iconEl._copyOriginalHtml === undefined) {
+      iconEl._copyOriginalHtml = iconEl.innerHTML;
+    }
+
+    label.textContent = COPIED_TEXT;
+    if (iconEl && iconMode === ICON_MODE.CHECK && typeof window.getIcon === "function") {
+      iconEl.innerHTML = window.getIcon("check");
+    }
+    if (iconEl && iconMode === ICON_MODE.HIDE) {
+      iconEl.style.display = "none";
+    }
+
+    // Restore the configured text, not what was read, so a second press
+    // inside the delay cannot leave "Copied!" behind.
+    clearTimeout(label._resetTimer);
+    label._resetTimer = setTimeout(() => {
+      label.textContent = label.dataset.copyText;
+      if (iconEl) {
+        iconEl.innerHTML = iconEl._copyOriginalHtml;
+        iconEl.style.display = "";
+      }
+    }, resetMs);
+  }
+
+  /**
+   * Announce once through the shared announcer, resolved at call time.
+   * @param {string} message - Text to announce
+   */
+  function announceCopied(message) {
+    window.accessibilityHelpers?.announce(message, "polite");
+  }
+
   // Companion stamp recording which document the restored mirror belongs to.
   // Cross-reference MIRROR_SOURCE_KEY in mathpix-context-manager.js: the manager
   // owns and clears this companion stamp (it is reset alongside the mirror); the
@@ -27,6 +105,43 @@
   // extractAndRestoreContext and must reference the same declaration without a
   // temporal-dead-zone error.
   const MIRROR_SOURCE_KEY = "mathpix-context-current-source";
+
+  // PM-1 (PM-D1b): the page-marker module may be absent; warn once, then stay quiet.
+  let pageMarkersMissingWarned = false;
+
+  /**
+   * PM-1 (PM-D1b): the one place every load path writes page markers. Called
+   * before original and baseline are taken, from restoreSession, both ZIP
+   * version switches and the stored-version return visit, so a restore leaves
+   * current equal to original and flags nothing as edited. Idempotent and
+   * never throws: on any failure the text comes back unchanged.
+   *
+   * @param {{ workingMMD: string, originalMMD: string, linesData: Object }} args
+   *   originalMMD and workingMMD must be the RAW OCR text and the text to mark
+   *   (CDN form: the picture matcher reads top_left_x from the URL).
+   * @returns {string} the marked text, or workingMMD unchanged
+   */
+  proto._applyPageMarkers = function ({ workingMMD, originalMMD, linesData } = {}) {
+    if (typeof workingMMD !== "string" || workingMMD === "") return workingMMD;
+    const markers = window.MathPixPageMarkers;
+    if (!markers || typeof markers.ensurePageMarkers !== "function") {
+      if (!pageMarkersMissingWarned) {
+        pageMarkersMissingWarned = true;
+        logWarn("MathPixPageMarkers is not loaded; page markers are not written");
+      }
+      return workingMMD;
+    }
+    try {
+      const result = markers.ensurePageMarkers({ workingMMD, originalMMD, linesData });
+      logInfo(
+        `Page markers: inserted ${result?.inserted?.length ?? 0}, declined ${result?.declined?.length ?? 0}`,
+      );
+      return typeof result?.text === "string" ? result.text : workingMMD;
+    } catch (error) {
+      logWarn("ensurePageMarkers threw; text left unmarked", error);
+      return workingMMD;
+    }
+  };
 
   /**
    * Phase 8C-CT-3e: shared paint helper for the resume panel's comprehensive
@@ -535,7 +650,20 @@
       this._pendingVersionLine = null;
 
       // Determine the content to load (edit takes priority over original)
-      const loadedContent = selectedEdit?.content || parseResult.results.mmd;
+      // PM-1 (PM-D1b): page markers on the OCR text and on the chosen edit,
+      // before original and baseline are taken. The archive bytes are untouched.
+      const markedOriginal = MathPixSessionRestorer.prototype._applyPageMarkers.call(this, {
+        workingMMD: parseResult.results.mmd,
+        originalMMD: parseResult.results.mmd,
+        linesData: parseResult.linesData,
+      });
+      const loadedContent = selectedEdit?.content
+        ? MathPixSessionRestorer.prototype._applyPageMarkers.call(this, {
+            workingMMD: selectedEdit.content,
+            originalMMD: parseResult.results.mmd,
+            linesData: parseResult.linesData,
+          })
+        : markedOriginal;
 
       // Store session data
       this.restoredSession = {
@@ -544,7 +672,7 @@
         // Phase 7C-6: keep the JSZip handle so _detectRestoredChemistry can
         // read data/chemistry-settings.json without reparsing the archive.
         zip: parseResult.zip || null,
-        originalMMD: parseResult.results.mmd,
+        originalMMD: markedOriginal,
         baselineMMD: loadedContent, // Content at session start (for tracking user edits)
         currentMMD: loadedContent,
         selectedEdit: selectedEdit,
@@ -560,7 +688,7 @@
 
       // Store original MMD lines for edit tracking (Phase 8.3.5)
       // This enables confidence display to show pencil icon for edited lines
-      this.setOriginalMmdContent(parseResult.results.mmd);
+      this.setOriginalMmdContent(markedOriginal);
 
       // Stage 8 (Q3): restore the document context — early, discrete,
       // non-fatal; every restored document starts from a blank context.
@@ -1265,8 +1393,11 @@
         const item = this._resumeChemistryData?.[this._resumeChemistryIndex];
         if (item?.notation) {
           navigator.clipboard.writeText(item.notation).then(() => {
-            copySmilesBtn.textContent = "Copied!";
-            setTimeout(() => { copySmilesBtn.innerHTML = '<span aria-hidden="true" data-icon="clipboard"></span> Copy SMILES'; }, 1500);
+            showCopiedLabel(copySmilesBtn, {
+              iconMode: ICON_MODE.HIDE,
+              resetMs: COPY_IDENTIFIER_RESET_MS,
+            });
+            announceCopied(ANNOUNCE_SMILES_COPIED);
           });
         }
       };
@@ -1278,8 +1409,11 @@
         const item = this._resumeChemistryData?.[this._resumeChemistryIndex];
         if (item?.inchi) {
           navigator.clipboard.writeText(item.inchi).then(() => {
-            copyInchiBtn.textContent = "Copied!";
-            setTimeout(() => { copyInchiBtn.innerHTML = '<span aria-hidden="true" data-icon="clipboard"></span> Copy InChI'; }, 1500);
+            showCopiedLabel(copyInchiBtn, {
+              iconMode: ICON_MODE.HIDE,
+              resetMs: COPY_IDENTIFIER_RESET_MS,
+            });
+            announceCopied(ANNOUNCE_INCHI_COPIED);
           });
         }
       };
@@ -1510,14 +1644,12 @@
         if (!descText?.textContent) return;
         try {
           await navigator.clipboard.writeText(descText.textContent);
-          const originalHTML = copyDescBtn.innerHTML;
-          const checkHtml = typeof window.getIcon === "function"
-            ? window.getIcon("check")
-            : '<span aria-hidden="true" data-icon="check"></span>';
-          copyDescBtn.innerHTML = checkHtml + " Copied!";
+          showCopiedLabel(copyDescBtn, {
+            iconMode: ICON_MODE.CHECK,
+            resetMs: COPY_RESET_MS,
+          });
           const lr = document.getElementById("resume-chemistry-live-region");
           if (lr) lr.textContent = "Description copied to clipboard";
-          setTimeout(() => { copyDescBtn.innerHTML = originalHTML; }, 2000);
         } catch (err) {
           logWarn("Resume clipboard write failed", { error: err.message });
         }

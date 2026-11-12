@@ -3186,7 +3186,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           model: selectedModel,
           selectedModelName: modelDetails?.name || selectedModel,
           selectedModelCost:
-            costBreakdown?.calculated?.formatted || "Not available",
+            costBreakdown?.formatted || "Not available",
           temperature: cfg.temperature,
           maxTokens: embed.max_tokens, // what was actually sent (H-17)
           systemPrompt: systemPrompt,

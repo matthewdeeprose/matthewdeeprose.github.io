@@ -660,10 +660,14 @@ const TTSRewriters = (function () {
         sign.textContent = text.textContent;
         operator.replaceWith(sign);
       });
-      const prepared = rules.forSpeech(copy, domain || DEFAULT_SPEECH_DOMAIN);
+      const speechDomain = domain || DEFAULT_SPEECH_DOMAIN;
+      const prepared = rules.forSpeech(copy, speechDomain);
+      // The domain is passed so the rules file puts its ClearSpeak words right too
+      // (brackets, equivalence; RA-94). MathSpeak gets the speech back as SRE wrote it.
       const speech = rules.restoreLabels(
         sre.toSpeech(prepared.mathml),
         prepared.labels,
+        speechDomain,
       );
       return speech && typeof speech === "string" ? speech.trim() : null;
     } catch (err) {

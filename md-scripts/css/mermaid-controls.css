@@ -91,17 +91,16 @@
 
 /* The lazy light/dark flip (mermaid-theme.js, 4 November 2026). A diagram
    whose paint is behind the page's mode is hidden from SIGHT, never from the
-   accessibility tree: opacity keeps the old SVG exposed, where visibility,
-   display or aria-hidden would drop it. The veil is plain static text over
-   the diagram, aria-hidden, in no live region, so nothing is announced.
-   It sets no colour of its own: it takes the page's text on the page's
-   ground, which is the pair the site already holds at 4.5:1 in both themes.
-   No transition or animation, so reduced motion has nothing to respect and
-   nothing flashes. It is not focusable, so it has no focus rule. */
-.mermaid-container[data-theme-stale] > .mermaid {
-  opacity: 0;
-}
-
+   accessibility tree, by an INLINE opacity that mermaid-theme.js sets on its
+   .mermaid box (showVeil) and removes (clearVeil). It is not a rule here:
+   render-guard's X1 holds that no page stylesheet sets a paint property the
+   static export does not inline, and opacity is not one it inlines. The veil
+   is plain static text over the diagram, aria-hidden, in no live region, so
+   nothing is announced. It sets no colour of its own: it takes the page's
+   text on the page's ground, which is the pair the site already holds at
+   4.5:1 in both themes. No transition or animation, so reduced motion has
+   nothing to respect and nothing flashes. It is not focusable, so it has no
+   focus rule. */
 .mermaid-container > .mermaid-theme-veil {
   position: absolute;
   inset: 0;

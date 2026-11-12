@@ -7440,3 +7440,9 @@ button#toggle-highlighting-btn:not([disabled]):not(
   stroke: #00131d;
   fill: #398d72;
 }
+
+/* RA-99: Read Aloud controls bar. Page background and text colours; the buttons take the global button treatment. */
+.tts-controls-bar {
+  background: #f0f2e8;
+  color: #00131d;
+}

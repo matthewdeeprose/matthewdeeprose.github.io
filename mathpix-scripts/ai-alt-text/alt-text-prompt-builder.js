@@ -248,6 +248,51 @@ List every word, number and label visible in the image as a numbered list, one i
   const EXCERPT_END = "--- END surrounding document text ---";
   const BLOCK_SEPARATOR = "\n\n";
 
+  // M-10r (6 November 2026, Matthew's ruling): a re-describe must not show the
+  // model the picture's OWN old description, or the new description is anchored
+  // on the old one. These two lines replace it in the excerpt. They are not
+  // prompt wording about what to write; they only mark a gap.
+  const OWN_ALT_PLACEHOLDER = "(the picture being described)";
+  const OWN_LONG_DESCRIPTION_PLACEHOLDER =
+    "(the long description of the picture being described is hidden)";
+  // M-10y: said once, after the position clause, whenever an excerpt is sent.
+  const OWN_LINE_EXPLANATION = `In the nearby text, its own line is marked "${OWN_ALT_PLACEHOLDER}".`;
+  // M-10s: the picture's own caption, when the AI wrote it with no edit.
+  const OWN_CAPTION_PLACEHOLDER = "(the title of the picture being described)";
+
+  /**
+   * The only provenance stamp that means "the AI wrote this and nobody has
+   * touched it" (M-10s, Matthew's ruling of 6 November 2026). Anything a person
+   * wrote or edited (`user`, `ai-reviewed`, `ai-edited`), the page's own text
+   * (`original`), and chemistry-tool text (`algo-generated`) stays visible.
+   */
+  const UNEDITED_AI_SOURCE = "ai-generated";
+
+  const FIGURE_BEGIN = "\\begin{figure}";
+  const FIGURE_END = "\\end{figure}";
+  const CAPTION_OPEN = "\\caption{";
+
+  /** `alt={` inside the options of an `\includegraphics` command. */
+  const LATEX_ALT_OPEN_RE = /alt\s*=\s*\{/;
+  /** A markdown image, the same shape the serialiser's own locator uses. */
+  const MARKDOWN_IMAGE_ALT_RE = /!\[((?:[^\]]|\](?!\())*)\]\(/;
+  /** The appendix marker the serialiser writes before each long description. */
+  const APPENDIX_MARKER_RE = /<!--\s*img-desc:([^\s>][^\s>]*?)\s*-->/;
+  const MARKDOWN_HEADING_RE = /^(#{1,6})\s+\S/;
+  /** Deeper than any heading, so "a heading of this level or higher" matches all. */
+  const BEYOND_HEADING_LEVEL = 7;
+
+  /**
+   * Outcomes of looking for the picture's own alt on its own line.
+   * Frozen const object as an enum, per the house convention.
+   */
+  const OWN_ALT_OUTCOME = Object.freeze({
+    HIDDEN: "hidden",
+    NONE_TO_HIDE: "none-to-hide",
+    UNRECOGNISED: "unrecognised",
+    UNMATCHED_BRACE: "unmatched-brace",
+  });
+
   // ============================================================================
   // INTERNAL — CONTEXT BLOCK
   // ============================================================================
@@ -369,6 +414,35 @@ List every word, number and label visible in the image as a numbered list, one i
     return typeof value === "number" && Number.isInteger(value) && value >= 1;
   }
 
+  /** The literal every page marker contains; a text without it needs no strip. */
+  const PAGE_MARKER_HINT = "<!-- page: ";
+
+  /**
+   * M-10ao: the working MMD with its page markers removed, and how many
+   * own-line marker lines sit above `lineNumber` (so a line number counted in
+   * the marked text can be moved onto the unmarked one). Absent
+   * `window.MathPixPageMarkers`: the text comes back unchanged and one warning
+   * is logged, each time a marked text is seen.
+   *
+   * @param {string} mmd
+   * @param {number} lineNumber - 1-based, in the marked text.
+   * @returns {{ text: string, lineShift: number }}
+   */
+  function withoutPageMarkers(mmd, lineNumber) {
+    if (!mmd.includes(PAGE_MARKER_HINT)) return { text: mmd, lineShift: 0 };
+    const markers = window.MathPixPageMarkers;
+    if (!markers || typeof markers.stripMarkers !== "function") {
+      logWarn(
+        "MathPixPageMarkers is not loaded — page markers stay in the excerpt",
+      );
+      return { text: mmd, lineShift: 0 };
+    }
+    const lineShift = markers
+      .readMarkers(mmd)
+      .filter((m) => m.kind === "own-line" && m.line < lineNumber).length;
+    return { text: markers.stripMarkers(mmd), lineShift };
+  }
+
   /**
    * Build the fenced MMD excerpt around the image's line, or `null`.
    *
@@ -395,16 +469,37 @@ List every word, number and label visible in the image as a numbered list, one i
    * sentence a good long description can use, and stripping the reference would
    * leave the prose around it dangling mid-sentence.
    *
+   * THE PICTURE'S OWN OLD DESCRIPTION IS HIDDEN (M-10r, Matthew's ruling of 6
+   * November 2026). Its alt value on its own line becomes
+   * `OWN_ALT_PLACEHOLDER`, and the lines of its own long-description section,
+   * where the window reaches them, become one line. Only that picture's own
+   * text is hidden; neighbours, the caption and the prose stay.
+   *
+   * M-10s: each part is hidden only when its provenance stamp is
+   * `ai-generated` (unedited AI text). The caption of the picture's own figure
+   * is hidden the same way, by `titleSource`.
+   *
    * @param {string} mmd - The working MMD.
    * @param {number} lineNumber - The image's 1-based line number.
+   * @param {Object} [entry] - The registry entry: `id` and the three source fields.
    * @returns {string|null}
    */
-  function buildExcerptBlock(mmd, lineNumber) {
+  function buildExcerptBlock(mmd, lineNumber, entry) {
+    const ownId = entry && typeof entry === "object" ? entry.id : undefined;
+    const hideAlt = isUneditedAi(entry, "altTextSource");
+    const hideSection = isUneditedAi(entry, "longDescriptionSource");
+    const hideCaption = isUneditedAi(entry, "titleSource");
+
     if (typeof mmd !== "string" || mmd === "") return null;
     if (!isUsableLineNumber(lineNumber)) return null;
 
-    const allLines = mmd.split("\n");
-    const targetIndex = lineNumber - 1;
+    // M-10ao: page markers are page furniture and never reach the model. They
+    // come out BEFORE windowing, so the window covers the same lines as the
+    // unmarked text. An own-line marker is a line of its own, so the picture's
+    // number (counted in the marked text) is moved up by the ones above it.
+    const { text: unmarkedMMD, lineShift } = withoutPageMarkers(mmd, lineNumber);
+    const allLines = unmarkedMMD.split("\n");
+    const targetIndex = lineNumber - lineShift - 1;
     if (targetIndex >= allLines.length) {
       logDebug(
         `lineNumber ${lineNumber} is past the end of the MMD (${allLines.length} lines) — no excerpt`,
@@ -412,18 +507,65 @@ List every word, number and label visible in the image as a numbered list, one i
       return null;
     }
 
-    let from = Math.max(0, targetIndex - MMD_EXCERPT_LINES_EACH_SIDE);
-    let to = Math.min(
+    const windowFrom = Math.max(0, targetIndex - MMD_EXCERPT_LINES_EACH_SIDE);
+    const windowTo = Math.min(
       allLines.length - 1,
       targetIndex + MMD_EXCERPT_LINES_EACH_SIDE,
     );
 
+    // M-10r: the picture's own old description never reaches the model. The
+    // window is chosen on the ORIGINAL line numbers (so its size is unchanged),
+    // then its own alt and its own long-description section are replaced, and
+    // the character cap is measured on what will actually be sent.
+    const ownSection = hideSection
+      ? findOwnLongDescriptionRange(allLines, ownId)
+      : null;
+    const ownCaption = hideCaption
+      ? findOwnCaptionHidden(allLines, targetIndex)
+      : null;
+    const windowLines = [];
+    let targetPosition = 0;
+    let sectionPlaced = false;
+    let captionPlaced = false;
+    for (let i = windowFrom; i <= windowTo; i++) {
+      if (i === targetIndex) {
+        targetPosition = windowLines.length;
+        windowLines.push(markOwnLine(allLines[i], lineNumber, hideAlt));
+        continue;
+      }
+      const inOwnCaption =
+        ownCaption && i >= ownCaption.start && i <= ownCaption.end;
+      if (inOwnCaption) {
+        // A caption over several lines becomes one line, placed once.
+        if (!captionPlaced) {
+          windowLines.push(ownCaption.replacement);
+          captionPlaced = true;
+        }
+        continue;
+      }
+      const inOwnSection =
+        ownSection && i >= ownSection.start && i <= ownSection.end;
+      if (!inOwnSection) {
+        windowLines.push(allLines[i]);
+        continue;
+      }
+      if (!sectionPlaced) {
+        windowLines.push(OWN_LONG_DESCRIPTION_PLACEHOLDER);
+        sectionPlaced = true;
+      }
+    }
+
+    let from = 0;
+    let to = windowLines.length - 1;
+
     // Shrink towards the target line until the joined body fits the cap. The
     // guards keep the target itself, so the loop always terminates with at
     // least that one line present.
-    while (allLines.slice(from, to + 1).join("\n").length > MMD_EXCERPT_CHAR_CAP) {
-      const distanceAbove = targetIndex - from;
-      const distanceBelow = to - targetIndex;
+    while (
+      windowLines.slice(from, to + 1).join("\n").length > MMD_EXCERPT_CHAR_CAP
+    ) {
+      const distanceAbove = targetPosition - from;
+      const distanceBelow = to - targetPosition;
       if (distanceAbove === 0 && distanceBelow === 0) break;
       if (distanceAbove >= distanceBelow && distanceAbove > 0) {
         from += 1;
@@ -434,11 +576,288 @@ List every word, number and label visible in the image as a numbered list, one i
       }
     }
 
-    const body = allLines.slice(from, to + 1).join("\n");
+    const body = windowLines.slice(from, to + 1).join("\n");
     logDebug(
-      `excerpt lines ${from + 1}-${to + 1} around line ${lineNumber}, ${body.length} characters`,
+      `excerpt ${to - from + 1} lines around line ${lineNumber}, ${body.length} characters`,
     );
     return EXCERPT_BEGIN + "\n" + body + "\n" + EXCERPT_END;
+  }
+
+  // ============================================================================
+  // INTERNAL — HIDING THE PICTURE'S OWN OLD DESCRIPTION (M-10r)
+  // ============================================================================
+
+  /**
+   * Index of the `}` matching the `{` at `openIndex`; `\{` and `\}` do not count.
+   * A necessary copy of the serialiser's public `findMatchingBrace`: this module
+   * stays pure and loads with no `window`. A row compares the two.
+   * @param {string} text
+   * @param {number} openIndex
+   * @returns {number} -1 when there is no match.
+   */
+  function findMatchingBrace(text, openIndex) {
+    if (typeof text !== "string" || text[openIndex] !== "{") return -1;
+    let depth = 0;
+    for (let i = openIndex; i < text.length; i++) {
+      if (text[i] === "\\" && i + 1 < text.length) {
+        i++;
+        continue;
+      }
+      if (text[i] === "{") {
+        depth++;
+      } else if (text[i] === "}") {
+        depth--;
+        if (depth === 0) return i;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * True when the entry's named provenance field is exactly the unedited-AI stamp.
+   * Missing entry, missing field, `null` and every other value are false, so
+   * anything not known to be pure AI text stays visible to the model.
+   * @param {Object|undefined} entry
+   * @param {string} field - `altTextSource`, `longDescriptionSource` or `titleSource`.
+   * @returns {boolean}
+   */
+  function isUneditedAi(entry, field) {
+    return (
+      !!entry && typeof entry === "object" && entry[field] === UNEDITED_AI_SOURCE
+    );
+  }
+
+  /**
+   * The picture's own `\caption{...}` with its text hidden, or `null`.
+   *
+   * A necessary copy of the serialiser's `detectFigureContext` caption
+   * location (this module stays pure): walk up from the picture line to
+   * `\begin{figure}` (a `\end{figure}` first means no figure), down to
+   * `\end{figure}` (a second `\begin{figure}` first means no figure), take the
+   * first `\caption{` inside, and brace-match it across lines. A row compares the
+   * located caption with the serialiser's. FAIL SAFE: anything unrecognised, an
+   * empty caption, or an unmatched brace gives `null`, the lines are sent
+   * unchanged, and nothing throws. A picture with no caption is the ordinary
+   * case and is silent.
+   * @param {Array<string>} lines - The whole document.
+   * @param {number} imageIndex - 0-based index of the picture's own line.
+   * @returns {{ start: number, end: number, replacement: string }|null}
+   */
+  function findOwnCaptionHidden(lines, imageIndex) {
+    try {
+      let beginIndex = null;
+      for (let i = imageIndex - 1; i >= 0; i--) {
+        const trimmed = lines[i].trim();
+        if (trimmed === FIGURE_BEGIN) {
+          beginIndex = i;
+          break;
+        }
+        if (trimmed === FIGURE_END) return null;
+      }
+      if (beginIndex === null) return null;
+
+      let endIndex = null;
+      for (let i = imageIndex + 1; i < lines.length; i++) {
+        const trimmed = lines[i].trim();
+        if (trimmed === FIGURE_END) {
+          endIndex = i;
+          break;
+        }
+        if (trimmed === FIGURE_BEGIN) return null;
+      }
+      if (endIndex === null) return null;
+
+      for (let i = beginIndex + 1; i < endIndex; i++) {
+        const tagIdx = lines[i].indexOf(CAPTION_OPEN);
+        if (tagIdx === -1) continue;
+
+        const openIdx = tagIdx + "\\caption".length;
+        const joined = lines.slice(i, endIndex).join("\n");
+        const closeIdx = findMatchingBrace(joined, openIdx);
+        if (closeIdx === -1) {
+          logWarn(
+            `own caption not hidden at line ${i + 1} (unmatched brace) — the lines are sent unchanged`,
+          );
+          return null;
+        }
+        if (joined.slice(openIdx + 1, closeIdx).trim() === "") return null;
+
+        const lineOffset = joined.slice(0, closeIdx + 1).split("\n").length - 1;
+        // M-10t: keep only the caption's own lines (up to the end of the line
+        // holding the closing brace). Later lines are left to the window loop,
+        // so they are sent once, not twice.
+        const closingLineEnd = joined.indexOf("\n", closeIdx);
+        return {
+          start: i,
+          end: i + lineOffset,
+          replacement:
+            joined.slice(0, openIdx + 1) +
+            OWN_CAPTION_PLACEHOLDER +
+            joined.slice(
+              closeIdx,
+              closingLineEnd === -1 ? joined.length : closingLineEnd,
+            ),
+        };
+      }
+      return null;
+    } catch (err) {
+      logWarn("hiding the own caption threw — the lines are sent unchanged", err);
+      return null;
+    }
+  }
+
+  /**
+   * Replace the alt value on the picture's own line with the placeholder, in
+   * either image syntax, and say what happened.
+   * @param {string} line
+   * @returns {{ line: string, outcome: string }}
+   */
+  function replaceAltOnLine(line) {
+    const commandIndex = line.indexOf("\\includegraphics");
+    if (commandIndex !== -1) {
+      const afterCommand = line.slice(commandIndex);
+      const match = LATEX_ALT_OPEN_RE.exec(afterCommand);
+      if (!match) return { line, outcome: OWN_ALT_OUTCOME.NONE_TO_HIDE };
+
+      const openIndex = commandIndex + match.index + match[0].length - 1;
+      const closeIndex = findMatchingBrace(line, openIndex);
+      if (closeIndex === -1) {
+        return { line, outcome: OWN_ALT_OUTCOME.UNMATCHED_BRACE };
+      }
+      if (line.slice(openIndex + 1, closeIndex).trim() === "") {
+        return { line, outcome: OWN_ALT_OUTCOME.NONE_TO_HIDE };
+      }
+      return {
+        line:
+          line.slice(0, openIndex + 1) +
+          OWN_ALT_PLACEHOLDER +
+          line.slice(closeIndex),
+        outcome: OWN_ALT_OUTCOME.HIDDEN,
+      };
+    }
+
+    const markdown = MARKDOWN_IMAGE_ALT_RE.exec(line);
+    if (markdown) {
+      if (markdown[1].trim() === "") {
+        return { line, outcome: OWN_ALT_OUTCOME.NONE_TO_HIDE };
+      }
+      const altStart = markdown.index + 2;
+      return {
+        line:
+          line.slice(0, altStart) +
+          OWN_ALT_PLACEHOLDER +
+          line.slice(altStart + markdown[1].length),
+        outcome: OWN_ALT_OUTCOME.HIDDEN,
+      };
+    }
+
+    return { line, outcome: OWN_ALT_OUTCOME.UNRECOGNISED };
+  }
+
+  /**
+   * M-10y (Matthew's ruling of 6 November 2026): the picture's own line is
+   * ALWAYS marked in the request, a first describe included, exactly once.
+   *   1. An unedited AI alt that is found becomes the placeholder (M-10r).
+   *   2. A markdown image with an empty alt gets the placeholder as its alt.
+   *   3. Every other case keeps the line and ends it with the placeholder.
+   * The mark lives only in the request text; nothing is written to the document.
+   * FAIL SAFE: nothing throws and the line is never dropped.
+   * @param {string} line
+   * @param {number} lineNumber - for the log only.
+   * @param {boolean} hideAlt - true when the alt is unedited AI text.
+   * @returns {string}
+   */
+  function markOwnLine(line, lineNumber, hideAlt) {
+    try {
+      if (hideAlt) {
+        const result = replaceAltOnLine(line);
+        if (result.outcome === OWN_ALT_OUTCOME.HIDDEN) return result.line;
+        if (
+          result.outcome === OWN_ALT_OUTCOME.UNRECOGNISED ||
+          result.outcome === OWN_ALT_OUTCOME.UNMATCHED_BRACE
+        ) {
+          logWarn(
+            `own alt not hidden on line ${lineNumber} (${result.outcome}) — the line is marked at its end`,
+          );
+        }
+      }
+
+      // An empty markdown alt takes the placeholder in place (Matthew's example).
+      if (line.indexOf("\\includegraphics") === -1) {
+        const markdown = MARKDOWN_IMAGE_ALT_RE.exec(line);
+        if (markdown && markdown[1].trim() === "") {
+          const altStart = markdown.index + 2;
+          return (
+            line.slice(0, altStart) +
+            OWN_ALT_PLACEHOLDER +
+            line.slice(altStart + markdown[1].length)
+          );
+        }
+      }
+
+      // Everything else: the line unchanged, the mark at its end (before a CR).
+      const carriage = line.endsWith("\r") ? "\r" : "";
+      const bare = carriage ? line.slice(0, -1) : line;
+      return bare + " " + OWN_ALT_PLACEHOLDER + carriage;
+    } catch (err) {
+      logWarn("marking the own line threw — the line is sent unchanged", err);
+      return line;
+    }
+  }
+
+  /**
+   * The line range (inclusive, 0-based, over the WHOLE document) of the
+   * picture's own long-description section in the appendix, or `null`.
+   *
+   * The serialiser ties a section to a picture by the marker
+   * `<!-- img-desc:<id> -->` written before it. The section runs from that
+   * marker to the line before the next marker, or the next heading of the same
+   * or a higher level than the section's own heading, or the end of the
+   * document. Its sub-headings (and the `Text in the image` subsection) stay
+   * inside. Trailing blank lines are left out so the spacing survives.
+   * No marker is the ordinary case (a fresh document) and returns `null` quietly.
+   * @param {Array<string>} lines
+   * @param {string|undefined} ownId
+   * @returns {{ start: number, end: number }|null}
+   */
+  function findOwnLongDescriptionRange(lines, ownId) {
+    if (typeof ownId !== "string" || ownId === "") return null;
+
+    let markerIndex = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const match = APPENDIX_MARKER_RE.exec(lines[i]);
+      if (match && match[1] === ownId) {
+        markerIndex = i;
+        break;
+      }
+    }
+    if (markerIndex === -1) return null;
+
+    let level = BEYOND_HEADING_LEVEL;
+    let scanFrom = markerIndex + 1;
+    for (let i = markerIndex + 1; i < lines.length; i++) {
+      if (lines[i].trim() === "") continue;
+      const heading = MARKDOWN_HEADING_RE.exec(lines[i].trim());
+      if (heading) {
+        level = heading[1].length;
+        scanFrom = i + 1;
+      }
+      break;
+    }
+
+    let end = lines.length - 1;
+    for (let i = scanFrom; i < lines.length; i++) {
+      const heading = MARKDOWN_HEADING_RE.exec(lines[i].trim());
+      if (
+        APPENDIX_MARKER_RE.test(lines[i]) ||
+        (heading && heading[1].length <= level)
+      ) {
+        end = i - 1;
+        break;
+      }
+    }
+    while (end > markerIndex && lines[end].trim() === "") end--;
+    return { start: markerIndex, end };
   }
 
   // ============================================================================
@@ -569,11 +988,25 @@ List every word, number and label visible in the image as a numbered list, one i
     }
 
     const positionClause = buildPositionClause(args.entry, args.allEntries);
-    if (positionClause) blocks.push(positionClause);
 
     const entryLineNumber =
       args.entry && typeof args.entry === "object" ? args.entry.lineNumber : null;
-    const excerptBlock = buildExcerptBlock(args.mmd, entryLineNumber);
+    const excerptBlock = buildExcerptBlock(
+      args.mmd,
+      entryLineNumber,
+      args.entry,
+    );
+
+    // M-10y: with an excerpt, the one sentence that says what the mark means
+    // follows the position clause (or stands alone when there is no clause).
+    if (positionClause && excerptBlock) {
+      blocks.push(positionClause + " " + OWN_LINE_EXPLANATION);
+    } else if (positionClause) {
+      blocks.push(positionClause);
+    } else if (excerptBlock) {
+      blocks.push(OWN_LINE_EXPLANATION);
+    }
+
     if (excerptBlock) {
       blocks.push(excerptBlock);
     } else if (args.mmd !== undefined && args.mmd !== null) {
@@ -617,6 +1050,14 @@ List every word, number and label visible in the image as a numbered list, one i
     // and reported two failures that were its own rather than the code's.
     EXCERPT_BEGIN,
     EXCERPT_END,
+    // M-10r: the two gap markers, exported so a gate counts them by the
+    // module's own text rather than a copy.
+    OWN_ALT_PLACEHOLDER,
+    OWN_LONG_DESCRIPTION_PLACEHOLDER,
+    // M-10s: the caption gap marker, for the same reason.
+    OWN_CAPTION_PLACEHOLDER,
+    // M-10y: the sentence that explains the own-line mark.
+    OWN_LINE_EXPLANATION,
   };
 })();
 

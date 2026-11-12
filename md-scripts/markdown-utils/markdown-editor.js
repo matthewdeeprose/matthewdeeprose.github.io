@@ -838,7 +838,8 @@ const MarkdownEditor = (function () {
       { name: "container", plugin: window.markdownitContainer },
       { name: "anchor", plugin: window.markdownItAnchor },
       { name: "toc", plugin: window.markdownItTocDoneRight },
-      { name: "attrs", plugin: window.markdownitAttrs },
+      // MRC-74: the served plugin registers window.markdownItAttrs with a capital I; the lowercase name was never defined.
+      { name: "attrs", plugin: window.markdownItAttrs || window.markdownitAttrs },
       { name: "multimd-table", plugin: window.markdownitMultimdTable },
       { name: "tab", plugin: window.markdownitTab },
     ];
@@ -1379,7 +1380,13 @@ const MarkdownEditor = (function () {
    * @returns {string} HTML with math blocks restored
    */
   function restoreMathBlocks(html, mathMap) {
-    let restoredHtml = html;
+    // Registers 61/62: mark unpaired "$" so MathJax leaves prices alone. Unchanged
+    // when the MathProtect helper is absent.
+    const mathHelpers = window.MathProtect;
+    let restoredHtml =
+      mathHelpers && typeof mathHelpers.markPrices === "function"
+        ? mathHelpers.markPrices(html)
+        : html;
 
     for (const [placeholder, original] of mathMap) {
       // The placeholder might be wrapped in <p> tags, handle that
@@ -1397,6 +1404,77 @@ const MarkdownEditor = (function () {
     return restoredHtml;
   }
 
+  // MRC-30: dev-only switch that renders through MarkdownRenderCore instead of
+  // the editor's own pipeline. Off unless the dev harness flag AND this key are set.
+  const CORE_FLAG_KEY = "md-editor-core";
+  const CORE_FLAG_ON = "1";
+  const DEV_HARNESS_FLAG_KEY = "dev-test-harnesses";
+  const DEV_HARNESS_FLAG_ON = "true";
+
+  // Editor option set, as recorded by MRC-28 (EDITOR_OPTIONS in its report).
+  const CORE_EDITOR_OPTIONS = Object.freeze({
+    anchorStyle: "inside",
+    figureRole: false,
+    tocSlugMatchesAnchor: false,
+    longInlineMathScrolls: false,
+    containerInit: [],
+    mermaidDefaults: { width: 70, height: 100, lockAspectRatio: false },
+  });
+
+  let coreMissingWarned = false;
+
+  /**
+   * Decide, per render, whether to use MarkdownRenderCore. The flag is read at
+   * call time (never at load) because the core is a gated dev script that
+   * loads after this file. Flag on but core absent runs the old path and
+   * warns once.
+   * @returns {boolean} true when the core path should run
+   */
+  function shouldUseRenderCore() {
+    let flagOn = false;
+    try {
+      flagOn =
+        localStorage.getItem(DEV_HARNESS_FLAG_KEY) === DEV_HARNESS_FLAG_ON &&
+        localStorage.getItem(CORE_FLAG_KEY) === CORE_FLAG_ON;
+    } catch (error) {
+      return false;
+    }
+    if (!flagOn) return false;
+
+    if (!window.MarkdownRenderCore) {
+      if (!coreMissingWarned) {
+        coreMissingWarned = true;
+        Logger.warn(
+          "md-editor-core flag is on but MarkdownRenderCore is not loaded; using the editor's own render path"
+        );
+      }
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Render markdown into #output through MarkdownRenderCore and run its
+   * post-processing. Errors from the core reach the editor's toast only through
+   * report.error; warnings go to the log alone (MRC-28 A5).
+   * @param {string} markdownText
+   * @returns {Promise<void>}
+   */
+  async function renderThroughCore(markdownText) {
+    const options = Object.assign({}, CORE_EDITOR_OPTIONS, {
+      report: {
+        debug: (message, ...args) => Logger.debug(message, ...args),
+        warn: (message, ...args) => Logger.warn(message, ...args),
+        error: (message, err) => NotificationHandler.showError(message, err),
+      },
+    });
+    elements.output.innerHTML = window.MarkdownRenderCore.render(
+      markdownText,
+      options
+    );
+    await window.MarkdownRenderCore.postProcess(elements.output, options);
+  }
+
   // Main render function
   const renderMarkdown = debounce(async function () {
     // Guard: Check if editor is initialized
@@ -1412,74 +1490,81 @@ const MarkdownEditor = (function () {
 
     try {
       const markdownText = elements.markdownInput.value;
-      const md = initializeMarkdownIt();
+      if (shouldUseRenderCore()) {
+        await renderThroughCore(markdownText);
+      } else {
+        const md = initializeMarkdownIt();
 
-      // Protect math blocks from markdown-it plugins (especially sup)
-      const { text: protectedText, mathMap } = protectMathBlocks(markdownText);
-      // mathMap goes in as env so the fence renderer can restore maths in charts and diagrams
-      let htmlResult = md.render(protectedText, { mathMap });
+        // Protect math blocks from markdown-it plugins (especially sup)
+        const { text: protectedText, mathMap } =
+          protectMathBlocks(markdownText);
+        // mathMap goes in as env so the fence renderer can restore maths in charts and diagrams
+        let htmlResult = md.render(protectedText, { mathMap });
 
-      // Restore math blocks after markdown processing
-      htmlResult = restoreMathBlocks(htmlResult, mathMap);
+        // Restore math blocks after markdown processing
+        htmlResult = restoreMathBlocks(htmlResult, mathMap);
 
-      // Enhance header anchors for accessibility
-      htmlResult = enhanceHeaderAnchors(htmlResult);
-      elements.output.innerHTML = htmlResult;
+        // Enhance header anchors for accessibility
+        htmlResult = enhanceHeaderAnchors(htmlResult);
+        elements.output.innerHTML = htmlResult;
 
-      // Post-processing
-      if (window.Prism) {
-        Prism.highlightAllUnder(elements.output);
-      }
+        // Post-processing
+        if (window.Prism) {
+          Prism.highlightAllUnder(elements.output);
+        }
 
-      if (
-        window.MathJax &&
-        typeof window.MathJax.typesetPromise === "function"
-      ) {
-        // Try queue system first for race condition prevention
-        if (window.mathJaxManager) {
-          const managerStatus = window.mathJaxManager.getStatus();
+        if (
+          window.MathJax &&
+          typeof window.MathJax.typesetPromise === "function"
+        ) {
+          // Try queue system first for race condition prevention
+          if (window.mathJaxManager) {
+            const managerStatus = window.mathJaxManager.getStatus();
 
-          if (managerStatus.isHealthy) {
-            try {
-              await window.mathJaxManager.queueTypeset(elements.output);
-              Logger.debug("MathJax rendering via queue system");
-            } catch (error) {
-              Logger.warn(
-                "Queue rendering failed, using direct fallback:",
-                error
-              );
-              // Fallback to direct rendering if queue fails
+            if (managerStatus.isHealthy) {
+              try {
+                await window.mathJaxManager.queueTypeset(elements.output);
+                Logger.debug("MathJax rendering via queue system");
+              } catch (error) {
+                Logger.warn(
+                  "Queue rendering failed, using direct fallback:",
+                  error
+                );
+                // Fallback to direct rendering if queue fails
+                await window.MathJax.typesetPromise([elements.output]);
+              }
+            } else {
+              // Manager exists but unhealthy, use direct rendering
+              Logger.debug("MathJax Manager unhealthy, using direct rendering");
               await window.MathJax.typesetPromise([elements.output]);
             }
           } else {
-            // Manager exists but unhealthy, use direct rendering
-            Logger.debug("MathJax Manager unhealthy, using direct rendering");
+            // Manager not available, use direct rendering
+            Logger.debug(
+              "MathJax Manager not available, using direct rendering"
+            );
             await window.MathJax.typesetPromise([elements.output]);
           }
-        } else {
-          // Manager not available, use direct rendering
-          Logger.debug("MathJax Manager not available, using direct rendering");
-          await window.MathJax.typesetPromise([elements.output]);
+
+          // Apply MathPix enhancements if available (for cross-mode compatibility)
+          if (typeof window.mathPixEnhanceMathJax === "function") {
+            Logger.debug(
+              "Applying MathPix enhancements to markdown editor output"
+            );
+            window.mathPixEnhanceMathJax();
+          }
+
+          // Fix WCAG 4.1.2: Remove focusability from aria-hidden MathJax elements
+          fixMathJaxAccessibility(elements.output);
         }
 
-        // Apply MathPix enhancements if available (for cross-mode compatibility)
-        if (typeof window.mathPixEnhanceMathJax === "function") {
-          Logger.debug(
-            "Applying MathPix enhancements to markdown editor output"
-          );
-          window.mathPixEnhanceMathJax();
+        // Enhance figure images with aspect-ratio
+        enhanceFigureImages(elements.output);
+
+        // Initialize sortable tables
+        if (typeof window.initSortableTables === "function") {
+          window.initSortableTables();
         }
-
-        // Fix WCAG 4.1.2: Remove focusability from aria-hidden MathJax elements
-        fixMathJaxAccessibility(elements.output);
-      }
-
-      // Enhance figure images with aspect-ratio
-      enhanceFigureImages(elements.output);
-
-      // Initialize sortable tables
-      if (typeof window.initSortableTables === "function") {
-        window.initSortableTables();
       }
 
       if (state.notifyNextRender) {

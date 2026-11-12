@@ -124,6 +124,21 @@
   // author can make, and far above the error that one binary sum leaves.
   const HALF_TOLERANCE = 1e-9;
 
+  // The message of the error that a radar with a ticks value that is not finite is refused with.
+  const RADAR_TICKS_NOT_FINITE = "The radar ticks value is not a finite number.";
+
+  // The message of the error that a series whose finite values add up to more than a number can hold is refused with.
+  const RADAR_TOTAL_OVERFLOW = "The radar values add up to more than a number can hold.";
+
+  // How many decimal places past the series' own the average may use while its figure still sits
+  // on the highest or lowest value. Past this the average is
+  // written with "about".
+  const EXTRA_PLACES_ON_EXTREME = 3;
+
+  // Reads the decimal places and the exponent out of a number's shortest
+  // round-trip text, for example "0.25" or "1.5e-7".
+  const NUMBER_TEXT_PATTERN = /^\d+(?:\.(\d+))?(?:e([+-]\d+))?$/;
+
   // Where the renderer draws a value that it clamps. A value above the maximum
   // is drawn at the maximum's radius. A value below the minimum is drawn at
   // radius zero.
@@ -132,6 +147,9 @@
 
   // The most pairs that the Comparison lists before its closing item.
   const MAX_LISTED_PAIRS = 6;
+
+  // The most tied axes the highest and lowest sentence lists by name; a larger tie reads as a count.
+  const TIE_AXES_CAP = 5;
 
   // The names that the describer uses for an empty or whitespace-only label.
   const UNLABELLED_AXIS = "unlabelled axis";
@@ -156,7 +174,7 @@
     if (Number.isInteger(value) && value >= 0 && value <= 9) {
       return textCore().narrationNumber(value);
     }
-    return String(value);
+    return numberText(value);
   }
 
   /**
@@ -222,17 +240,29 @@
   }
 
   /**
-   * A number as the words give it: the delivered number, verbatim.
+   * A number as the words give it: the delivered number, in digits.
    *
-   * `String()` of the delivered number and nothing else: 2.5 stays 2.5, and
-   * nothing is rounded or re-formatted. The only rounded figure in this file
-   * is the average, and it is rounded by `roundedMean` before it gets here.
+   * `String()` of the delivered number, except that exponent form is written
+   * out in digits, because a screen reader says "2e-7" as letters and
+   * symbols. 2.5 stays 2.5, and nothing is rounded or re-formatted. The same
+   * digit form as the pie's `formatValue`, so the two families read a number
+   * alike. The only rounded figure in this file is the average, and it is
+   * rounded by `roundedMean` before it gets here.
    *
    * @param {number} value - A delivered number
    * @returns {string} Its digits
    */
   function numberText(value) {
-    return String(value);
+    const written = String(value);
+    // JavaScript switches to exponent form at 1e21 and above, and at 1e-7 and below.
+    const parts = /^(-?)(\d+)(?:\.(\d+))?e([+-]\d+)$/.exec(written);
+    if (!parts) return written;
+    const [, sign, whole, fraction = "", exponent] = parts;
+    const digits = whole + fraction;
+    const point = whole.length + Number(exponent);
+    if (point <= 0) return `${sign}0.${"0".repeat(-point)}${digits}`;
+    if (point >= digits.length) return sign + digits + "0".repeat(point - digits.length);
+    return `${sign}${digits.slice(0, point)}.${digits.slice(point)}`;
   }
 
   /**
@@ -249,18 +279,51 @@
     return [text('"'), author(String(label)), text('"')];
   }
 
+  // The characters that draw as nothing: white space, Unicode format characters (such as a
+  // zero-width space), every character Unicode itself calls Default_Ignorable_Code_Point (this
+  // covers the combining grapheme joiner U+034F, the Hangul fillers U+115F, U+1160, U+3164 and
+  // U+FFA0, the variation selectors U+FE00 to U+FE0F and U+E0100 to U+E01EF, the Khmer vowel
+  // inherent U+17B4 and U+17B5, the Mongolian selectors U+180B to U+180D and U+180F, and U+2065),
+  // and the Braille blank U+2800 (which is not default-ignorable). The C0 and C1 controls and U+180F are NOT in the set:
+  // Chromium draws or advances them, and U+180F is excluded by lookahead below. ONE
+  // class serves every name and every title, so no name is blank in one place and visible in another.
+  const INVISIBLE_CHARS = String.raw`\s\p{Cf}\p{Default_Ignorable_Code_Point}\u2800\u001D\u007F`;
+  // Characters in the invisible set that Chromium nonetheless draws as ink: U+180F (Mongolian free variation
+  // selector four) and the 37 that leave a mark when drawn alone (the Arabic and Syriac number signs, the Ogham space mark, the
+  // interlinear annotation anchors, the Kaithi number signs, the Egyptian and shorthand format controls). They are excluded where the
+  // class is used, so a name made of one is a name. The 28 members that only advance the line stay in the set.
+  const DRAWN_MARKS = String.raw`[\u180F\u{600}-\u{605}\u{6DD}\u{70F}\u{890}-\u{891}\u{8E2}\u{1680}\u{FFF9}-\u{FFFB}\u{110BD}\u{110CD}\u{13430}-\u{1343F}\u{1BCA0}-\u{1BCA3}]`;
+  const INVISIBLE_ONE = `(?:(?!${DRAWN_MARKS})[${INVISIBLE_CHARS}])`;
+
+  /** A label or title with nothing visible in it. */
+  const BLANK_LABEL = new RegExp(`^${INVISIBLE_ONE}*$`, "u");
+
   /**
-   * Is a label empty or whitespace only?
+   * Is a label empty, or made only of characters that draw as nothing?
    *
    * Mermaid keeps `""` rather than falling back to the id (`label ?? name`),
    * so such a label reaches the canvas as an empty string and is drawn as
-   * nothing. There is then no author text to quote.
+   * nothing. A label of zero-width characters is drawn as nothing too. There
+   * is then no author text to quote.
    *
    * @param {string} label - An axis or series label
    * @returns {boolean} True when the label carries no visible text
    */
   function isUnlabelled(label) {
-    return label.trim() === "";
+    return BLANK_LABEL.test(label);
+  }
+
+  /**
+   * Did the author give a title that can be seen? A title of characters that
+   * draw as nothing reads as no title, so the sentence never quotes an empty
+   * pair of marks and the table caption never ends on nothing. A title of 0
+   * counts.
+   *
+   * @param {*} title - facts.title
+   * @returns {boolean} True when there is a visible title
+   */
+  function hasTitle(title) {
+    return title !== undefined && title !== null && !BLANK_LABEL.test(String(title));
   }
 
   /**
@@ -298,14 +361,132 @@
       : [author(String(label))];
   }
 
-  /** An axis in prose, by its declaration index (from zero). */
-  function axisName(axis, index) {
-    return proseName(axis.label, UNLABELLED_AXIS, index + 1);
+  /** Characters that draw as nothing, at either end of a label. */
+  const LABEL_EDGES = new RegExp(`^${INVISIBLE_ONE}+|${INVISIBLE_ONE}+$`, "gu");
+
+  // Two invisible characters that change what a name draws, so the repeat key keeps them where they do: a zero-width joiner between two
+  // pictographs (a family of three is not three people side by side) and the tag characters after a pictograph (the flags of England,
+  // Scotland and Wales are tags after a black flag). One at the edge of a name, or beside a letter, is junk and is removed.
+  const KEY_PICTOGRAPH = String.raw`\p{Extended_Pictographic}`;
+  const KEY_TAGS = String.raw`[\u{E0020}-\u{E007F}]`;
+  const KEY_KEPT = String.raw`(?:(?<=${KEY_PICTOGRAPH}️?)‍(?=${KEY_PICTOGRAPH})|(?<=${KEY_PICTOGRAPH}${KEY_TAGS}*)${KEY_TAGS})`;
+  // The repeat key removes every invisible character, at the ends and inside, before the name is composed (NFC), except white space
+  // (a gap a reader sees) and the characters kept above. U+FEFF is white space to JavaScript and draws as nothing, so it goes too.
+  const KEY_INVISIBLE = new RegExp(`\\uFEFF|(?!\\s)(?!${KEY_KEPT})${INVISIBLE_ONE}`, "gu");
+  // White space the picture does not draw as ink (U+1680, the Ogham space mark, is drawn and so stays a character).
+  const KEY_SPACE = String.raw`(?:(?!${DRAWN_MARKS})\s)+`;
+  const KEY_SPACE_EDGES = new RegExp(`^${KEY_SPACE}|${KEY_SPACE}$`, "gu");
+  const KEY_SPACE_RUN = new RegExp(KEY_SPACE, "gu");
+
+  /**
+   * The key two names repeat on, so that names which look and sound the same are a repeat: the invisible characters are removed (bar the
+   * kept ones above), the name is composed one way (NFC), white space at its ends is dropped, and every run of white space inside it
+   * (no-break, thin, em or ideographic space, tab, line break, two spaces) reads as one space, so "New York" and "New  York" are one
+   * name and "New York" and "NewYork" stay two. Case and lookalike letters are kept, so "North" and "NORTH" stay two names.
+   * @param {string} name - A segment, axis or series name
+   * @returns {string} The key
+   */
+  function repeatKey(name) {
+    return String(name).replace(KEY_INVISIBLE, "").normalize("NFC").replace(KEY_SPACE_EDGES, "").replace(KEY_SPACE_RUN, " ");
   }
 
-  /** A series in prose; its position is its place among EVERY series. */
+  // The repeated keys of a list of axes or series, worked out once for each list: a name is looked up in the set, not compared with
+  // every other name. The list is a fixed delivery, so its answer is kept for as long as the list lives (and for the same length).
+  const REPEATED_KEYS = new WeakMap();
+
+  /**
+   * The keys that more than one labelled item carries. An unlabelled item never counts.
+   * @param {Object[]} items - The delivered axes, or the delivered series
+   * @returns {Set<string>} The repeated keys
+   */
+  function repeatedKeysOf(items) {
+    const kept = REPEATED_KEYS.get(items);
+    if (kept && kept.length === items.length) return kept.repeated;
+    const counts = new Map();
+    for (const one of items) {
+      if (isUnlabelled(one.label)) continue;
+      const key = repeatKey(one.label);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    const repeated = new Set([...counts].filter(([, count]) => count > 1).map(([key]) => key));
+    REPEATED_KEYS.set(items, { length: items.length, repeated });
+    return repeated;
+  }
+
+  /**
+   * True when this axis shares its label with another axis, so a reader given
+   * the label alone could not tell which axis is meant. The comparison uses
+   * the author's own text, before escaping, through the repeat key. An
+   * unlabelled axis never counts: it already carries its position in
+   * "unlabelled axis N".
+   *
+   * @param {Object[]} axes - The delivered axes
+   * @param {number} index - The axis, by declaration index (from zero)
+   * @returns {boolean} Whether the label is repeated
+   */
+  function isRepeatedAxisLabel(axes, index) {
+    const label = axes[index].label;
+    if (isUnlabelled(label)) return false;
+    return repeatedKeysOf(axes).has(repeatKey(label));
+  }
+
+  /** The position that tells repeated axes apart: " (axis 2)". */
+  function axisPositionText(index) {
+    return ` (axis ${index + 1})`;
+  }
+
+  /** An axis as a TABLE HEADER names it; a repeated label takes its position, as in the prose. */
+  function axisHeaderCell(axes, index) {
+    const { text } = modelCore();
+    const cell = cellName(axes[index].label, UNLABELLED_AXIS, index + 1);
+    return isRepeatedAxisLabel(axes, index) ? [...cell, text(axisPositionText(index))] : cell;
+  }
+
+  /**
+   * An axis in prose, by its declaration index (from zero). A repeated label
+   * takes its position, on EVERY axis that shares it, the first included.
+   */
+  function axisName(axes, index) {
+    const { text } = modelCore();
+    const name = proseName(axes[index].label, UNLABELLED_AXIS, index + 1);
+    return isRepeatedAxisLabel(axes, index) ? [...name, text(axisPositionText(index))] : name;
+  }
+
+  /**
+   * True when this series shares its label with another series, so a reader
+   * given the label alone could not tell which series is meant. Same rule as
+   * the axes: the repeat key, the author's own text, an unlabelled series
+   * never counts, and EVERY series counts, drawn or not.
+   *
+   * @param {Object} facts - The radar facts
+   * @param {Object} curve - A delivered series
+   * @returns {boolean} Whether the label is repeated
+   */
+  function isRepeatedSeriesLabel(facts, curve) {
+    if (isUnlabelled(curve.label)) return false;
+    return repeatedKeysOf(facts.curves).has(repeatKey(curve.label));
+  }
+
+  /** The position that tells repeated series apart: " (series 2)". */
+  function seriesPositionText(facts, curve) {
+    return ` (series ${facts.curves.indexOf(curve) + 1})`;
+  }
+
+  /**
+   * A series in prose; its position is its place among EVERY series. A
+   * repeated label takes its position on EVERY series that shares it.
+   */
   function seriesName(facts, curve) {
-    return proseName(curve.label, UNLABELLED_SERIES, facts.curves.indexOf(curve) + 1);
+    const { text } = modelCore();
+    const name = proseName(curve.label, UNLABELLED_SERIES, facts.curves.indexOf(curve) + 1);
+    return isRepeatedSeriesLabel(facts, curve) ? [...name, text(seriesPositionText(facts, curve))] : name;
+  }
+
+  /** A series as a TABLE HEADER names it; a repeated label takes its position, as in the prose. */
+  function seriesHeaderCell(facts, curve) {
+    const { text } = modelCore();
+    const cell = cellName(curve.label, UNLABELLED_SERIES, facts.curves.indexOf(curve) + 1);
+    return isRepeatedSeriesLabel(facts, curve) ? [...cell, text(seriesPositionText(facts, curve))] : cell;
   }
 
   /**
@@ -339,8 +520,8 @@
   }
 
   /** An axis name where it opens a nested list item. */
-  function openingAxisName(axis, index) {
-    return capitaliseOpening(axis.label, axisName(axis, index));
+  function openingAxisName(axes, index) {
+    return capitaliseOpening(axes[index].label, axisName(axes, index));
   }
 
   // ---------------------------------------------------------------------
@@ -363,10 +544,9 @@
    */
   function buildShortRuns(facts) {
     const { text, author } = modelCore();
-    const titled =
-      facts.title === null
-        ? []
-        : [text(' titled "'), author(String(facts.title)), text('"')];
+    const titled = !hasTitle(facts.title)
+      ? []
+      : [text(' titled "'), author(String(facts.title)), text('"')];
     return [
       text("A radar chart"),
       ...titled,
@@ -385,7 +565,7 @@
    */
   function buildOpeningSentence(facts) {
     const { text } = modelCore();
-    const titled = facts.title === null ? [] : [text(" titled "), ...quotedLabel(facts.title)];
+    const titled = !hasTitle(facts.title) ? [] : [text(" titled "), ...quotedLabel(facts.title)];
     return [
       text("This radar chart"),
       ...titled,
@@ -405,7 +585,7 @@
    */
   function buildAxesSentence(facts) {
     const { text } = modelCore();
-    const labels = facts.axes.map((axis, index) => axisName(axis, index));
+    const labels = facts.axes.map((axis, index) => axisName(facts.axes, index));
     if (facts.N === 0) return [text("There are no axes.")];
     if (facts.N === 1) {
       return [text("The one axis is at the top and is "), ...labels[0], text(".")];
@@ -548,7 +728,11 @@
   function buildGridSentence(facts) {
     const options = facts.options;
     const shape = options.graticule === "polygon" ? "polygonal" : "circular";
-    const ringCount = Math.ceil(options.ticks);
+    // A ticks value that is not finite draws no picture the words could state (the loop would never
+    // end for Infinity), so refuse it, as the pie refuses a total that overflows.
+    if (!Number.isFinite(options.ticks)) throw new RangeError(RADAR_TICKS_NOT_FINITE);
+    // A negative ticks value draws no ring (the loop never runs), so it reads "no rings".
+    const ringCount = Math.max(0, Math.ceil(options.ticks));
     const rings =
       ringCount === 0 ? "no rings" : countPhrase(ringCount, `${shape} ring`, `${shape} rings`);
     const legend = facts.legend ? "a legend names the series" : "there is no legend";
@@ -574,18 +758,211 @@
    * whole number exactly when the decimal mean is a half; the exact halves
    * (2 and 3, 1.5 and 3.5) take the same branch and still give 3.
    *
+   * THE AVERAGE NEVER LIES OUTSIDE THE SERIES' OWN VALUES. The mean is rounded
+   * to a whole number first. If that falls below the lowest value or above
+   * the highest (inclusive), it is rounded to one decimal place, then two, and
+   * so on; the first result inside the values is used. Equal values take the
+   * same path: the mean equals the value, so the search stops at the value.
+   *
+   * THE SEARCH GOES BEYOND THE SERIES' OWN LARGEST NUMBER OF DECIMAL PLACES
+   * only to keep a figure off the highest or lowest value. At the series' own
+   * places the lowest and highest values are exact, and rounding keeps order,
+   * so a mean between them rounds to a figure between them. A figure that
+   * sits ON the highest or lowest value while the mean is not that value is
+   * passed over for one more place, and again, up to EXTRA_PLACES_ON_EXTREME
+   * beyond the series' own (a bound of one place would leave 20 or more axes
+   * reading as an extreme). If the last place still sits on one, the
+   * first figure inside is used and `averagePhrase` writes "about" before it.
+   * If floating point ever defeats the search, the figure at that precision is
+   * used and a warning is logged.
+   *
    * @param {number[]} values - A series' values
    * @returns {number} The rounded mean
    */
   function roundedMean(values) {
-    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
-    const magnitude = Math.abs(mean);
+    return averageOf(values).figure;
+  }
+
+  /**
+   * The average of a series as the sentence gives it: `averaging 3`, or `averaging about 1` when the
+   * search ran out of places while the figure still sat on the highest or lowest value.
+   *
+   * @param {number[]} values - A series' values
+   * @returns {string} The words after "averaging ", without the full stop
+   */
+  function averagePhrase(values) {
+    const { figure, approximate } = averageOf(values);
+    return approximate ? `about ${numberText(figure)}` : numberText(figure);
+  }
+
+  /**
+   * The sum of a list of numbers, with Neumaier's compensation: the low part that each addition
+   * drops is kept and added back at the end, so a small value beside a huge one is not lost
+   * (1e16 + 1 + 1 gives 10000000000000002, not 1e16). A sum that is not finite is returned exactly
+   * as a plain sum gives it, so an overflow is still seen as one.
+   * @param {number[]} values - The numbers to add
+   * @returns {number} The sum
+   */
+  function compensatedSum(values) {
+    let sum = 0;
+    let compensation = 0;
+    for (const value of values) {
+      const next = sum + value;
+      // The low-order part that this addition rounded away, from whichever operand is larger.
+      compensation +=
+        Math.abs(sum) >= Math.abs(value) ? sum - next + value : value - next + sum;
+      sum = next;
+    }
+    return Number.isFinite(sum) ? sum + compensation : sum;
+  }
+
+  /**
+   * The mean of the values. Finite values can still sum past the largest number, and then the
+   * mean would read Infinity, so such a series is refused with a RangeError, as the pie refuses a
+   * total that overflows. (Dividing each value first was tried: it gives 1.6499999999999999e308 for
+   * 1.7e308 and 1.6e308, a figure no author wrote.) Any finite sum is used as before, so no
+   * ordinary mean moves.
+   *
+   * @param {number[]} values - A series' values
+   * @returns {number} The mean
+   */
+  function meanOf(values) {
+    const sum = compensatedSum(values);
+    if (!Number.isFinite(sum) && values.every(Number.isFinite)) {
+      throw new RangeError(RADAR_TOTAL_OVERFLOW);
+    }
+    return sum / values.length;
+  }
+
+  /**
+   * The mean of finite values as an exact fraction, read from each value's shortest round-trip text, so
+   * a half is found by arithmetic and never by a tolerance on a binary sum.
+   *
+   * @param {number[]} values - A series' values
+   * @returns {?{sum: bigint, denominator: bigint}} The sum over the denominator (the count times ten to
+   *   the power of the finest place), or null when a value is not finite
+   */
+  function exactMeanOf(values) {
+    if (!values.every(Number.isFinite)) return null;
+    const parts = values.map((value) => {
+      const match = NUMBER_TEXT_PATTERN.exec(String(Math.abs(value)));
+      if (!match) return null;
+      const [whole, fraction = ""] = String(Math.abs(value)).split("e")[0].split(".");
+      const exponent = match[2] ? Number(match[2]) : 0;
+      // The digits as a whole number and the places they sit behind the point.
+      const digits = BigInt(whole + fraction);
+      const places = fraction.length - exponent;
+      return { digits: value < 0 ? -digits : digits, places };
+    });
+    if (parts.some((part) => part === null)) return null;
+    const finest = Math.max(0, ...parts.map((part) => part.places));
+    const sum = parts.reduce(
+      (total, part) => total + part.digits * 10n ** BigInt(finest - part.places),
+      0n
+    );
+    return { sum, denominator: BigInt(values.length) * 10n ** BigInt(finest) };
+  }
+
+  /**
+   * An exact mean rounded to a count of decimal places, halves away from zero.
+   * @param {{sum: bigint, denominator: bigint}} exactMean - From `exactMeanOf`
+   * @param {number} places - Decimal places to keep
+   * @returns {number} The rounded mean (0 for -0)
+   */
+  function roundExactMean(exactMean, places) {
+    const negative = exactMean.sum < 0n;
+    const magnitude = negative ? -exactMean.sum : exactMean.sum;
+    const scaled = magnitude * 10n ** BigInt(places);
+    // floor((2 * scaled + denominator) / (2 * denominator)): a half goes up on the magnitude.
+    const whole = (scaled * 2n + exactMean.denominator) / (exactMean.denominator * 2n);
+    const rounded = Number(`${negative ? "-" : ""}${whole}e-${places}`);
+    return rounded === 0 ? 0 : rounded;
+  }
+
+  /**
+   * The search that `roundedMean` documents, with its result and whether it ran out of places.
+   *
+   * @param {number[]} values - A series' values
+   * @returns {{figure: number, approximate: boolean}} The figure, and true when it still sits on
+   *   the highest or lowest value after the last place
+   */
+  function averageOf(values) {
+    const mean = meanOf(values);
+    const lowest = Math.min(...values);
+    const highest = Math.max(...values);
+    const lastPlaces = Math.max(...values.map(decimalPlaces));
+
+    // Whole number first; then one decimal place, two, and so on, until the
+    // result lies inside the series' own values (inclusive). A result that
+    // sits ON the highest or lowest value, when the mean is not that value,
+    // is passed over for one more decimal place, and again while it still
+    // sits there, up to EXTRA_PLACES_ON_EXTREME beyond the series' own, so the
+    // figure does not read as an extreme. A series whose values are all equal
+    // has its mean on both extremes, so its first result stands and the extra
+    // place is never tried. A place whose scale is not a finite number ends the
+    // search (a series of the smallest numbers has 324 places).
+    let rounded = 0;
+    let firstInside = null;
+    const exactMean = exactMeanOf(values);
+    for (let places = 0; places <= lastPlaces + EXTRA_PLACES_ON_EXTREME; places += 1) {
+      if (!Number.isFinite(10 ** places)) break;
+      rounded = exactMean ? roundExactMean(exactMean, places) : roundHalfAwayFromZero(mean, places);
+      if (rounded < lowest || rounded > highest) continue;
+      if (firstInside === null) firstInside = rounded;
+      // The mean of values that differ lies strictly between the lowest and the highest, so a figure
+      // ON one of them is never exact, whatever the scale. A tolerance would let such a figure
+      // stand when it was close to the mean, and close grows with the mean. An all-equal series never gets here as an extreme.
+      const onExtreme = lowest !== highest && (rounded === lowest || rounded === highest);
+      if (!onExtreme) return { figure: rounded, approximate: false };
+    }
+    if (firstInside !== null) return { figure: firstInside, approximate: true };
+
+    // No place could state a figure inside the values: the mean is finer than the largest scale.
+    // The mean itself is then the true figure.
+    if (mean >= lowest && mean <= highest) return { figure: mean, approximate: false };
+
+    logWarn("The average lies outside the series at its own precision", {
+      mean,
+      lowest,
+      highest,
+      places: lastPlaces,
+    });
+    return { figure: rounded, approximate: false };
+  }
+
+  /**
+   * The decimal places of a number as an author wrote it, read from its
+   * shortest round-trip text: 0.25 has 2, 3 has 0, 1.5e-7 has 8.
+   *
+   * @param {number} value - A delivered number
+   * @returns {number} Its decimal places (0 for a number with none)
+   */
+  function decimalPlaces(value) {
+    const match = NUMBER_TEXT_PATTERN.exec(String(Math.abs(value)));
+    if (!match) return 0;
+    const fractionDigits = match[1] ? match[1].length : 0;
+    const exponent = match[2] ? Number(match[2]) : 0;
+    return Math.max(0, fractionDigits - exponent);
+  }
+
+  /**
+   * A number rounded to a count of decimal places, halves away from zero.
+   * The half test is the one described on `roundedMean`, applied to the mean
+   * scaled by ten to the power of the places. A result of -0 is returned as 0.
+   *
+   * @param {number} mean - The number to round
+   * @param {number} places - Decimal places to keep (0 for a whole number)
+   * @returns {number} The rounded number
+   */
+  function roundHalfAwayFromZero(mean, places) {
+    const scale = 10 ** places;
+    const magnitude = Math.abs(mean) * scale;
     const twice = magnitude * 2;
     const nearestTwice = Math.round(twice);
     const isHalf =
       Math.abs(twice - nearestTwice) < HALF_TOLERANCE && nearestTwice % 2 === 1;
     const roundedMagnitude = isHalf ? (nearestTwice + 1) / 2 : Math.round(magnitude);
-    const rounded = Math.sign(mean) * roundedMagnitude;
+    const rounded = (Math.sign(mean) * roundedMagnitude) / scale;
     return rounded === 0 ? 0 : rounded;
   }
 
@@ -593,8 +970,9 @@
    * The highest and lowest sentence of a series. THIS IS THE ONLY PLACE THAT
    * FINDS THE EXTREMES.
    *
-   * A tie lists every tied axis, in axis order, joined in the way that the
-   * axes sentence joins them. When two axes share a label, the sentence names
+   * A tie of up to TIE_AXES_CAP axes lists every tied axis, in axis order, joined in the way that
+   * the axes sentence joins them; a larger tie reads as a count, "Highest on 19 axes", with the
+   * count in the describer's number form. When two axes share a label, the sentence names
    * the label once for each axis that carries it. When every value is equal,
    * it reads "The same value on every axis." A chart with one axis has no such
    * sentence at all, and never reaches this function.
@@ -609,12 +987,14 @@
     const lowest = Math.min(...values);
     if (highest === lowest) return [text("The same value on every axis.")];
 
-    const on = (target) =>
-      joinRunsNoSerial(
-        axes
-          .map((axis, index) => (values[index] === target ? axisName(axis, index) : null))
-          .filter((name) => name !== null)
-      );
+    // A tie of more than TIE_AXES_CAP axes is given as a count ("Highest on 19 axes"); the nested
+    // list under the series still names every axis with its value, so nothing is lost.
+    const on = (target) => {
+      const names = axes
+        .map((axis, index) => (values[index] === target ? axisName(axes, index) : null))
+        .filter((name) => name !== null);
+      return names.length > TIE_AXES_CAP ? [text(axesPhrase(names.length))] : joinRunsNoSerial(names);
+    };
     return [text("Highest on "), ...on(highest), text(", lowest on "), ...on(lowest), text(".")];
   }
 
@@ -628,7 +1008,7 @@
     const { text, list, item } = modelCore();
     return list(
       axes.map((axis, index) =>
-        item([...openingAxisName(axis, index), text(`: ${numberText(values[index])}`)])
+        item([...openingAxisName(axes, index), text(`: ${numberText(values[index])}`)])
       )
     );
   }
@@ -673,7 +1053,7 @@
       // not for a mismatch; every other undrawn series is a count mismatch.
       const reason =
         curve.values.length === facts.N
-          ? "only one axis"
+          ? facts.N === 0 ? "no axes" : "only one axis"
           : `${valuesPhrase(curve.values.length)} for ${axesPhrase(facts.N)}`;
       return item(
         [
@@ -689,7 +1069,7 @@
     }
 
     const disclosure = facts.legend ? "" : " (named in the code, not in the picture)";
-    const averaging = facts.noRange ? "" : `, averaging ${numberText(roundedMean(curve.values))}`;
+    const averaging = facts.noRange ? "" : `, averaging ${averagePhrase(curve.values)}`;
     return item(
       [
         ...label,
@@ -731,7 +1111,7 @@
     facts.axes.forEach((axis, index) => {
       const a = first.values[index];
       const b = second.values[index];
-      const name = axisName(axis, index);
+      const name = axisName(facts.axes, index);
       if (a > b) higher.push(name);
       else if (a < b) lower.push(name);
       else equal.push(name);
@@ -762,7 +1142,11 @@
         text(" on "),
         ...joinRunsNoSerial(higher),
       ]);
-      if (lower.length > 0) parts.push([text("and lower on "), ...joinRunsNoSerial(lower)]);
+      // With an equal part to follow, "and" belongs to that last part alone.
+      if (lower.length > 0) {
+        const lead = equal.length > 0 ? "lower on " : "and lower on ";
+        parts.push([text(lead), ...joinRunsNoSerial(lower)]);
+      }
     } else {
       parts.push([
         ...subject,
@@ -837,7 +1221,7 @@
   function buildDataTable(facts) {
     const { text, author, table } = modelCore();
     const caption =
-      facts.title === null
+      !hasTitle(facts.title)
         ? [text("Data table for this radar chart")]
         : [text("Data table for: "), author(String(facts.title))];
 
@@ -845,12 +1229,10 @@
       caption,
       columns: [
         [text("Axis")],
-        ...facts.tabled.map((curve) =>
-          cellName(curve.label, UNLABELLED_SERIES, facts.curves.indexOf(curve) + 1)
-        ),
+        ...facts.tabled.map((curve) => seriesHeaderCell(facts, curve)),
       ],
       rows: facts.axes.map((axis, index) => ({
-        header: cellName(axis.label, UNLABELLED_AXIS, index + 1),
+        header: axisHeaderCell(facts.axes, index),
         cells: facts.tabled.map((curve) => [text(numberText(curve.values[index]))]),
       })),
     });

@@ -1,0 +1,15 @@
+{
+  "source": "mathCases are MathCAT v0.7.7 own test expectations (tests/braille: iceb.rs bana_5_1, bana_5_2, bana_5_3 and rules.rs num_indicator_9_a_1). textCases are UEB written out by hand from the UEB rules (the, and, for, you, with wordsigns; acute accent modifier dots 45-34 before the letter). Loaded only by the braille engine, inside ensureReady().",
+  "mathCases": [
+    { "id": "iceb.rs::bana_5_1", "code": "UEB", "mathml": "<math><mi>x</mi><mo>+</mo><mi>y</mi><mo>=</mo><mn>6</mn></math>", "expected": "⠭⠐⠖⠽⠀⠐⠶⠀⠼⠋" },
+    { "id": "iceb.rs::bana_5_2", "code": "UEB", "mathml": "<math><msup><mi>x</mi><mn>2</mn></msup><mo>+</mo><msup><mi>y</mi><mn>2</mn></msup><mo>=</mo><mi>C</mi></math>", "expected": "⠭⠰⠔⠼⠃⠐⠖⠽⠔⠼⠃⠀⠐⠶⠀⠰⠠⠉" },
+    { "id": "iceb.rs::bana_5_3", "code": "UEB", "mathml": "<math><mfrac><mi>a</mi><mi>b</mi></mfrac><mo>+</mo><mfrac><mi>c</mi><mi>d</mi></mfrac></math>", "expected": "⠰⠰⠷⠁⠨⠌⠃⠾⠐⠖⠷⠉⠨⠌⠙⠾" },
+    { "id": "rules.rs::num_indicator_9_a_1", "code": "Nemeth", "mathml": "<math><mn>27</mn></math>", "expected": "⠼⠆⠶" }
+  ],
+  "textCases": [
+    { "id": "g2-the-cat", "table": "en-ueb-g2", "text": "the cat sat on the mat.", "expected": "⠮⠀⠉⠁⠞⠀⠎⠁⠞⠀⠕⠝⠀⠮⠀⠍⠁⠞⠲" },
+    { "id": "g2-and-the-dog", "table": "en-ueb-g2", "text": "and the dog", "expected": "⠯⠀⠮⠀⠙⠕⠛" },
+    { "id": "g2-combining-accent", "table": "en-ueb-g2", "text": "café", "expected": "⠉⠁⠋⠘⠌⠑", "back": "café" },
+    { "id": "g1-the-cat", "table": "en-ueb-g1", "text": "the cat sat on the mat.", "expected": "⠞⠓⠑⠀⠉⠁⠞⠀⠎⠁⠞⠀⠕⠝⠀⠞⠓⠑⠀⠍⠁⠞⠲" }
+  ]
+}

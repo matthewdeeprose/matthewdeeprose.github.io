@@ -100,6 +100,110 @@ const TTSSemantic = (function () {
       .trim();
   }
 
+  // ---- Bare line breaks and question labels (RA-120, register 63, F1-B and F2-D) ------
+  // The same two rules as an export's Read Aloud (scorm-builder source/templates/js/read-aloud.js), in the structure-on path only.
+  // F1: a typed <br> whose text before it has no end punctuation . ! ? : ; , (or ends in an equation) says a comma, so the voice
+  // pauses where the author broke the line. F2: "(a)" at the start of a section, after . ! ? : ; ] ), or after a comma F1 put in,
+  // and before a capital, is said "Part a.". F1 marks its own comma with a private-use character so F2 can tell it from a comma
+  // the author typed; every mark is stripped before the text leaves linearise(). Both act on a CLONE, never the live panel.
+  const LINE_BREAK_MARK = '';
+  const LINE_BREAK_COMMA = ',' + LINE_BREAK_MARK;
+  // A comma F1 has just put in carries the mark, so two breaks in a row do not give two commas.
+  const LINE_END_PUNCTUATION = new RegExp('[.!?:;,]' + LINE_BREAK_MARK + '?$');
+  const LINE_BREAK_MARK_PATTERN = new RegExp(LINE_BREAK_MARK, 'g');
+  const PART_LABEL_PATTERN = new RegExp('(^|[.!?:;\\])]\\s|,' + LINE_BREAK_MARK + '\\s)\\(([a-z])\\)\\s+(?=[A-Z])', 'g');
+
+  // The last thing before a break, looking inside wrappers: { maths: true } for an equation, { node, text } for text, null for nothing.
+  function lastLeafBefore(node) {
+    if (!node) return null;
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.data.trim() ? { maths: false, node: node, text: node.data.replace(/\s+/g, ' ').trim() } : null;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return null;
+    if (isMathJax(node)) return { maths: true, node: null, text: '' };
+    for (let child = node.lastChild; child; child = child.previousSibling) {
+      const found = lastLeafBefore(child);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  // Is anything spoken after this break inside the clone? Text, an equation, or a picture (its "Image:" words are in the same section).
+  function spokenAfterBreak(br, root) {
+    for (let node = br; node && node !== root; node = node.parentNode) {
+      for (let next = node.nextSibling; next; next = next.nextSibling) {
+        if (next.nodeType === Node.TEXT_NODE && next.data.trim()) return true;
+        if (next.nodeType !== Node.ELEMENT_NODE) continue;
+        if (next.textContent.trim() || isMathJax(next) || next.tagName === 'IMG') return true;
+        if (next.querySelector('mjx-container, .MathJax, img')) return true;
+      }
+    }
+    return false;
+  }
+
+  // Put the comma in, on the clone, ahead of the <br>.
+  function commaBeforeBreak(br, root) {
+    if (!spokenAfterBreak(br, root)) return;
+    let before = { maths: false, node: null, text: '' };
+    for (let sibling = br.previousSibling; sibling; sibling = sibling.previousSibling) {
+      const found = lastLeafBefore(sibling);
+      if (found) { before = found; break; }
+    }
+    if (!before.maths && (!before.text || LINE_END_PUNCTUATION.test(before.text))) return;
+    if (before.node) before.node.data = before.node.data.replace(/\s*$/, LINE_BREAK_COMMA + '$&');
+    else br.before(document.createTextNode(LINE_BREAK_COMMA));
+  }
+
+  // F2 on a section's finished text; also strips F1's mark.
+  function speakPartLabels(text) {
+    return text.replace(PART_LABEL_PATTERN, function (match, lead, letter) {
+      return lead + 'Part ' + letter + '. ';
+    }).replace(LINE_BREAK_MARK_PATTERN, '');
+  }
+
+  // ---- Cue words (RA-122, register 69) ----------------------------------------
+  // With "Announce structure" on, these are spoken in front of or after the content they describe. With it off, ONLY these are
+  // dropped: the rest of the reading (line-break comma, "Part a.", full stops at block ends, spacing) is the same in both settings.
+  // Every phrase in the spoken text that names a structure is built here, so this list is what "off" leaves out.
+  const CUES = Object.freeze({
+    headingLevel: function (level) { return 'Heading level ' + level + '. '; },
+    listLead: function (isOrdered, total) { return (isOrdered ? 'Numbered' : 'Bulleted') + ' list with ' + total + ' items.'; },
+    listItem: function (index, total) { return 'Item ' + index + ' of ' + total + ': '; },
+    tableLead: function (columns, rows) { return 'Table with ' + columns + ' columns and ' + rows + ' rows.'; },
+    columnHeading: 'Column heading: ',
+    cell: function (row, column) { return 'Row ' + row + ', Column ' + column + ': '; },
+    quoteStart: 'Quote. ',
+    quoteEnd: ' End quote.',
+    codeLead: function (language) { return language ? 'Code block in ' + language.charAt(0).toUpperCase() + language.slice(1) + '.' : 'Code block.'; },
+    definitionLead: function (terms) { return 'Definition list with ' + terms + ' terms.'; },
+    maths: 'Mathematical expression.',
+    image: 'Image: ',
+    imageNoAlt: 'Image.',
+    link: ', link.'
+  });
+
+  // A cue's text when cues are on, and nothing when they are off.
+  function cueText(cues, text) {
+    return cues ? text : '';
+  }
+
+  function mathsText(node, cues) {
+    const label = node.getAttribute('aria-label');
+    if (!label) return cueText(cues, CUES.maths);
+    return cueText(cues, CUES.maths + ' ') + ensureFullStop(label);
+  }
+
+  function imageText(node, cues) {
+    const alt = node.getAttribute('alt');
+    if (!alt) return cueText(cues, CUES.imageNoAlt);
+    return cueText(cues, CUES.image) + ensureFullStop(alt);
+  }
+
+  function linkText(node, cues) {
+    const text = normaliseText(node.textContent);
+    return text ? text + cueText(cues, CUES.link) : '';
+  }
+
   // ---- Element checks -------------------------------------------------------
 
   function shouldSkipElement(el, skipSelectors) {
@@ -118,7 +222,7 @@ const TTSSemantic = (function () {
 
   // ---- Table lineariser -----------------------------------------------------
 
-  function lineariseTable(tableEl) {
+  function lineariseTable(tableEl, cues) {
     const thead = tableEl.querySelector('thead');
     const tbody = tableEl.querySelector('tbody');
     const allRows = Array.from(tableEl.querySelectorAll('tr'));
@@ -149,17 +253,17 @@ const TTSSemantic = (function () {
       : (allRows.length > 0 ? allRows[0].querySelectorAll('td, th').length : 0);
     const rowCount = bodyRows.length;
     const parts = [];
-    parts.push('Table with ' + colCount + ' columns and ' + rowCount + ' rows.');
+    parts.push(cueText(cues, CUES.tableLead(colCount, rowCount)));
 
     headerCells.forEach(function (th) {
-      parts.push('Column heading: ' + ensureFullStop(normaliseText(th.textContent)));
+      parts.push(cueText(cues, CUES.columnHeading) + ensureFullStop(normaliseText(th.textContent)));
     });
 
     bodyRows.forEach(function (tr, rowIdx) {
       const cells = Array.from(tr.querySelectorAll('td, th'));
       cells.forEach(function (cell, colIdx) {
         parts.push(
-          'Row ' + (rowIdx + 1) + ', Column ' + (colIdx + 1) + ': ' +
+          cueText(cues, CUES.cell(rowIdx + 1, colIdx + 1)) +
           ensureFullStop(normaliseText(cell.textContent))
         );
       });
@@ -169,20 +273,16 @@ const TTSSemantic = (function () {
 
   // ---- Code block lineariser ------------------------------------------------
 
-  function lineariseCodeBlock(preEl) {
+  function lineariseCodeBlock(preEl, cues) {
     const codeEl = preEl.querySelector('code');
     const parts = [];
     if (codeEl) {
       const langMatch = codeEl.className.match(/language-(\w+)/);
       const language = langMatch ? langMatch[1] : null;
-      if (language) {
-        parts.push('Code block in ' + language.charAt(0).toUpperCase() + language.slice(1) + '.');
-      } else {
-        parts.push('Code block.');
-      }
+      parts.push(cueText(cues, CUES.codeLead(language)));
       parts.push(normaliseText(codeEl.textContent));
     } else {
-      parts.push('Code block.');
+      parts.push(cueText(cues, CUES.codeLead(null)));
       parts.push(normaliseText(preEl.textContent));
     }
     return joinParts(parts);
@@ -190,11 +290,11 @@ const TTSSemantic = (function () {
 
   // ---- Definition list lineariser -------------------------------------------
 
-  function lineariseDefList(dlEl) {
+  function lineariseDefList(dlEl, cues) {
     const children = Array.from(dlEl.children);
     const termCount = children.filter(function (c) { return c.tagName === 'DT'; }).length;
     const parts = [];
-    parts.push('Definition list with ' + termCount + ' terms.');
+    parts.push(cueText(cues, CUES.definitionLead(termCount)));
     let currentTerm = '';
     children.forEach(function (child) {
       if (child.tagName === 'DT') {
@@ -209,25 +309,24 @@ const TTSSemantic = (function () {
 
   // ---- List lineariser ------------------------------------------------------
 
-  function lineariseList(listEl) {
+  function lineariseList(listEl, cues) {
     const isOrdered = listEl.tagName === 'OL';
     const items = Array.from(listEl.children).filter(function (c) {
       return c.tagName === 'LI';
     });
     const total = items.length;
-    const listType = isOrdered ? 'Numbered' : 'Bulleted';
     const parts = [];
-    parts.push(listType + ' list with ' + total + ' items.');
+    parts.push(cueText(cues, CUES.listLead(isOrdered, total)));
     items.forEach(function (li, idx) {
-      const itemText = normaliseText(walkInlineContent(li));
-      parts.push('Item ' + (idx + 1) + ' of ' + total + ': ' + ensureFullStop(itemText));
+      const itemText = normaliseText(walkInlineContent(li, cues));
+      parts.push(cueText(cues, CUES.listItem(idx + 1, total)) + ensureFullStop(itemText));
     });
     return joinParts(parts);
   }
 
   // ---- Inline content walker ------------------------------------------------
 
-  function walkInlineContent(el) {
+  function walkInlineContent(el, cues) {
     const parts = [];
     for (let i = 0; i < el.childNodes.length; i++) {
       const node = el.childNodes[i];
@@ -240,34 +339,29 @@ const TTSSemantic = (function () {
       if (shouldSkipElement(node, null)) continue;
 
       if (isMathJax(node)) {
-        const label = node.getAttribute('aria-label');
-        parts.push(label
-          ? 'Mathematical expression. ' + ensureFullStop(label)
-          : 'Mathematical expression.');
+        parts.push(mathsText(node, cues));
         continue;
       }
       if (node.tagName === 'IMG') {
-        const alt = node.getAttribute('alt');
-        parts.push(alt ? 'Image: ' + ensureFullStop(alt) : 'Image.');
+        parts.push(imageText(node, cues));
         continue;
       }
       if (node.tagName === 'A') {
-        const linkText = normaliseText(node.textContent);
-        if (linkText) parts.push(linkText + ', link.');
+        parts.push(linkText(node, cues));
         continue;
       }
       if (node.tagName === 'UL' || node.tagName === 'OL') {
-        parts.push(lineariseList(node));
+        parts.push(lineariseList(node, cues));
         continue;
       }
-      parts.push(walkInlineContent(node));
+      parts.push(walkInlineContent(node, cues));
     }
     return joinParts(parts);
   }
 
   // ---- Main DOM walker ------------------------------------------------------
 
-  function walkDOM(rootEl, skipSelectors) {
+  function walkDOM(rootEl, skipSelectors, cues) {
     const sections = [];
     let currentText = '';
     let currentType = 'paragraph';
@@ -298,13 +392,10 @@ const TTSSemantic = (function () {
 
       // MathJax — atomic, could be inline or block
       if (isMathJax(node)) {
-        const label = node.getAttribute('aria-label');
-        const mathText = label
-          ? 'Mathematical expression. ' + ensureFullStop(label)
-          : 'Mathematical expression.';
+        const mathText = mathsText(node, cues);
         if (node.parentNode === rootEl) {
           pushCurrentSection();
-          sections.push({ type: 'math', text: mathText });
+          if (mathText.trim()) sections.push({ type: 'math', text: mathText });
         } else {
           currentText = joinParts([currentText, mathText]);
         }
@@ -315,7 +406,7 @@ const TTSSemantic = (function () {
       if (HEADING_TAGS.has(tag)) {
         pushCurrentSection();
         const level = parseInt(tag.charAt(1), 10);
-        let headingContent = normaliseText(walkInlineContent(node));
+        let headingContent = normaliseText(walkInlineContent(node, cues));
         // Strip redundant manual numbering that matches the heading level
         // e.g. <h3>3. Long Description</h3> → avoid "Heading level 3. 3. Long Description"
         const manualNumberPattern = new RegExp('^' + level + '\\.\\s*');
@@ -324,38 +415,38 @@ const TTSSemantic = (function () {
         }
         currentType = 'heading';
         currentLevel = level;
-        currentText = 'Heading level ' + level + '. ' + ensureFullStop(headingContent);
+        currentText = cueText(cues, CUES.headingLevel(level)) + ensureFullStop(headingContent);
         pushCurrentSection();
         return;
       }
 
       if (tag === 'UL' || tag === 'OL') {
         pushCurrentSection();
-        sections.push({ type: 'list', text: lineariseList(node) });
+        sections.push({ type: 'list', text: lineariseList(node, cues) });
         return;
       }
       if (tag === 'TABLE') {
         pushCurrentSection();
-        sections.push({ type: 'table', text: lineariseTable(node) });
+        sections.push({ type: 'table', text: lineariseTable(node, cues) });
         return;
       }
       if (tag === 'BLOCKQUOTE') {
         pushCurrentSection();
-        const quoteContent = normaliseText(walkInlineContent(node));
+        const quoteContent = normaliseText(walkInlineContent(node, cues));
         sections.push({
           type: 'blockquote',
-          text: 'Quote. ' + ensureFullStop(quoteContent) + ' End quote.'
+          text: cueText(cues, CUES.quoteStart) + ensureFullStop(quoteContent) + cueText(cues, CUES.quoteEnd)
         });
         return;
       }
       if (tag === 'PRE') {
         pushCurrentSection();
-        sections.push({ type: 'code', text: lineariseCodeBlock(node) });
+        sections.push({ type: 'code', text: lineariseCodeBlock(node, cues) });
         return;
       }
       if (tag === 'DL') {
         pushCurrentSection();
-        sections.push({ type: 'definition-list', text: lineariseDefList(node) });
+        sections.push({ type: 'definition-list', text: lineariseDefList(node, cues) });
         return;
       }
       if (tag === 'HR') {
@@ -363,21 +454,17 @@ const TTSSemantic = (function () {
         return;
       }
       if (tag === 'IMG') {
-        const alt = node.getAttribute('alt');
-        currentText = joinParts([
-          currentText,
-          alt ? 'Image: ' + ensureFullStop(alt) : 'Image.'
-        ]);
+        currentText = joinParts([currentText, imageText(node, cues)]);
         return;
       }
       if (tag === 'A') {
-        const linkText = normaliseText(node.textContent);
-        if (linkText) currentText = joinParts([currentText, linkText + ', link.']);
+        const linked = linkText(node, cues);
+        if (linked) currentText = joinParts([currentText, linked]);
         return;
       }
       if (tag === 'P') {
         pushCurrentSection();
-        const pContent = walkInlineContent(node);
+        const pContent = walkInlineContent(node, cues);
         if (pContent) {
           currentText = ensureFullStop(pContent);
           currentType = 'paragraph';
@@ -420,21 +507,18 @@ const TTSSemantic = (function () {
     const verbosity = opts.verbosity || getVerbosity();
     logDebug('linearise() called, verbosity:', verbosity);
 
-    if (verbosity === 'off') {
-      // Split on newlines (preserved by innerText at block boundaries) and
-      // ensure each block ends with a full stop so TTS pauses between blocks
-      // even when the source content lacks trailing punctuation.
-      const raw = (element.innerText || element.textContent || '').trim();
-      const blocks = raw
-        .split(/\n+/)
-        .map(function (p) { return p.trim(); })
-        .filter(function (p) { return p.length > 0; })
-        .map(ensureFullStop);
-      const plainText = blocks.join(' ');
-      return { text: plainText, sections: [{ type: 'plain', text: plainText }] };
-    }
+    // RA-122: "off" reads exactly what "on" reads, minus the cue words in CUES, so words never run together
+    // and the RA-120 pauses apply in both settings.
+    const cues = verbosity !== 'off';
 
-    const sections = walkDOM(element, opts.skipSelectors || null);
+    // RA-120: F1 runs on a clone, so the live panel is never touched; with no <br> there is nothing to clone.
+    let walkRoot = element;
+    if (element.querySelector('br')) {
+      walkRoot = element.cloneNode(true);
+      walkRoot.querySelectorAll('br').forEach(function (br) { commaBeforeBreak(br, walkRoot); });
+    }
+    const sections = walkDOM(walkRoot, opts.skipSelectors || null, cues);
+    sections.forEach(function (s) { s.text = speakPartLabels(s.text); });
     const text = sections
       .map(function (s) { return s.text; })
       .join(' ')

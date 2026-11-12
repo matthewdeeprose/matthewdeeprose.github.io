@@ -101,8 +101,8 @@
   const RETIRED_MODELS_CLEARED_KEY = "imgdesc_retired_models_cleared_h62";
 
   const CONTROLLER_CONFIG = {
-    // AI model to use
-    model: "anthropic/claude-haiku-5.5",
+    // AI model to use. H-183: was "anthropic/claude-haiku-5.5" (H-46 to H-182).
+    model: "anthropic/claude-sonnet-5.5",
 
     // Token limits
     maxTokens: 4000,

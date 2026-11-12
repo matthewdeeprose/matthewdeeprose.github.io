@@ -94,6 +94,16 @@ const TTSSreLoader = (function () {
   });
   const MATHS_SPEECH_STORAGE_KEY = "tts-maths-speech";
 
+  // SRE style (RA-94, register 63). ClearSpeak is set up with the preference that says
+  // "is an element of" (its default says "is a member of"), exactly as an export's Read
+  // Aloud does (scorm-builder read-aloud.js, SRE_STYLE_CLEARSPEAK). MathSpeak keeps
+  // "default". Nothing else on the page sets up this engine, so no equation's accessible
+  // name is affected.
+  const SRE_STYLE = Object.freeze({
+    DEFAULT: "default",
+    CLEARSPEAK: "SetMemberSymbol_Element",
+  });
+
   // SRE's setupEngine HANGS rather than rejecting when its locale data is
   // unreachable (the export's Read Aloud measured this), so every call is raced
   // against this bound. A timeout rejects and callers fall back to aria-labels.
@@ -182,7 +192,10 @@ const TTSSreLoader = (function () {
           Promise.resolve(
             sre.setupEngine({
               domain: domain,
-              style: "default",
+              style:
+                domain === MATHS_SPEECH_DOMAIN.CLEARSPEAK
+                  ? SRE_STYLE.CLEARSPEAK
+                  : SRE_STYLE.DEFAULT,
               modality: "speech",
               locale: "en",
             }),

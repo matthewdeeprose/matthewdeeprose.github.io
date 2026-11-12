@@ -557,6 +557,20 @@ export class OpenRouterValidator {
         requestBody.parallel_tool_calls = options.parallel_tool_calls;
       }
 
+      // PROVIDER ROUTING (WF-8b, 11 November 2026): OpenRouter's `provider`
+      // object, admitted only when it is a plain object, passed by reference
+      // and unreshaped. Absent or any other type adds no key, so a request
+      // without it keeps a byte-identical body. Options are only read, so the
+      // double build gives the same field twice. Shared with OpenRouter AI
+      // mode, which sends none.
+      if (
+        options.provider &&
+        typeof options.provider === "object" &&
+        !Array.isArray(options.provider)
+      ) {
+        requestBody.provider = options.provider;
+      }
+
       // MODALITY STEP 2 — the `modalities` branch. This builder is a CLOSED
       // ALLOWLIST: a key not named here never reaches the wire, so a new
       // request field needs an explicit branch. Shaped on the plugins

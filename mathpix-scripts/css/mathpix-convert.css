@@ -47,6 +47,40 @@
   margin-bottom: 0.75rem;
 }
 
+/* BR-3d: the Braille (preview) control reuses the format-selection fieldset above (no border, padding or margin, and the
+   Convert legend look in both themes). These rules hold at every width: the fieldset may shrink to what its container
+   offers, text takes the panel's body size, the status is left-aligned (the 600px rule above would centre it), and the
+   selects fill the fieldset instead of 95% of it. */
+.mathpix-braille-export {
+  min-width: 0;
+}
+
+.mathpix-braille-export legend,
+.mathpix-braille-export .mathpix-btn,
+.mathpix-braille-export .mathpix-convert-status {
+  font-size: inherit;
+}
+
+.mathpix-braille-export .mathpix-convert-status {
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.mathpix-braille-export .imgdesc-option-group select {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.mathpix-braille-links {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  overflow-wrap: anywhere;
+}
+
+.mathpix-braille-links li + li {
+  margin-top: 0.5rem;
+}
+
 .mathpix-convert-format-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));

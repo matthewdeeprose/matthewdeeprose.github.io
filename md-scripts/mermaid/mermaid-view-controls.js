@@ -9,8 +9,8 @@ const MermaidViewControls = (function () {
   const config = {
     expandText: "Expand Width",
     collapseText: "Collapse Width",
-    fullscreenText: "Fullscreen",
-    exitFullscreenText: "Exit Fullscreen",
+    fullscreenText: "Enter full screen",
+    exitFullscreenText: "Exit full screen",
     expandedClass: "expanded",
     fullscreenClass: "fullscreen-mode",
     viewControlsClass: "mermaid-view-controls",
@@ -22,6 +22,10 @@ const MermaidViewControls = (function () {
   const state = {
     fullscreenEnabled: false,
     activeFullscreenContainer: null,
+    // Set when exitFullscreen asks the browser to leave native full screen:
+    // the browser's own change event arrives later, finds no active
+    // container, and uses this to speak and to restore focus
+    nativeExitContainer: null,
   };
 
   // DOM element references
@@ -103,6 +107,42 @@ const MermaidViewControls = (function () {
     changeFitRetry: 200, // and fit again
   });
 
+  // Full-screen focus and speech (register item 160, slice 2b, 11 November
+  // 2026). One polite region INSIDE the container says when full screen is on
+  // and off, so native full screen (where everything outside the container is
+  // not exposed) speaks it too. It is built when the controls attach, long
+  // before it is written, because a region made just before its text is not
+  // registered in time. A write waits for the view and the focus to settle and
+  // is dropped if a later write has overtaken it.
+  const FULLSCREEN_STATUS_CLASS = "mermaid-fullscreen-status";
+  // CSS full screen has no browser alert, so its line says how to leave; native
+  // full screen already gets "To exit full screen, press Esc" from the browser.
+  const FULLSCREEN_STATUS_ON_TEXT = "Full screen on. Press Escape to leave.";
+  const FULLSCREEN_STATUS_ON_NATIVE_TEXT = "Full screen on.";
+  const FULLSCREEN_BUTTON_ENTER_TEXT = "Enter full screen";
+  const FULLSCREEN_BUTTON_EXIT_TEXT = "Exit full screen";
+  const FULLSCREEN_STATUS_OFF_TEXT = "Full screen off.";
+  const FULLSCREEN_STATUS_DELAY_MS = 250;
+  const FULLSCREEN_STATUS_CLEAR_MS = 5000;
+  const FOCUS_RESTORE_RETRY_MS = 100;
+  const INERT_ATTRIBUTE = "inert";
+  const TAB_STOP_SELECTOR =
+    "button, a[href], input, select, textarea, summary, [tabindex]";
+  const INERT_SKIPPED_TAGS = Object.freeze([
+    "SCRIPT",
+    "STYLE",
+    "LINK",
+    "TEMPLATE",
+    "NOSCRIPT",
+  ]);
+
+  // The control that opened full screen, per container, so every exit route
+  // puts focus back on it; and the siblings made inert for CSS full screen,
+  // per container, so exit removes exactly those and no other inert attribute.
+  const fullscreenOpeners = new WeakMap();
+  const inertSweeps = new WeakMap();
+  let statusSequence = 0;
+
   // Kept although nothing in this file decides anything on it:
   // chart-view-controls.js:161 reads it document-wide in its own
   // setupGlobalEventListeners, and mermaid-accessibility-core.js removes it on
@@ -166,6 +206,7 @@ const MermaidViewControls = (function () {
       document.addEventListener(type, handleFullscreenChange);
     });
     document.addEventListener("keydown", handleEscapeKey);
+    document.addEventListener("keydown", handleFullscreenTab);
 
     globalListenersInstalled = true;
     logDebug("[Mermaid View Controls] Global event listeners installed");
@@ -181,6 +222,7 @@ const MermaidViewControls = (function () {
       document.removeEventListener(type, handleFullscreenChange);
     });
     document.removeEventListener("keydown", handleEscapeKey);
+    document.removeEventListener("keydown", handleFullscreenTab);
 
     globalListenersInstalled = false;
     logDebug("[Mermaid View Controls] Global event listeners removed");
@@ -259,6 +301,30 @@ const MermaidViewControls = (function () {
     if (note.hidden === show) note.hidden = !show;
   }
 
+  // Item 168, fix 1 (12 November 2026): containers already warned about a
+  // missing pointer element, so the warning is logged once per container.
+  const pointerWarned = new WeakSet();
+
+  /**
+   * The id of the container's pointer element (the one sentence about the full
+   * description that the SVG's own aria-describedby names), or null when the
+   * id is absent or resolves to nothing. Logs WARN once per container.
+   * @param {HTMLElement} root - The mermaid container
+   * @returns {string|null} The pointer id, or null
+   */
+  function resolvePointerId(root) {
+    const pointerId = root.dataset.pointerId;
+    if (pointerId && document.getElementById(pointerId)) return pointerId;
+    if (!pointerWarned.has(root)) {
+      pointerWarned.add(root);
+      logWarn(
+        "[Mermaid View Controls] No pointer element for the named scroll box",
+        root.id
+      );
+    }
+    return null;
+  }
+
   /**
    * Make the root's diagram box a focusable stop while it overflows sideways,
    * and a plain box when it does not. A stop is named with the diagram's
@@ -276,7 +342,21 @@ const MermaidViewControls = (function () {
       !root.classList.contains(config.fullscreenClass) &&
       box.scrollWidth > box.clientWidth + SCROLL_OVERFLOW_TOLERANCE_PX;
     const cachedName = root.dataset.svgAccessibleName || "";
-    const named = scrolls && cachedName.trim() !== "";
+
+    // Item 168, fix 1 (12 November 2026): a diagram whose SVG holds anything
+    // focusable keeps its structure (DI4), so the box is never the named image
+    // and the SVG is never hidden. The test is the one applyDiagramAccessibleWiring
+    // uses, read from window.MermaidControls at call time.
+    const svgs = Array.from(box.querySelectorAll(DIAGRAM_SVG_IN_BOX));
+    const controls = window.MermaidControls;
+    const focusableSelector =
+      controls && typeof controls.svgFocusableSelector === "string"
+        ? controls.svgFocusableSelector
+        : "";
+    const hasFocusable =
+      focusableSelector !== "" &&
+      svgs.some((svg) => svg.querySelector(focusableSelector));
+    const named = scrolls && !hasFocusable && cachedName.trim() !== "";
 
     let role = null;
     let label = null;
@@ -287,18 +367,18 @@ const MermaidViewControls = (function () {
     writeAttribute(box, "tabindex", scrolls ? "0" : null);
     writeAttribute(box, "role", role);
     writeAttribute(box, "aria-label", label);
+    writeAttribute(box, "aria-describedby", named ? resolvePointerId(root) : null);
 
     // In full screen pan/zoom wraps the SVG, and the box is no stop there, so
     // the wrapped SVG must be found too or it would stay hidden, unnamed.
-    box
-      .querySelectorAll(DIAGRAM_SVG_IN_BOX)
-      .forEach((svg) => writeAttribute(svg, "aria-hidden", named ? "true" : null));
+    svgs.forEach((svg) => writeAttribute(svg, "aria-hidden", named ? "true" : null));
 
     showScrollNote(root, box, scrolls);
 
     return (
       scrolls &&
       !named &&
+      !hasFocusable &&
       root.getAttribute("data-accessibility-initialized") !==
         ACCESSIBILITY_FAILED_STATE
     );
@@ -327,7 +407,13 @@ const MermaidViewControls = (function () {
         nameTimer = setTimeout(reconcile, SCROLL_NAME_RETRY_MS);
       }
     };
-    const observer = new ResizeObserver(() => {
+    // The callback's own writes (the scroll note, tabindex, role) can resize
+    // the root, so they run a frame later, outside the observer's delivery.
+    // Run inside it, they made the browser report "ResizeObserver loop
+    // completed with undelivered notifications" on every gantt exit.
+    let frame = null;
+    const onResize = () => {
+      frame = null;
       reconcile();
       const svg = root.querySelector(":scope > .mermaid > svg");
       if (svg && svg !== watchedSvg) {
@@ -335,6 +421,9 @@ const MermaidViewControls = (function () {
         observer.observe(svg);
         watchedSvg = svg;
       }
+    };
+    const observer = new ResizeObserver(() => {
+      if (frame === null) frame = requestAnimationFrame(onResize);
     });
     observer.observe(root);
     root.addEventListener("focusin", reconcile);
@@ -342,6 +431,8 @@ const MermaidViewControls = (function () {
     return {
       disconnect() {
         observer.disconnect();
+        if (frame !== null) cancelAnimationFrame(frame);
+        frame = null;
         root.removeEventListener("focusin", reconcile);
         if (nameTimer !== null) clearTimeout(nameTimer);
         nameTimer = null;
@@ -395,8 +486,7 @@ const MermaidViewControls = (function () {
     const fullscreenButton = createButton(
       getFullscreenIcon(),
       config.fullscreenText,
-      `toggle-fullscreen-${root.id}`,
-      "Toggle fullscreen mode"
+      `toggle-fullscreen-${root.id}`
     );
 
     viewControls.appendChild(widthButton);
@@ -430,6 +520,7 @@ const MermaidViewControls = (function () {
     }
 
     prepareModule();
+    ensureFullscreenStatus(root);
 
     const existing = records.get(root);
     if (existing) {
@@ -713,6 +804,166 @@ const MermaidViewControls = (function () {
   }
 
   /**
+   * The full-screen status region inside a container: found, or built once.
+   * Built at attach so it exists long before it is written.
+   * @param {HTMLElement} container - The mermaid container
+   * @returns {HTMLElement|null} The region, or null for a non-container
+   */
+  function ensureFullscreenStatus(container) {
+    if (!container || !container.classList) return null;
+    if (!container.classList.contains(MERMAID_CONTAINER_CLASS)) return null;
+
+    let region = container.querySelector(`:scope > .${FULLSCREEN_STATUS_CLASS}`);
+    if (region) return region;
+
+    region = document.createElement("div");
+    region.className = `${FULLSCREEN_STATUS_CLASS} sr-only`;
+    region.setAttribute("role", "status");
+    region.setAttribute("aria-live", "polite");
+    region.setAttribute("aria-atomic", "true");
+    container.appendChild(region);
+    return region;
+  }
+
+  /**
+   * Say a line in the container's own region, once. A later call, for either
+   * line, overtakes one still waiting, so the two lines can never both speak
+   * for one event.
+   * @param {HTMLElement} container - The mermaid container
+   * @param {string} text - The line
+   */
+  function announceInView(container, text) {
+    const region = ensureFullscreenStatus(container);
+    if (!region) return;
+
+    statusSequence++;
+    const sequence = statusSequence;
+    region.textContent = "";
+
+    setTimeout(() => {
+      if (sequence !== statusSequence) return;
+      region.textContent = text;
+
+      setTimeout(() => {
+        if (sequence === statusSequence) region.textContent = "";
+      }, FULLSCREEN_STATUS_CLEAR_MS);
+    }, FULLSCREEN_STATUS_DELAY_MS);
+  }
+
+  /**
+   * Make everything outside the container inert, for CSS full screen: the
+   * siblings of the container and of each ancestor up to the body, never the
+   * container's own path. Records exactly what it set, so exit removes only
+   * those. A node that was already inert is left alone and not recorded.
+   * @param {HTMLElement} container - The mermaid container
+   */
+  function makeOutsideInert(container) {
+    removeOutsideInert(container);
+    const added = [];
+    let node = container;
+
+    while (node !== document.body && node.parentElement) {
+      const parent = node.parentElement;
+      Array.from(parent.children).forEach((sibling) => {
+        if (sibling === node) return;
+        if (INERT_SKIPPED_TAGS.includes(sibling.tagName)) return;
+        if (sibling.hasAttribute(INERT_ATTRIBUTE)) return;
+        sibling.setAttribute(INERT_ATTRIBUTE, "");
+        added.push(sibling);
+      });
+      node = parent;
+    }
+
+    inertSweeps.set(container, added);
+  }
+
+  /**
+   * Remove exactly the inert attributes makeOutsideInert set
+   * @param {HTMLElement|null} container - The mermaid container
+   */
+  function removeOutsideInert(container) {
+    if (!container) return;
+    const added = inertSweeps.get(container);
+    if (!added) return;
+
+    added.forEach((element) => element.removeAttribute(INERT_ATTRIBUTE));
+    inertSweeps.delete(container);
+  }
+
+  /**
+   * The elements Tab can stop on inside a container: visible, enabled, not
+   * taken out of the order, not inert
+   * @param {HTMLElement} container - The mermaid container
+   * @returns {HTMLElement[]} The stops, in document order
+   */
+  function fullscreenTabStops(container) {
+    return Array.from(container.querySelectorAll(TAB_STOP_SELECTOR)).filter(
+      (element) => {
+        if (element.disabled) return false;
+        if (element.getAttribute("tabindex") === "-1") return false;
+        if (element.closest("[inert]")) return false;
+        return element.checkVisibility
+          ? element.checkVisibility({ visibilityProperty: true })
+          : element.getClientRects().length > 0;
+      }
+    );
+  }
+
+  /**
+   * Keep Tab and Shift+Tab inside the full-screen view, in both modes: past
+   * the last stop it goes to the first, before the first it goes to the last,
+   * and from anywhere outside it goes in. Acts only while a container is in
+   * full screen, and leaves chords with Ctrl, Alt or Meta alone.
+   * @param {KeyboardEvent} event - The keyboard event
+   */
+  function handleFullscreenTab(event) {
+    if (event.key !== "Tab") return;
+    if (event.ctrlKey || event.altKey || event.metaKey) return;
+
+    const container = state.activeFullscreenContainer;
+    if (!container || !container.classList.contains(config.fullscreenClass)) {
+      return;
+    }
+
+    const stops = fullscreenTabStops(container);
+    if (stops.length === 0) {
+      event.preventDefault();
+      return;
+    }
+
+    const first = stops[0];
+    const last = stops[stops.length - 1];
+    const active = document.activeElement;
+    const onStop = stops.includes(active);
+
+    if (!onStop) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    } else if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  /**
+   * Remember the control that opened full screen, for every exit route
+   * @param {HTMLElement} container - The mermaid container
+   * @param {HTMLElement|undefined} button - The toggle button, when given
+   */
+  function rememberOpener(container, button) {
+    const opener =
+      button ||
+      (container.contains(document.activeElement)
+        ? document.activeElement
+        : null) ||
+      document.getElementById(`toggle-fullscreen-${container.id}`);
+    if (opener) fullscreenOpeners.set(container, opener);
+  }
+
+  /**
    * Toggle fullscreen mode for a mermaid container
    * @param {HTMLElement} container - The mermaid container
    * @param {HTMLElement} button - The fullscreen button
@@ -770,10 +1021,9 @@ const MermaidViewControls = (function () {
     console.log("[Mermaid View Controls] Entering fullscreen mode");
     console.log("[Mermaid View Controls] Container ID:", container.id);
 
-    // Save the active element to restore focus later
-    container.dataset.previousFocus = document.activeElement
-      ? document.activeElement.id
-      : "";
+    // Remember the control that opened full screen: focus stays on it on
+    // entry and every exit route puts it back there
+    rememberOpener(container, button);
 
     // Check the configuration setting to determine which fullscreen mode to use
     const fullscreenMode =
@@ -901,10 +1151,21 @@ const MermaidViewControls = (function () {
         console.warn("[Mermaid View Controls] MermaidPanZoom error:", error);
       });
 
-    announceToScreenReader(
-      "Entered fullscreen mode with pan and zoom controls"
-    );
+    // Nothing is said here: the browser's own change event says "Full screen
+    // on" once the container really is full screen (handleFullscreenChange)
     return true;
+  }
+
+  /**
+   * Remove the "pan and zoom not available" notices a CSS entry added, so
+   * none is left behind after exit and a second entry adds only its own.
+   * @param {HTMLElement|null} container - The mermaid container
+   */
+  function removePanZoomNotices(container) {
+    if (!container) return;
+    container
+      .querySelectorAll(".pan-zoom-notice")
+      .forEach((notice) => notice.remove());
   }
 
   /**
@@ -934,6 +1195,7 @@ const MermaidViewControls = (function () {
     updateFullscreenButtonInContainer(container, true);
 
     // Add a notice to the container that can be shown if pan-zoom isn't available
+    removePanZoomNotices(container);
     const notice = document.createElement("div");
     notice.className = "pan-zoom-notice";
     notice.style.position = "absolute";
@@ -996,11 +1258,12 @@ const MermaidViewControls = (function () {
         notice.style.display = "block";
       });
 
-    announceToScreenReader(
-      "Entered fullscreen mode with pan and zoom controls"
-    );
+    // Everything outside the view is inert while it is open (WCAG 2.4.3,
+    // 2.4.11); exit removes exactly these. Then say it, once, inside the view.
+    makeOutsideInert(container);
+    announceInView(container, FULLSCREEN_STATUS_ON_TEXT);
 
-    // Focus on the fullscreen button for keyboard users
+    // Focus stays on the control that opened full screen
     if (button) setTimeout(() => button.focus(), 100);
   }
   /**
@@ -1010,25 +1273,22 @@ const MermaidViewControls = (function () {
   function restoreFocus(container) {
     if (!container) return;
 
-    // Check if we saved a previous focus element ID
-    const previousFocusId = container.dataset.previousFocus;
+    // The control that opened full screen, else the container's toggle button,
+    // else the container itself
+    const opener = fullscreenOpeners.get(container);
+    fullscreenOpeners.delete(container);
+    const target =
+      (opener && opener.isConnected ? opener : null) ||
+      document.getElementById(`toggle-fullscreen-${container.id}`) ||
+      container;
 
-    if (previousFocusId) {
-      // Try to find the element and focus it
-      const elementToFocus = document.getElementById(previousFocusId);
-      if (elementToFocus) {
-        console.log(
-          `[Mermaid View Controls] Restoring focus to element: ${previousFocusId}`
-        );
-        setTimeout(() => elementToFocus.focus(), 100);
+    // Now, and once more if something took focus back in the same moment
+    target.focus();
+    setTimeout(() => {
+      if (document.activeElement !== target && target.isConnected) {
+        target.focus();
       }
-    } else {
-      // Default to focusing the container itself
-      setTimeout(() => container.focus(), 100);
-    }
-
-    // Clear the stored focus ID
-    delete container.dataset.previousFocus;
+    }, FOCUS_RESTORE_RETRY_MS);
   }
 
   /**
@@ -1054,14 +1314,21 @@ const MermaidViewControls = (function () {
         fullscreenButton.innerHTML = `${getFullscreenIcon()} <span class="button-text">${
           config.fullscreenText
         }</span>`;
-        fullscreenButton.setAttribute("aria-label", "Enter fullscreen mode");
+        fullscreenButton.removeAttribute("aria-label");
       }
     }
 
-    // Deactivate pan-zoom functionality
+    // Deactivate pan-zoom functionality. A throw here must not skip the rest
+    // of the exit (the class, the scroll lock, the inert siblings, focus).
     if (window.MermaidPanZoom && activeContainer) {
-      window.MermaidPanZoom.deactivateForContainer(activeContainer);
+      try {
+        window.MermaidPanZoom.deactivateForContainer(activeContainer);
+      } catch (error) {
+        logError("[Mermaid View Controls] Pan-zoom deactivation failed:", error);
+      }
     }
+    removePanZoomNotices(activeContainer);
+    removeOutsideInert(activeContainer);
 
     // Check if we're using the native fullscreen API
     const inNativeFullscreen = !!(
@@ -1115,15 +1382,15 @@ const MermaidViewControls = (function () {
             fullscreenButton.innerHTML = `${getFullscreenIcon()} <span class="button-text">${
               config.fullscreenText
             }</span>`;
-            fullscreenButton.setAttribute(
-              "aria-label",
-              "Enter fullscreen mode"
-            );
+            fullscreenButton.removeAttribute("aria-label");
           }
         }
       }, 200);
 
-      // Clear active container reference to prevent double fullscreen
+      // Clear active container reference to prevent double fullscreen. The
+      // browser's change event, which arrives later, speaks "Full screen off"
+      // and restores focus, through nativeExitContainer.
+      state.nativeExitContainer = activeContainer;
       state.activeFullscreenContainer = null;
     }
     // Then handle CSS fullscreen if active
@@ -1145,10 +1412,9 @@ const MermaidViewControls = (function () {
       // Clear active container reference
       state.activeFullscreenContainer = null;
 
-      announceToScreenReader("Exited fullscreen mode");
-
-      // Restore focus to previous element
+      // Focus back on the opening control, then say it, once, in the view
       restoreFocus(activeContainer);
+      announceInView(activeContainer, FULLSCREEN_STATUS_OFF_TEXT);
     } else {
       // If we can't find the specific container, try to restore all hidden controls
       forceRestoreAllMermaidControls();
@@ -1183,6 +1449,33 @@ const MermaidViewControls = (function () {
 
       // Update button appearance right away
       updateFullscreenButtonInContainer(container, true);
+
+      // Focus stays on the opening control (it is put back there if the
+      // switch took it), and "Full screen on" is said once, inside the view
+      state.nativeExitContainer = null;
+      if (container.classList.contains(MERMAID_CONTAINER_CLASS)) {
+        if (!fullscreenOpeners.has(container)) rememberOpener(container, null);
+        const opener = fullscreenOpeners.get(container);
+        if (opener && !container.contains(document.activeElement)) {
+          opener.focus();
+        }
+        announceInView(container, FULLSCREEN_STATUS_ON_NATIVE_TEXT);
+      }
+
+      // The browser has now resized the container: fit on the next frame,
+      // with the transition off, so the diagram is at its fitted size when
+      // full screen appears. The timed fits below stay as a safety net.
+      requestAnimationFrame(() => {
+        if (
+          window.MermaidPanZoom &&
+          window.MermaidPanZoom.fitDiagramToScreen &&
+          document.fullscreenElement === container
+        ) {
+          window.MermaidPanZoom.fitDiagramToScreen(container.id, {
+            instant: true,
+          });
+        }
+      });
 
       // Activate pan-zoom with a short delay to ensure DOM is updated
       setTimeout(() => {
@@ -1227,7 +1520,7 @@ const MermaidViewControls = (function () {
           fullscreenButton.innerHTML = `${getFullscreenIcon()} <span class="button-text">${
             config.fullscreenText
           }</span>`;
-          fullscreenButton.setAttribute("aria-label", "Enter fullscreen mode");
+          fullscreenButton.removeAttribute("aria-label");
         } else {
           console.warn(
             "[Mermaid View Controls] Fullscreen button not found for container:",
@@ -1235,10 +1528,19 @@ const MermaidViewControls = (function () {
           );
         }
 
-        // Deactivate pan-zoom functionality
+        // Deactivate pan-zoom functionality; a throw must not skip the rest
         if (window.MermaidPanZoom) {
-          window.MermaidPanZoom.deactivateForContainer(container);
+          try {
+            window.MermaidPanZoom.deactivateForContainer(container);
+          } catch (error) {
+            logError(
+              "[Mermaid View Controls] Pan-zoom deactivation failed:",
+              error
+            );
+          }
         }
+        removePanZoomNotices(container);
+        removeOutsideInert(container);
 
         console.log(
           "[Mermaid View Controls] Restoring UI after fullscreen exit"
@@ -1253,11 +1555,11 @@ const MermaidViewControls = (function () {
 
         // Clear active container reference
         state.activeFullscreenContainer = null;
+        state.nativeExitContainer = null;
 
-        announceToScreenReader("Exited fullscreen mode");
-
-        // Restore focus
+        // Focus back on the opening control, then say it, once, in the view
         restoreFocus(container);
+        announceInView(container, FULLSCREEN_STATUS_OFF_TEXT);
       } else {
         // If activeFullscreenContainer is not available, try to restore all controls
         console.log(
@@ -1272,10 +1574,19 @@ const MermaidViewControls = (function () {
             button.innerHTML = `${getFullscreenIcon()} <span class="button-text">${
               config.fullscreenText
             }</span>`;
-            button.setAttribute("aria-label", "Enter fullscreen mode");
+            button.removeAttribute("aria-label");
           });
 
         setTimeout(resetAllFullscreenButtons, 300);
+
+        // The exit exitFullscreen asked for (button or Escape): the browser's
+        // change event is the moment native full screen is really over
+        const exited = state.nativeExitContainer;
+        state.nativeExitContainer = null;
+        if (exited) {
+          restoreFocus(exited);
+          announceInView(exited, FULLSCREEN_STATUS_OFF_TEXT);
+        }
       }
     }
   }
@@ -1305,12 +1616,12 @@ const MermaidViewControls = (function () {
         fullscreenButton.innerHTML = `${getExitFullscreenIcon()} <span class="button-text">${
           config.exitFullscreenText
         }</span>`;
-        fullscreenButton.setAttribute("aria-label", "Exit fullscreen mode");
+        fullscreenButton.removeAttribute("aria-label");
       } else {
         fullscreenButton.innerHTML = `${getFullscreenIcon()} <span class="button-text">${
           config.fullscreenText
         }</span>`;
-        fullscreenButton.setAttribute("aria-label", "Enter fullscreen mode");
+        fullscreenButton.removeAttribute("aria-label");
       }
     }
   }
@@ -1368,12 +1679,12 @@ const MermaidViewControls = (function () {
         button.innerHTML = `${getExitFullscreenIcon()} <span class="button-text">${
           config.exitFullscreenText
         }</span>`;
-        button.setAttribute("aria-label", "Exit fullscreen mode");
+        button.removeAttribute("aria-label");
       } else {
         button.innerHTML = `${getFullscreenIcon()} <span class="button-text">${
           config.fullscreenText
         }</span>`;
-        button.setAttribute("aria-label", "Enter fullscreen mode");
+        button.removeAttribute("aria-label");
       }
     });
   }

@@ -97,8 +97,13 @@
     NON_NUMERIC_VALUES: "non-numeric-values",
     MULTI_DATASET_PIE: "multi-dataset-pie",
     PIE_LENGTH_MISMATCH: "pie-length-mismatch",
+    PARTIAL_CIRCLE: "partial-circle",
+    NON_FINITE_TOTAL: "non-finite-total",
     BUILDER_ERROR_PREFIX: "builder-error: ",
   });
+
+  // The words the shared builders' overflow refusals share ("... add up to more than a number can hold.").
+  const OVERFLOW_MESSAGE = /add up to more than a number can hold/;
 
   const UNSUPPORTED_BY_TYPE = Object.freeze({
     doughnut: REASONS.UNSUPPORTED_TYPE_DOUGHNUT,
@@ -130,6 +135,7 @@
     radar: "radial",
   });
 
+  const TYPE_PIE = "pie";
   const XYCHART_KINDS = Object.freeze(["bar", "line"]);
   const AXIS_KIND_BAND = "band";
   const AXIS_KIND_TIME = "time";
@@ -273,9 +279,11 @@
         name: orNull(ds.label),
         kind: KIND_BY_TYPE[ds.type || config.type] || null,
         shown: ds.hidden !== true,
+        // Array.from visits holes (`[1,,3]`), where map skips them, so a hole
+        // reads as the null that an explicit `undefined` already reads as.
         values: isPoints
           ? null
-          : rows.map((d) => (d === undefined ? null : d)),
+          : Array.from(rows, (d) => (d === undefined ? null : d)),
         points: isPoints
           ? rows.map((p) => ({
               x: p.x,
@@ -312,9 +320,11 @@
     const hasValueAxis =
       family !== "proportion" &&
       (valueTitle !== null || min !== null || max !== null || format !== null);
+    // Chart.js draws a title only when `display` is truthy (its default is false),
+    // so a title with no `display` key is not in the picture.
     const titleCfg = options.plugins && options.plugins.title;
     const titleText =
-      titleCfg && titleCfg.display !== false ? titleCfg.text : undefined;
+      titleCfg && titleCfg.display ? titleCfg.text : undefined;
 
     return {
       modelVersion: 0,
@@ -391,6 +401,49 @@
   const SUPPORTED = Object.freeze({ supported: true });
   const isFiniteNumber = (v) => typeof v === "number" && Number.isFinite(v);
 
+  /** A dataset with no `type` takes the chart's own type, so only an explicit other type fails. */
+  const isPieDataset = (ds) => ds.type === undefined || ds.type === TYPE_PIE;
+
+  /** The sweep, in degrees, of a whole pie. Chart.js draws this when `circumference` is not set. */
+  const FULL_CIRCLE_DEGREES = 360;
+
+  /**
+   * Does Chart.js draw less (or more) than a whole circle? A dataset's own
+   * `circumference` beats the chart's `options.circumference`. A value that is
+   * not set, or is exactly 360, is a whole pie; anything else (a half-circle
+   * gauge, a number the text cannot trust) is not, so the shares of a whole
+   * pie would mislead.
+   * @param {Object} config - A Chart.js config
+   * @returns {boolean} True when the picture is not a whole circle
+   */
+  function drawsPartialCircle(config) {
+    const dataset = config.data.datasets[0] || {};
+    const options = config.options || {};
+    const value = dataset.circumference !== undefined ? dataset.circumference : options.circumference;
+    if (value === undefined || value === null) return false;
+    return value !== FULL_CIRCLE_DEGREES;
+  }
+
+  /**
+   * Does Chart.js draw a ring, not a whole pie, because `cutout` is set? A
+   * dataset's own `cutout` beats the chart's `options.cutout`. Not set, or
+   * zero in any spelling (`0`, `"0"`, `"0%"`), is a whole pie; anything else,
+   * or a value that is not a number, is a ring, which is a doughnut.
+   * @param {Object} config - A Chart.js config
+   * @returns {boolean} True when the picture is a ring
+   */
+  function drawsRing(config) {
+    const dataset = config.data.datasets[0] || {};
+    const options = config.options || {};
+    const value = dataset.cutout !== undefined ? dataset.cutout : options.cutout;
+    if (value === undefined || value === null) return false;
+    const size = typeof value === "number" ? value : Number.parseFloat(value);
+    return size !== 0;
+  }
+
+  /** A title written with a line break is drawn on several lines, like an array title. */
+  const hasLineBreak = (title) => typeof title === "string" && /[\r\n]/.test(title);
+
   /** Distinct value-axis ids used by the datasets, plus extra scales. */
   function hasMultipleValueAxes(config, horizontal) {
     const idKey = horizontal ? "xAxisID" : "yAxisID";
@@ -421,7 +474,9 @@
     if (type !== "bar" && type !== "line" && type !== "pie") {
       return unsupported(REASONS.UNSUPPORTED_TYPE_OTHER);
     }
-    if (Array.isArray(model.title)) return unsupported(REASONS.MULTI_LINE_TITLE);
+    if (Array.isArray(model.title) || hasLineBreak(model.title)) {
+      return unsupported(REASONS.MULTI_LINE_TITLE);
+    }
     if (!model.series.length) return unsupported(REASONS.NO_DATA);
     if (model.series.some((r) => !r.shown)) {
       return unsupported(REASONS.HIDDEN_SERIES);
@@ -437,9 +492,9 @@
     if (!model.domainAxis || model.domainAxis.labels === null) {
       return unsupported(REASONS.MISSING_LABELS);
     }
-    if (
-      model.domainAxis.labels.some((l) => typeof l !== "string" || l === "")
-    ) {
+    // An empty label is a string Chart.js draws as nothing, the same as a label of spaces, so it
+    // reaches the builder and reads as unlabelled there ("Unlabelled segment 2"), as in Mermaid.
+    if (model.domainAxis.labels.some((l) => typeof l !== "string")) {
       return unsupported(REASONS.NON_STRING_LABEL);
     }
     if (model.series.some((r) => r.values.some((v) => v === null))) {
@@ -454,7 +509,30 @@
       if (model.series[0].values.length !== model.domainAxis.labels.length) {
         return unsupported(REASONS.PIE_LENGTH_MISMATCH);
       }
+      // A pie with `cutout` set is a ring, the picture of a doughnut.
+      if (drawsRing(config)) return unsupported(REASONS.UNSUPPORTED_TYPE_DOUGHNUT);
+      // Finite values can still sum past the largest number, and every share
+      // of an infinite total reads as zero.
+      if (!Number.isFinite(model.series[0].values.reduce((sum, v) => sum + v, 0))) {
+        return unsupported(REASONS.NON_FINITE_TOTAL);
+      }
+      // A dataset `type` overrides the chart type, so the dataset must be a
+      // pie too, or the picture is not the pie the text would name.
+      if (!isPieDataset(config.data.datasets[0])) {
+        return unsupported(REASONS.UNSUPPORTED_SERIES_TYPE);
+      }
+      // A half-circle or other arc is a gauge, not a whole pie.
+      if (drawsPartialCircle(config)) return unsupported(REASONS.PARTIAL_CIRCLE);
       return SUPPORTED;
+    }
+
+    // A series with no values has no highest, lowest or average to state.
+    if (model.series.some((r) => r.values.length === 0)) return unsupported(REASONS.NO_DATA);
+
+    // Finite values can still sum past the largest number, and the average of an infinite total is not a number
+    // a reader can be told.
+    if (model.series.some((r) => !Number.isFinite(r.values.reduce((sum, v) => sum + v, 0)))) {
+      return unsupported(REASONS.NON_FINITE_TOTAL);
     }
 
     const options = config.options || {};
@@ -607,6 +685,13 @@
       return { supported: true, ...tiers };
     } catch (err) {
       logWarn("describe failed", err);
+      // A builder that sums in its own order can overflow where the adapter's check, in the order
+      // given, did not: [1e308, -1e308, 1e308] is finite, but sorted high to low it passes the
+      // largest number. The builders refuse it with a RangeError whose message says so; that is the
+      // same refusal as the adapter's own, not a fault in the builder.
+      if (err instanceof RangeError && OVERFLOW_MESSAGE.test(err.message)) {
+        return unsupported(REASONS.NON_FINITE_TOTAL);
+      }
       return unsupported(REASONS.BUILDER_ERROR_PREFIX + err.message);
     }
   }

@@ -85,6 +85,11 @@ window.MermaidAccessibility = (function () {
   const Utils = window.MermaidAccessibilityUtils;
 
   // Configuration options (ENHANCED with retry settings)
+  // The one sentence a one-image diagram is described by (Matthew's wording,
+  // 8 November 2026, DI3). The button it names is "Show Description".
+  const DESCRIPTION_POINTER_TEXT =
+    "The full description is under the Show Description button below.";
+
   const config = {
     buttonClasses: "mermaid-control-button",
     showDescriptionText: "Show Description",
@@ -837,6 +842,34 @@ window.MermaidAccessibility = (function () {
   }
 
   /**
+   * The name a diagram carries from the moment it is drawn until its real
+   * short description replaces it (item 126, G1). The type's own phrase as the
+   * generation-failed path words it ("A flowchart"), sentence-cased, with
+   * nothing appended; an unmapped or undetectable type reads "A diagram".
+   * Resolved from the diagram SOURCE, not the SVG, because the map is keyed by
+   * the detector's keys ("flowchart"), not Mermaid's ("flowchart-v2").
+   *
+   * @param {string} diagramCode - The diagram source (already decoded)
+   * @returns {string} e.g. "A flowchart"
+   */
+  function interimDiagramName(diagramCode) {
+    let diagramType = "";
+    if (
+      window.MermaidDiagramDetection &&
+      typeof window.MermaidDiagramDetection.detectDiagramType === "function"
+    ) {
+      try {
+        diagramType =
+          window.MermaidDiagramDetection.detectDiagramType(diagramCode) || "";
+      } catch (e) {
+        diagramType = "";
+      }
+    }
+    const phrase = describeDiagramTypeInWords(diagramType);
+    return phrase.charAt(0).toUpperCase() + phrase.slice(1);
+  }
+
+  /**
    * Short description for a type we cannot describe. Plain text, no markup.
    * @param {string} diagramType
    * @returns {string}
@@ -1132,14 +1165,20 @@ window.MermaidAccessibility = (function () {
       container.dataset.figcaptionId = `mermaid-caption-${diagramId}`;
       figcaption.id = `mermaid-caption-${diagramId}`;
 
-      // Associate the diagram with its caption using aria-describedby
-      svgElement.setAttribute(
-        "aria-describedby",
-        `mermaid-caption-${diagramId}`
-      );
+      // The pointer the SVG is described by when it is one image stop (item
+      // 126 single-image change): one hidden sentence, id minted per
+      // container. The SVG's aria-describedby (the caption, or this pointer)
+      // is written by MermaidControls.applyDiagramAccessibleWiring, below.
+      const pointer = document.createElement("div");
+      pointer.className = "mermaid-description-pointer";
+      pointer.hidden = true;
+      pointer.id = `mermaid-pointer-${diagramId}`;
+      pointer.textContent = DESCRIPTION_POINTER_TEXT;
+      container.dataset.pointerId = pointer.id;
 
-      // Add the figcaption first, then the container
+      // Add the figcaption first, then the pointer, then the container
       figureElement.appendChild(figcaption);
+      figureElement.appendChild(pointer);
       figureElement.appendChild(container);
     }
 
@@ -1175,7 +1214,7 @@ window.MermaidAccessibility = (function () {
     // The PLAIN tier, never the HTML one: this is an attribute sink, so the
     // author's text goes in verbatim and must not be escaped or it would be
     // spoken with its entities (item 27, and the figcaption branch above).
-    svgElement.setAttribute("aria-label", descriptions.short);
+    // (Written below, by the one choke point, once the container holds it.)
 
     // Cache the accessible name on the CONTAINER, which survives a re-render.
     // Every render replaces the SVG wholesale, so anything written onto it is
@@ -1187,6 +1226,27 @@ window.MermaidAccessibility = (function () {
     // Register item 61. The figcaption id is already cached just above, and
     // carries aria-describedby's target for the same reason.
     container.dataset.svgAccessibleName = descriptions.short;
+
+    // The one writer of the SVG's name, role and description. Resolved off
+    // window at call time; the controls exist, or this function returned
+    // above. The fallback keeps the name if the controls module is absent.
+    if (
+      window.MermaidControls &&
+      typeof window.MermaidControls.applyDiagramAccessibleWiring === "function"
+    ) {
+      window.MermaidControls.applyDiagramAccessibleWiring(
+        container,
+        svgElement
+      );
+    } else {
+      svgElement.setAttribute("aria-label", descriptions.short);
+      if (container.dataset.figcaptionId) {
+        svgElement.setAttribute(
+          "aria-describedby",
+          container.dataset.figcaptionId
+        );
+      }
+    }
 
     // Verify the write rather than assuming it. Item 58's note: a helper that
     // reports success without reading the attribute back is optimistic, and
@@ -1394,6 +1454,205 @@ window.MermaidAccessibility = (function () {
       lazyObservers.set(container, observer);
       observer.observe(container);
     });
+
+    // Item 126 (G2): the rest are set up in idle time, so a reader's first
+    // "next graphic" meets the real name and not the interim one.
+    runBackgroundInit();
+  }
+
+  // ---- Background initialisation (item 126, G2) ----
+
+  /** The idle callback's own timeout: a busy page still finishes. */
+  const BACKGROUND_IDLE_TIMEOUT_MS = 2000;
+
+  /** Wait where requestIdleCallback is missing. */
+  const BACKGROUND_IDLE_FALLBACK_MS = 50;
+
+  /**
+   * Longest the step goes without starting a container because every idle slot
+   * is too short (measured 10 November 2026: while a person types, slots come
+   * about every 93 ms with 1 to 15 ms left, and each new request restarts the
+   * idle timeout, so the timeout never fires). After this, the next container
+   * starts in whatever slot comes.
+   */
+  const BACKGROUND_STARVATION_MS = 500;
+
+  /** Added to a type's measured cost before it may start in a slot. */
+  const BACKGROUND_COST_MARGIN_MS = 10;
+
+  /**
+   * The longest idle slot a browser grants is 50 ms, so a type costing more
+   * than that can never fit; it asks for this much and runs in a full slot.
+   */
+  const BACKGROUND_MAX_SLOT_NEED_MS = 40;
+
+  /** Idle slots to wait out a theme repaint before giving up until the next wake. */
+  const BACKGROUND_MAX_STALE_WAITS = 30;
+
+  /**
+   * Cost of initialising one diagram, in ms, by Mermaid's SVG type. Measured
+   * serially on the 29-diagram page (GS2, 9 November 2026,
+   * docs/mermaid-diagram-single-image-2026-11-08.md). A type not listed uses
+   * the highest figure.
+   */
+  const BACKGROUND_COST_MS = Object.freeze({
+    architecture: 5.4,
+    journey: 4.6,
+    timeline: 4.2,
+    pie: 4.2,
+    mindmap: 8.5,
+    gantt: 18.2,
+    "flowchart-v2": 41.3,
+    sequence: 17.8,
+    stateDiagram: 4.2,
+    classDiagram: 45.3,
+    er: 12,
+    gitGraph: 9.1,
+    quadrantChart: 15.5,
+    sankey: 7.2,
+    xychart: 13.5,
+    block: 14.3,
+    c4: 12.9,
+    kanban: 44.1,
+    radar: 9.3,
+    requirement: 13.5,
+    packet: 24.2,
+    treemap: 16.3,
+    venn: 31.6,
+    treeView: 35.4,
+    ishikawa: 78.5,
+    wardley: 18.4,
+    cynefin: 40.8,
+    info: 3.2,
+  });
+  const BACKGROUND_COST_UNMEASURED_MS = Math.max(
+    ...Object.values(BACKGROUND_COST_MS)
+  );
+
+  /** Present on a container while the theme flip's painter has it stale. */
+  const THEME_STALE_SELECTOR = "[data-theme-stale]";
+
+  let backgroundRunning = false;
+  const backgroundTried = new WeakSet();
+
+  /** Resolves with the idle deadline (or a stand-in where idle callbacks are missing). */
+  function waitForIdleSlot() {
+    return new Promise((resolve) => {
+      if (typeof window.requestIdleCallback === "function") {
+        window.requestIdleCallback(resolve, {
+          timeout: BACKGROUND_IDLE_TIMEOUT_MS,
+        });
+        return;
+      }
+      setTimeout(
+        () => resolve({ didTimeout: true, timeRemaining: () => 0 }),
+        BACKGROUND_IDLE_FALLBACK_MS
+      );
+    });
+  }
+
+  function yieldToBrowser() {
+    if (window.scheduler && typeof window.scheduler.yield === "function") {
+      return window.scheduler.yield();
+    }
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  /** Slot time a container asks for: its type's measured cost plus the margin. */
+  function backgroundCostFor(container) {
+    const svg = container.querySelector(".mermaid svg");
+    const type =
+      svg &&
+      (svg.getAttribute("data-mermaid-type") ||
+        svg.getAttribute("aria-roledescription"));
+    const cost = Object.prototype.hasOwnProperty.call(
+      BACKGROUND_COST_MS,
+      type
+    )
+      ? BACKGROUND_COST_MS[type]
+      : BACKGROUND_COST_UNMEASURED_MS;
+    return Math.min(
+      cost + BACKGROUND_COST_MARGIN_MS,
+      BACKGROUND_MAX_SLOT_NEED_MS
+    );
+  }
+
+  /** The drawn, uninitialised container nearest the viewport, or null. */
+  function pickNextBackground() {
+    const viewportHeight =
+      window.innerHeight || document.documentElement.clientHeight;
+    let best = null;
+    let bestDistance = Infinity;
+    document.querySelectorAll(".mermaid-container").forEach((candidate) => {
+      const state = candidate.getAttribute("data-accessibility-initialized");
+      if (state === "true" || state === "error" || startedContainers.has(candidate) || backgroundTried.has(candidate)) return;
+      if (!candidate.querySelector(".mermaid svg")) return;
+      if (candidate.getClientRects().length === 0) return;
+      const rect = candidate.getBoundingClientRect();
+      const distance =
+        rect.bottom < 0
+          ? -rect.bottom
+          : rect.top > viewportHeight
+          ? rect.top - viewportHeight
+          : 0;
+      if (distance < bestDistance) {
+        best = candidate;
+        bestDistance = distance;
+      }
+    });
+    return best;
+  }
+
+  /**
+   * One container per idle slot, nearest the viewport first, started only when
+   * the slot has the time its type is measured to need (or the idle callback
+   * timed out, so a busy page still finishes). Waits while the theme flip is
+   * repainting, reading only its stale attribute. A container the observer has
+   * reached first is never picked, and the observer keeps running regardless.
+   */
+  async function runBackgroundInit() {
+    if (window.__mermaidNoBackgroundInit) return;
+    if (backgroundRunning) return;
+    backgroundRunning = true;
+    let staleWaits = 0;
+    let lastProgressAt = performance.now();
+    try {
+      for (;;) {
+        const deadline = await waitForIdleSlot();
+        if (window.__mermaidNoBackgroundInit) return;
+        if (document.querySelector(THEME_STALE_SELECTOR)) {
+          if (++staleWaits > BACKGROUND_MAX_STALE_WAITS) return;
+          continue;
+        }
+        staleWaits = 0;
+        const next = pickNextBackground();
+        if (!next) return;
+        const starved =
+          performance.now() - lastProgressAt >= BACKGROUND_STARVATION_MS;
+        if (
+          !deadline.didTimeout &&
+          !starved &&
+          deadline.timeRemaining() < backgroundCostFor(next)
+        ) {
+          continue;
+        }
+        backgroundTried.add(next);
+        const watcher = lazyObservers.get(next);
+        if (watcher) {
+          watcher.unobserve(next);
+          lazyObservers.delete(next);
+        }
+        observedContainers.delete(next);
+        await initAccessibilityFeatures(
+          next,
+          next.id || `mermaid-${Math.random().toString(36).substring(2, 10)}`
+        );
+        lastProgressAt = performance.now();
+        await yieldToBrowser();
+      }
+    } finally {
+      backgroundRunning = false;
+    }
   }
 
   /**
@@ -1406,12 +1665,23 @@ window.MermaidAccessibility = (function () {
 
     const observer = new MutationObserver(function (mutations) {
       let newDiagramsFound = false;
+      let drawingLanded = false;
 
       // Process mutations to find new diagrams
       mutations.forEach(function (mutation) {
         if (mutation.type === "childList") {
           mutation.addedNodes.forEach(function (node) {
             if (node.nodeType === 1) {
+              // Item 126 (G2): an SVG landing in a container wakes the
+              // background step, which finds nothing to do until it is drawn.
+              if (
+                node.closest &&
+                node.closest(".mermaid-container") &&
+                (node.matches("svg") || node.querySelector("svg"))
+              ) {
+                drawingLanded = true;
+              }
+
               // Element node
               // Parcel 18x: the short "could not be drawn" line landing in a
               // container still waiting to be scrolled to starts its set-up now.
@@ -1460,6 +1730,7 @@ window.MermaidAccessibility = (function () {
         );
         initWithLazyLoading(document);
       }
+      if (drawingLanded) runBackgroundInit();
     });
 
     observer.observe(document.body, {
@@ -1626,10 +1897,12 @@ window.MermaidAccessibility = (function () {
   return {
     init: init,
     initWithLazyLoading: initWithLazyLoading,
+    startBackgroundInit: runBackgroundInit,
     initAccessibilityFeatures: initAccessibilityFeatures,
     initializeAllControls: initializeAllControls,
     registerDescriptionGenerator: registerDescriptionGenerator,
     getDiagramDescriptions: getDiagramDescriptions,
+    interimDiagramName: interimDiagramName,
     descriptionGenerators: descriptionGenerators,
     config: config,
     retryStore: retryStore,

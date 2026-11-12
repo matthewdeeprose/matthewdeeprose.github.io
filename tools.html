@@ -2416,14 +2416,35 @@
                       for="setup-ally-import-file"
                       >Import a configuration file</label
                     >
-                    <input
-                      type="file"
-                      id="setup-ally-import-file"
-                      accept="application/json,.json"
-                      onchange="setupImportAlly(event)"
-                      aria-labelledby="setup-ally-import-file-label"
-                      aria-describedby="setup-ally-import-help setup-ally-import-error"
-                    />
+                    <!-- RA-121 (register 68): a drop zone in place of the native
+                         file control, which was cut off at 320 px. The native
+                         input stays: it keeps its name (aria-labelledby the
+                         label above), its description and its one Tab stop, and
+                         is only visually hidden. The box's text and the
+                         file-name line are for sighted use and are
+                         aria-hidden, so the accessibility tree is exactly
+                         what it was and the control keeps ONE label (a
+                         second label trips IBM form_label_unique). Clicking
+                         the box and dropping on it are wired in
+                         ally-tenant-ui.js. Not live regions. -->
+                    <div class="setup-file-drop">
+                      <div class="setup-file-drop-label" aria-hidden="true">
+                        <span data-icon="upload"></span>
+                        <span class="setup-file-drop-text">Choose a file, or drop it here</span>
+                      </div>
+                      <input
+                        type="file"
+                        id="setup-ally-import-file"
+                        class="visually-hidden"
+                        accept="application/json,.json"
+                        onchange="setupImportAlly(event)"
+                        aria-labelledby="setup-ally-import-file-label"
+                        aria-describedby="setup-ally-import-help setup-ally-import-error"
+                      />
+                      <p class="setup-file-drop-name" aria-hidden="true">
+                        No file chosen
+                      </p>
+                    </div>
                     <p
                       class="credential-field-error"
                       id="setup-ally-import-error"
@@ -2454,15 +2475,25 @@
                       for="setup-ally-data-files"
                       >Upload course data from your Ally export</label
                     >
-                    <input
-                      type="file"
-                      id="setup-ally-data-files"
-                      multiple
-                      accept=".csv,text/csv"
-                      onchange="setupUploadAllyData(event)"
-                      aria-labelledby="setup-ally-data-files-label"
-                      aria-describedby="setup-ally-data-help setup-ally-data-error"
-                    />
+                    <div class="setup-file-drop">
+                      <div class="setup-file-drop-label" aria-hidden="true">
+                        <span data-icon="upload"></span>
+                        <span class="setup-file-drop-text">Choose the files, or drop them here</span>
+                      </div>
+                      <input
+                        type="file"
+                        id="setup-ally-data-files"
+                        class="visually-hidden"
+                        multiple
+                        accept=".csv,text/csv"
+                        onchange="setupUploadAllyData(event)"
+                        aria-labelledby="setup-ally-data-files-label"
+                        aria-describedby="setup-ally-data-help setup-ally-data-error"
+                      />
+                      <p class="setup-file-drop-name" aria-hidden="true">
+                        No file chosen
+                      </p>
+                    </div>
                     <p
                       class="credential-field-error"
                       id="setup-ally-data-error"
@@ -7080,7 +7111,6 @@ Science,91</pre
                     id="convert-speak-btn"
                     class="convert-toolbar-btn convert-speak-btn"
                     data-tts-state="idle"
-                    aria-describedby="convert-editor-status"
                     onclick="handleConvertModeSpeak()"
                   >
                     <span
@@ -7104,7 +7134,6 @@ Science,91</pre
                   <a
                     href="#tts-voice-settings"
                     class="tts-settings-link convert-toolbar-link"
-                    aria-describedby="convert-editor-status"
                   >
                     <span aria-hidden="true" data-icon="settings"></span> Voice
                     Settings
@@ -10098,6 +10127,93 @@ Science,91</pre
                       <!-- Error items inserted dynamically -->
                     </ul>
                   </div>
+
+                  <!-- BR-3c (BR-D3), released at BR-3e (BR-D6): the braille
+                       export, shown to everyone in the beta (no dev flag).
+                       Built in the browser; no AI call, no OCR, no Convert.
+                       Nothing braille loads until the button is pressed.
+                       The status paragraph is focusable and NOT live: focus
+                       lands on it, so the outcome is the text focus lands on. -->
+                  <fieldset
+                    id="resume-braille-fieldset"
+                    class="mathpix-convert-format-selection mathpix-braille-export"
+                  >
+                    <legend>Braille (preview)</legend>
+                    <p>
+                      Made automatically. Not yet checked by a braille
+                      transcriber.
+                    </p>
+                    <div class="imgdesc-option-group">
+                      <label
+                        class="imgdesc-option-label"
+                        for="resume-braille-layout"
+                        >Layout</label
+                      >
+                      <select id="resume-braille-layout">
+                        <option value="ukaaf" selected>UK (UKAAF)</option>
+                        <option value="aba">Australian (ABA)</option>
+                      </select>
+                    </div>
+                    <div class="imgdesc-option-group">
+                      <label
+                        class="imgdesc-option-label"
+                        for="resume-braille-maths"
+                        >Maths code</label
+                      >
+                      <select id="resume-braille-maths">
+                        <option value="UEB" selected>UEB</option>
+                        <option value="Nemeth">Nemeth</option>
+                      </select>
+                    </div>
+                    <div class="imgdesc-option-group">
+                      <label
+                        class="imgdesc-option-label"
+                        for="resume-braille-text"
+                        >Text</label
+                      >
+                      <select id="resume-braille-text">
+                        <option value="g2" selected>Contracted</option>
+                        <option value="g1">Uncontracted</option>
+                      </select>
+                    </div>
+                    <div class="imgdesc-option-group">
+                      <label for="resume-braille-text-in-image">
+                        <input
+                          type="checkbox"
+                          id="resume-braille-text-in-image"
+                          checked
+                        />
+                        Include the text in the image
+                      </label>
+                    </div>
+                    <div class="mathpix-convert-actions">
+                      <button
+                        type="button"
+                        id="resume-braille-btn"
+                        class="mathpix-btn mathpix-btn-secondary"
+                      >
+                        <span aria-hidden="true" data-icon="download"></span>
+                        Make braille files
+                      </button>
+                      <p
+                        id="resume-braille-status"
+                        class="mathpix-convert-status"
+                        tabindex="-1"
+                      ></p>
+                    </div>
+                    <!-- BR-3d (BR-D5): the three download links, filled by
+                         mathpix-braille-export.js after a successful run.
+                         Hidden until then; not live. -->
+                    <ul
+                      id="resume-braille-links"
+                      class="mathpix-braille-links"
+                      hidden
+                    >
+                      <li><a id="resume-braille-link-brf" download></a></li>
+                      <li><a id="resume-braille-link-unicode" download></a></li>
+                      <li><a id="resume-braille-link-proof" download></a></li>
+                    </ul>
+                  </fieldset>
                 </div>
               </section>
 
@@ -18902,14 +19018,26 @@ Science,91</pre
                     for="ally-tenant-import-file"
                     >Import a configuration file</label
                   >
-                  <input
-                    type="file"
-                    id="ally-tenant-import-file"
-                    accept="application/json,.json"
-                    onchange="allyTenantImport(event)"
-                    aria-labelledby="ally-tenant-import-file-label"
-                    aria-describedby="ally-tenant-import-help ally-tenant-import-error"
-                  />
+                  <!-- RA-121 (register 68): drop zone; see the note on Set Up's
+                       copy of this control. -->
+                  <div class="setup-file-drop">
+                    <div class="setup-file-drop-label" aria-hidden="true">
+                      <span data-icon="upload"></span>
+                      <span class="setup-file-drop-text">Choose a file, or drop it here</span>
+                    </div>
+                    <input
+                      type="file"
+                      id="ally-tenant-import-file"
+                      class="visually-hidden"
+                      accept="application/json,.json"
+                      onchange="allyTenantImport(event)"
+                      aria-labelledby="ally-tenant-import-file-label"
+                      aria-describedby="ally-tenant-import-help ally-tenant-import-error"
+                    />
+                    <p class="setup-file-drop-name" aria-hidden="true">
+                      No file chosen
+                    </p>
+                  </div>
                   <p
                     class="credential-field-error"
                     id="ally-tenant-import-error"
@@ -18929,15 +19057,25 @@ Science,91</pre
                     for="ally-tenant-data-files"
                     >Upload course data from your Ally export</label
                   >
-                  <input
-                    type="file"
-                    id="ally-tenant-data-files"
-                    multiple
-                    accept=".csv,text/csv"
-                    onchange="allyTenantUpload(event)"
-                    aria-labelledby="ally-tenant-data-files-label"
-                    aria-describedby="ally-tenant-data-help ally-tenant-data-error"
-                  />
+                  <div class="setup-file-drop">
+                    <div class="setup-file-drop-label" aria-hidden="true">
+                      <span data-icon="upload"></span>
+                      <span class="setup-file-drop-text">Choose the files, or drop them here</span>
+                    </div>
+                    <input
+                      type="file"
+                      id="ally-tenant-data-files"
+                      class="visually-hidden"
+                      multiple
+                      accept=".csv,text/csv"
+                      onchange="allyTenantUpload(event)"
+                      aria-labelledby="ally-tenant-data-files-label"
+                      aria-describedby="ally-tenant-data-help ally-tenant-data-error"
+                    />
+                    <p class="setup-file-drop-name" aria-hidden="true">
+                      No file chosen
+                    </p>
+                  </div>
                   <p
                     class="credential-field-error"
                     id="ally-tenant-data-error"
@@ -19599,8 +19737,10 @@ Science,91</pre
                     class="chat-open-mathpix"
                     data-label-file="Open this file in MathPix"
                     data-label-tool="Open MathPix"
-                    data-confirm-replace="MathPix already has a file open. Open {name} there instead? What MathPix has now will be cleared."
+                    data-confirm-replace="MathPix already has a file open. Open {name} there instead? The file MathPix has now will be replaced."
                     data-confirm-title="Replace the file in MathPix?"
+                    data-confirm-keep="MathPix has a restored session or a drawing open. Open {name} in MathPix? Your session and drawing stay where they are."
+                    data-confirm-keep-title="Open in MathPix?"
                     hidden
                   >
                     <span aria-hidden="true" data-icon="arrowRight"></span>
@@ -21182,10 +21322,124 @@ Science,91</pre
               <p id="word-forms-file-name">No file chosen</p>
             </div>
             <div class="word-forms-actions">
-              <button type="button" id="word-forms-check">Check this form</button>
-              <button type="button" id="word-forms-cancel" hidden>Cancel</button>
+              <button type="button" id="word-forms-check">
+                <span aria-hidden="true" data-icon="aiSparkle"></span> Check this form
+              </button>
+              <button type="button" id="word-forms-cancel" hidden>
+                <span aria-hidden="true" data-icon="close"></span> Cancel
+              </button>
             </div>
+            <!-- WF-8g (owner's ruling 39). The app's Active Provider switch (Set Up) decides the route; there is no control here.
+                 The provider line and the privacy paragraph are plain static text with no live role, so nothing in them is announced.
+                 The notice slot is filled by the shared ProviderMismatchNotice (its own behaviour) only when the active provider
+                 cannot be used and the other can. word-forms-ui.js writes all three. -->
+            <p id="word-forms-provider-line" class="word-forms-provider-line"></p>
+            <div id="word-forms-provider-notice" class="word-forms-provider-notice" hidden></div>
+            <p id="word-forms-privacy" class="word-forms-privacy" hidden>
+              On this route your form is sent through OpenRouter to one of the companies that run this model. The tool asks OpenRouter to use only services that keep nothing they are sent, but some may still keep requests to check for abuse. To rule that out, set your OpenRouter privacy setting to 'ZDR only'.
+            </p>
             <p id="word-forms-status" class="word-forms-status"></p>
+            <!-- WF-7e (owner's ruling 37): the "Run progress" step list, on MathPix's
+                 queue pattern. Static text with NO live role anywhere in it: the
+                 shared announcer still says one line at the start and one at the
+                 end (ruling 27). The running clocks are aria-hidden and become
+                 words in the status at the end. word-forms-ui.js writes the
+                 status words, icons, sub-lines and clocks. The row classes
+                 (.mathpix-progress-*) are MathPix's own and unscoped; the
+                 .word-forms-queue* rules in word-forms.css stand in for its
+                 .ai-queue* rules, which are scoped to #resume-ai-form. -->
+            <div
+              id="word-forms-progress"
+              class="word-forms-queue"
+              role="region"
+              aria-label="Run progress"
+              hidden
+            >
+              <div class="word-forms-queue-head">
+                <h3 class="word-forms-queue-heading">Run progress</h3>
+                <p class="word-forms-queue-total">
+                  <span>Total</span>
+                  <span
+                    id="word-forms-progress-total-clock"
+                    aria-hidden="true"
+                  ></span>
+                </p>
+              </div>
+              <ol id="word-forms-progress-list" class="word-forms-queue-list">
+                <li data-step="read" data-status="waiting">
+                  <div class="mathpix-progress-item">
+                    <span
+                      class="mathpix-progress-icon"
+                      aria-hidden="true"
+                      data-icon="hourglass"
+                    ></span>
+                    <span class="mathpix-progress-label">Read your form</span>
+                    <span class="sr-only word-forms-queue-sep">, </span>
+                    <span class="mathpix-progress-status"></span>
+                    <span class="sr-only word-forms-queue-sep" hidden>, </span>
+                    <span class="word-forms-queue-detail"></span>
+                    <span
+                      class="word-forms-queue-clock"
+                      aria-hidden="true"
+                    ></span>
+                  </div>
+                </li>
+                <li data-step="plan" data-status="waiting">
+                  <div class="mathpix-progress-item">
+                    <span
+                      class="mathpix-progress-icon"
+                      aria-hidden="true"
+                      data-icon="hourglass"
+                    ></span>
+                    <span class="mathpix-progress-label">Write the plan</span>
+                    <span class="sr-only word-forms-queue-sep">, </span>
+                    <span class="mathpix-progress-status"></span>
+                    <span
+                      class="word-forms-queue-clock"
+                      aria-hidden="true"
+                    ></span>
+                  </div>
+                </li>
+                <li data-step="check" data-status="waiting">
+                  <div class="mathpix-progress-item">
+                    <span
+                      class="mathpix-progress-icon"
+                      aria-hidden="true"
+                      data-icon="hourglass"
+                    ></span>
+                    <span class="mathpix-progress-label"
+                      >Check the new form</span
+                    >
+                    <span class="sr-only word-forms-queue-sep">, </span>
+                    <span class="mathpix-progress-status"></span>
+                    <span
+                      class="word-forms-queue-clock"
+                      aria-hidden="true"
+                    ></span>
+                  </div>
+                </li>
+                <li data-step="repair" data-status="waiting">
+                  <div class="mathpix-progress-item">
+                    <span
+                      class="mathpix-progress-icon"
+                      aria-hidden="true"
+                      data-icon="hourglass"
+                    ></span>
+                    <span class="mathpix-progress-label"
+                      >Fix what the check found</span
+                    >
+                    <span class="sr-only word-forms-queue-sep">, </span>
+                    <span class="mathpix-progress-status"></span>
+                    <span class="sr-only word-forms-queue-sep" hidden>, </span>
+                    <span class="word-forms-queue-detail"></span>
+                    <span
+                      class="word-forms-queue-clock"
+                      aria-hidden="true"
+                    ></span>
+                  </div>
+                </li>
+              </ol>
+            </div>
             <p id="word-forms-error" class="word-forms-error" hidden></p>
           </section>
 
@@ -21206,9 +21460,11 @@ Science,91</pre
             hidden
           >
             <h2 id="word-forms-step3">3. The plan</h2>
-            <pre id="word-forms-plan" class="word-forms-plan"></pre>
+            <div id="word-forms-plan" class="word-forms-plan"></div>
             <div class="word-forms-actions">
-              <button type="button" id="word-forms-agree">Agree and build</button>
+              <button type="button" id="word-forms-agree">
+                <span aria-hidden="true" data-icon="check"></span> Agree and build
+              </button>
               <button type="button" id="word-forms-stop">
                 Stop, I will convert it myself
               </button>
@@ -21231,8 +21487,15 @@ Science,91</pre
           >
             <h2 id="word-forms-step4" tabindex="-1">4. Your new form</h2>
             <p id="word-forms-checks"></p>
+            <details id="word-forms-allowed" hidden>
+              <summary id="word-forms-allowed-summary">What the check allowed</summary>
+              <ul id="word-forms-allowed-list"></ul>
+            </details>
             <p>
-              <a id="word-forms-download" href="#" download>Download</a>
+              <button type="button" id="word-forms-download">
+                <span aria-hidden="true" data-icon="download"></span>
+                <span id="word-forms-download-text">Download</span>
+              </button>
             </p>
             <h3 id="word-forms-before-heading">Before you send it</h3>
             <ol id="word-forms-delivery" aria-labelledby="word-forms-before-heading"></ol>
@@ -22337,6 +22600,13 @@ Science,91</pre
     <!-- Load sortable table integration for markdown-it -->
     <script src="md-scripts/markdown-utils/markdown-it-sortable-tables-combined.js"></script>
 
+    <!-- MRC-30: shared render core, dev-only. Inert on a normal load; the editor
+         uses it only with ?dev=1 and localStorage "md-editor-core" = "1". -->
+    <script
+      type="application/dev-test"
+      data-src="md-scripts/markdown-utils/markdown-render-core.js"
+    ></script>
+
     <!-- Load our markdown editor implementation -->
     <script src="md-scripts/markdown-utils/markdown-editor.js"></script>
     <script src="md-scripts/markdown-utils/markdown-live-editor.js"></script>
@@ -22424,6 +22694,12 @@ Science,91</pre
     ></script>
     <!-- BR-2: shared read-only document tree for the braille and PreTeXt exports -->
     <script src="mathpix-scripts/core/mathpix-document-tree.js"></script>
+    <!-- BR-3a: lazy braille engine (MathCAT and liblouis); fetches nothing until ensureReady() is called -->
+    <script src="mathpix-scripts/core/mathpix-braille-engine.js"></script>
+    <!-- BR-3b: braille formatter and file writers (BRF, Unicode braille); calls the engine only when format() runs -->
+    <script src="mathpix-scripts/core/mathpix-braille-formatter.js"></script>
+    <!-- BR-3c, released at BR-3e: braille export control (Resume Session), shown to everyone; wires the button only -->
+    <script src="mathpix-scripts/core/mathpix-braille-export.js"></script>
     <!-- MMD Editor Module (Phase 5.1) -->
     <script
       type="module"
@@ -22562,6 +22838,8 @@ Science,91</pre
     <script src="mathpix-scripts/core/mathpix-context-manager.js?v=9.1"></script>
     <script src="mathpix-scripts/core/mathpix-alt-text-provenance.js"></script>
     <script src="mathpix-scripts/core/mathpix-alt-text-mmd-serialiser.js"></script>
+    <!-- M-10ao: shared page-marker module (window.MathPixPageMarkers). Pure functions; consumers (alt-text-prompt-builder.js buildExcerptBlock, mathpix-ai-enhancer.js findLostPageMarkers) reach it at call time and fall back to unchanged behaviour when absent. -->
+    <script src="mathpix-scripts/core/mathpix-page-markers.js"></script>
     <script src="mathpix-scripts/core/mathpix-alt-text-integrator.js"></script>
     <!-- Parcel EA-4: shared model-capability module — the ONE home for isModelPdfCapable, isModelVisionCapable, isModelProviderAvailable, PROVIDER_GROUPS, the two refusal sentences and the 27-entry KNOWN_VISION_MODELS list (window.MathPixModelCapability). MUST load before its consumers: mathpix-context-ai.js (the delegating facade), alt-text-cloud-adapter.js and image-describer-controller-model.js all reach it at call time, and mathpix-ai-enhancer.js and mathpix-ai-multipass.js reach it through the facade. -->
     <script src="mathpix-scripts/core/mathpix-model-capability.js"></script>
@@ -23359,6 +23637,9 @@ Science,91</pre
     <!-- TTS Read Aloud — Phase 5: Image Describer read-aloud button -->
     <script src="tts/tts-read-aloud.js"></script>
 
+    <!-- TTS Controls Bar — RA-99: Pause/Play, Stop and Show stay on screen while any surface reads aloud -->
+    <script src="tts/tts-controls-bar.js"></script>
+
     <!-- TTS Voice UI — Phase 6: Voice selection panel -->
     <script src="tts/tts-voice-ui.js"></script>
 
@@ -23528,6 +23809,18 @@ Science,91</pre
     <script
       type="application/dev-test"
       data-src="chat/tests-chat-chips.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="chat/tests-chat-bubble.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="js/testing/markdown-code-copy-tests.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="js/testing/other-copy-buttons-tests.js"
     ></script>
     <script
       type="application/dev-test"
@@ -27593,6 +27886,13 @@ Science,91</pre
     <script
       type="application/dev-test"
       data-src="ally-scripts/testing/ally-tests.js"
+    ></script>
+
+    <!-- Sortable-table maths suite (MRC-40): window.SortableTableMathsTests.run().
+         Gated behind ?dev=1; outside the 19-suite floor figures. -->
+    <script
+      type="application/dev-test"
+      data-src="js/testing/sortable-table-maths-tests.js"
     ></script>
 
     <!-- Dev-only workflow tracer (window.trace). Standalone console helper for

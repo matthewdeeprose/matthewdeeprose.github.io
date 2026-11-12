@@ -973,6 +973,24 @@
   // TABLE DETECTION AND INITIALISATION
   // =========================================================================
 
+  // A table the core is still typesetting carries this attribute, whose value is
+  // the Date.now() it was marked at. Only the core's postProcess sets it.
+  const PENDING_ATTRIBUTE = "data-typeset-pending";
+  // A mark older than this is ignored, so a table can never stay unenhanced
+  const PENDING_MAX_MS = 5000;
+  const PENDING_RETRY_MARGIN_MS = 25;
+
+  /**
+   * Milliseconds left on a table's pending-typeset mark (0 when unmarked or expired)
+   */
+  function pendingTypesetRemainingMs(table) {
+    const markedAt = Number(table.getAttribute(PENDING_ATTRIBUTE));
+    if (!Number.isFinite(markedAt) || markedAt <= 0) {
+      return 0;
+    }
+    return Math.max(0, markedAt + PENDING_MAX_MS - Date.now());
+  }
+
   /**
    * Initialise all sortable tables on the page
    */
@@ -990,9 +1008,24 @@
 
       logInfo(`Found ${tables.length} table(s) to enhance`);
 
+      let earliestRetryMs = null;
+
       tables.forEach((table, index) => {
         // Skip tables that are already enhanced or don't have proper structure
         if (table.getAttribute("data-enhanced") === "true") {
+          return;
+        }
+
+        // Skip a table whose maths is still being typeset (MRC-40): enhancing it
+        // now would store its cells as raw LaTeX. The mark carries a start time,
+        // so a mark nobody cleared stops counting after the bound and is retried.
+        const remainingMs = pendingTypesetRemainingMs(table);
+        if (remainingMs > 0) {
+          logDebug(`Skipping table ${index + 1}: typeset pending`);
+          earliestRetryMs =
+            earliestRetryMs === null
+              ? remainingMs
+              : Math.min(earliestRetryMs, remainingMs);
           return;
         }
 
@@ -1018,6 +1051,14 @@
           table.removeAttribute("data-enhanced");
         }
       });
+
+      // One retry for the tables skipped above, for when the oldest mark expires
+      if (earliestRetryMs !== null) {
+        setTimeout(
+          () => initSortableTables(container),
+          earliestRetryMs + PENDING_RETRY_MARGIN_MS
+        );
+      }
     } catch (error) {
       logError(`Error in initSortableTables: ${error.message}`);
     }

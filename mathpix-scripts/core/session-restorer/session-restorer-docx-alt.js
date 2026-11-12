@@ -69,6 +69,7 @@
     COUNT_MISMATCH: "count-mismatch",
     PAIR_MISMATCH: "pair-mismatch",
     UNRESOLVED: "unresolved-picture",
+    SHAPE_MISMATCH: "shape-mismatch",
     UNAVAILABLE: "unavailable",
     ERROR: "error",
   });
@@ -95,6 +96,33 @@
   // MMD image lines (a bare line, as the serialiser's own parsers require).
   const MD_IMAGE_RE = /^!\[((?:[^\]]|\](?!\())*)\]\(([^)]+)\)$/;
   const INCLUDEGRAPHICS_RE = /^\\includegraphics\b.*\{([^}]+)\}$/;
+
+  // A picture anywhere in a line (WCX, 6 November 2026). Measured on smp.zip:
+  // "\item[] ![alt](url)" is a picture in the converted docx, so a picture
+  // inside a list item or a table cell must be counted, or every later pair is
+  // out by one and the pass refuses. WCX-2 measured the rest on one converted
+  // probe (.claude/measurements/wcx-2-shapes-probe/): an inline
+  // \includegraphics and a raw <img> are pictures too, in Word and in HTML.
+  const MD_IMAGE_INLINE_RE = /!\[((?:[^\]]|\](?!\())*)\]\(([^)]+)\)/g;
+  // Options may hold one level of braces (alt={...}); deeper nesting does not
+  // match, the picture is not counted, and the pass refuses on the count.
+  const GFX_INLINE_RE = /\\includegraphics\b(?:\s*\[(?:[^[\]{}]|\{[^{}]*\})*\])?\s*\{([^}]+)\}/g;
+  const IMG_SRC_RE = /<img\b[^>]*?\ssrc\s*=\s*(["'])(.*?)\1[^>]*>/gi;
+  const IMG_ALT_RE = /\salt\s*=\s*(["'])(.*?)\1/i;
+  const CODE_SPAN_RE = /`+[^`]*`+/g;
+
+  // WCX-2: a second identity check on every Word pair, the picture's shape.
+  // Measured on the probe: each docx wp:extent width over height equalled the
+  // CDN URL's width over height to four decimals. Relative tolerance allowed.
+  const SHAPE_TOLERANCE = 0.01;
+  const EXTENT_RE = /<wp:extent\s+cx="(\d+)"\s+cy="(\d+)"/;
+  const URL_WIDTH_RE = /[?&]width=(\d+(?:\.\d+)?)(?:&|$)/;
+  const URL_HEIGHT_RE = /[?&]height=(\d+(?:\.\d+)?)(?:&|$)/;
+
+  // Blocks the converter prints as text, so their image lines are not pictures.
+  const FENCE_RE = /^\s*(```|~~~)/;
+  const VERBATIM_OPEN_RE = /^\s*\\begin\{verbatim\}/;
+  const VERBATIM_CLOSE_RE = /^\s*\\end\{verbatim\}/;
 
   // =========================================================================
   // Text helpers
@@ -135,13 +163,80 @@
   // expectedAltsFromMMD
   // =========================================================================
 
-  function imageUrlOfLine(line) {
+  /**
+   * Every picture one MMD line carries, in line order. A bare image line gives
+   * exactly what it always gave; any other line gives each markdown image,
+   * \includegraphics and raw <img> in it, outside inline code, in line order.
+   * Pure.
+   * @param {string} line
+   * @returns {Array<{url:string, rawAlt:string}>}
+   */
+  function imagesOfLine(line) {
     const trimmed = line.trim();
     const md = MD_IMAGE_RE.exec(trimmed);
-    if (md) return { url: md[2], rawAlt: md[1] };
+    if (md) return [{ url: md[2], rawAlt: md[1] }];
     const gfx = INCLUDEGRAPHICS_RE.exec(trimmed);
-    if (gfx) return { url: gfx[1], rawAlt: trimmed };
+    const outsideCode = trimmed.replace(CODE_SPAN_RE, " ");
+    const inlineGfx = [...outsideCode.matchAll(GFX_INLINE_RE)];
+    // A bare \includegraphics line keeps its old reading, unless it holds two.
+    if (gfx && inlineGfx.length <= 1) return [{ url: gfx[1], rawAlt: trimmed }];
+    if (!/!\[|\\includegraphics|<img\b/i.test(outsideCode)) return [];
+
+    const found = [];
+    for (const m of outsideCode.matchAll(MD_IMAGE_INLINE_RE)) {
+      found.push({ at: m.index, url: m[2], rawAlt: m[1] });
+    }
+    for (const m of inlineGfx) {
+      found.push({ at: m.index, url: m[1], rawAlt: m[0] });
+    }
+    for (const m of outsideCode.matchAll(IMG_SRC_RE)) {
+      const alt = IMG_ALT_RE.exec(m[0]);
+      found.push({ at: m.index, url: decodeEntities(m[2]), rawAlt: alt ? alt[2] : "" });
+    }
+    return found
+      .sort((a, b) => a.at - b.at)
+      .map(({ url, rawAlt }) => ({ url, rawAlt }));
+  }
+
+  /**
+   * An entry's width over height: the CDN URL's crop size, else the
+   * registry's dimensions, else null (no check for that picture). Pure.
+   * @param {Object|null} entry
+   * @returns {number|null}
+   */
+  function shapeOfEntry(entry) {
+    if (!entry) return null;
+    const url = String(entry.originalUrl || "");
+    const w = URL_WIDTH_RE.exec(url);
+    const h = URL_HEIGHT_RE.exec(url);
+    if (w && h && +w[1] > 0 && +h[1] > 0) return +w[1] / +h[1];
+    const d = entry.dimensions;
+    if (d && +d.width > 0 && +d.height > 0) return +d.width / +d.height;
     return null;
+  }
+
+  /**
+   * The line indexes the converter renders as text (fenced and verbatim
+   * blocks, their markers included), as headingSequence skips them. Pure.
+   * @param {string[]} lines
+   * @returns {Set<number>}
+   */
+  function textBlockLines(lines) {
+    const out = new Set();
+    let inFence = false;
+    let inVerbatim = false;
+    lines.forEach((raw, i) => {
+      const line = raw.replace(/\r$/, "");
+      if (!inVerbatim && FENCE_RE.test(line)) {
+        inFence = !inFence;
+        out.add(i);
+        return;
+      }
+      if (!inFence && VERBATIM_OPEN_RE.test(line)) inVerbatim = true;
+      if (inFence || inVerbatim) out.add(i);
+      if (inVerbatim && VERBATIM_CLOSE_RE.test(line)) inVerbatim = false;
+    });
+    return out;
   }
 
   /**
@@ -151,11 +246,12 @@
    * @param {string} mmd - the conversion copy of the MMD, before image embedding
    * @param {Object} registry - needs getAllImages()
    * @param {Map<string,string>} [imageBlobUrlMap]
-   * @returns {{alts: Array<string|Object>, decorative: boolean[], unresolved: number}|null}
+   * @returns {{alts: Array<string|Object>, decorative: boolean[], shapes: Array<number|null>, unresolved: number}|null}
    *   null when the serialiser, registry or MMD is unavailable. A KEEP slot is
    *   the frozen KEEP object; an image line no registry entry owns counts as
    *   unresolved. `decorative` runs parallel to `alts`: true only for a slot
-   *   whose registry entry is marked decorative (DW-2).
+   *   whose registry entry is marked decorative (DW-2). `shapes` runs parallel
+   *   too: the entry's width over height, or null when it is not known (WCX-2).
    */
   function expectedAltsFromMMD(mmd, registry, imageBlobUrlMap = null) {
     try {
@@ -171,18 +267,21 @@
       }
 
       const lines = mmd.split("\n");
+      const skipped = textBlockLines(lines);
 
       // URL to registry entry. The locator the writers use goes first; then the
       // entry's own URL and its blob form fill any gap, because a restored
       // entry can still carry its original markdown reference after the writers
       // wrapped the picture in a figure, and the locator misses that (UT-7).
+      // The locator names a LINE, so its URL is taken only when that line holds
+      // exactly one picture; on a line with two it could be either one.
       const urlToEntry = new Map();
       const entries = registry.getAllImages();
       for (const entry of entries) {
         const loc = serialiser.findImage(mmd, entry, imageBlobUrlMap);
         if (!loc.found) continue;
-        const parsed = imageUrlOfLine(lines[loc.lineIndex]);
-        if (parsed) urlToEntry.set(parsed.url, entry);
+        const onLine = imagesOfLine(lines[loc.lineIndex]);
+        if (onLine.length === 1) urlToEntry.set(onLine[0].url, entry);
       }
       for (const entry of entries) {
         const blobUrl =
@@ -196,27 +295,31 @@
 
       const alts = [];
       const decorative = [];
+      const shapes = [];
       let unresolved = 0;
-      for (const line of lines) {
-        const parsed = imageUrlOfLine(line);
-        if (!parsed) continue;
-        if (/<smiles/i.test(parsed.rawAlt)) {
-          alts.push(KEEP);
-          decorative.push(false);
-          continue;
+      lines.forEach((line, i) => {
+        if (skipped.has(i)) return;
+        for (const parsed of imagesOfLine(line)) {
+          const entry = urlToEntry.get(parsed.url) || null;
+          // A KEEP slot's alt is never checked, so its shape is the only check.
+          shapes.push(shapeOfEntry(entry));
+          if (/<smiles/i.test(parsed.rawAlt)) {
+            alts.push(KEEP);
+            decorative.push(false);
+            continue;
+          }
+          if (!entry) {
+            unresolved++;
+            alts.push(null);
+            decorative.push(false);
+            continue;
+          }
+          const isDecorative = entry.decorative === true;
+          alts.push(isDecorative ? "" : String(entry.altText || ""));
+          decorative.push(isDecorative);
         }
-        const entry = urlToEntry.get(parsed.url);
-        if (!entry) {
-          unresolved++;
-          alts.push(null);
-          decorative.push(false);
-          continue;
-        }
-        const isDecorative = entry.decorative === true;
-        alts.push(isDecorative ? "" : String(entry.altText || ""));
-        decorative.push(isDecorative);
-      }
-      return { alts, decorative, unresolved };
+      });
+      return { alts, decorative, shapes, unresolved };
     } catch (err) {
       logError("expectedAltsFromMMD: failed", err);
       return null;
@@ -233,13 +336,50 @@
    * @param {string[]} found - the alts the converter wrote, decoded, in order
    */
   function confirmPairs(expected, found) {
-    if (expected.length !== found.length) return REASON.COUNT_MISMATCH;
+    if (expected.length !== found.length) {
+      logWarn(
+        `confirmPairs: the MMD gives ${expected.length} picture(s) but the file has ${found.length}`,
+      );
+      return REASON.COUNT_MISMATCH;
+    }
     for (let i = 0; i < expected.length; i++) {
       const want = expected[i];
       if (want === KEEP) continue;
-      if (want === null) return REASON.UNRESOLVED;
+      if (want === null) {
+        logWarn(`confirmPairs: picture ${i + 1} of ${expected.length} has no registry entry`);
+        return REASON.UNRESOLVED;
+      }
       if (normaliseAlt(want) !== normaliseAlt(found[i])) {
+        logWarn(
+          `confirmPairs: picture ${i + 1} of ${expected.length} differs: registry "${String(want).slice(0, 80)}", file "${String(found[i]).slice(0, 80)}"`,
+        );
         return REASON.PAIR_MISMATCH;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Confirm each Word picture's shape against its registry image (WCX-2). A
+   * slot with no known shape, or a drawing with no wp:extent, is not checked.
+   * Call only after confirmPairs, so the two lists are the same length.
+   * @param {Array<number|null>|null} shapes
+   * @param {Array<{text:string}>} drawings
+   * @returns {string|null} a reason, or null
+   */
+  function confirmShapes(shapes, drawings) {
+    if (!Array.isArray(shapes)) return null;
+    for (let i = 0; i < drawings.length; i++) {
+      const want = shapes[i];
+      if (typeof want !== "number" || !(want > 0)) continue;
+      const ext = EXTENT_RE.exec(drawings[i].text);
+      if (!ext || !(+ext[2] > 0)) continue;
+      const got = +ext[1] / +ext[2];
+      if (Math.abs(got / want - 1) > SHAPE_TOLERANCE) {
+        logWarn(
+          `confirmShapes: picture ${i + 1} of ${drawings.length} has width over height ${got.toFixed(4)} in the file but ${want.toFixed(4)} in the registry`,
+        );
+        return REASON.SHAPE_MISMATCH;
       }
     }
     return null;
@@ -302,10 +442,12 @@
    * @param {Array<string|null|Object>} expected
    * @param {boolean[]|null} [decorative] - parallel to expected; true adds
    *   Word's decorative mark to that picture only (DW-2)
+   * @param {Array<number|null>|null} [shapes] - parallel to expected; each
+   *   known width over height must match the drawing's wp:extent (WCX-2)
    * @returns {{documentXml:string, changed:number, pictures:number, reason:string|null}}
    *   reason is null on success; documentXml is the INPUT on any reason.
    */
-  function setDocumentXmlAlts(documentXml, expected, decorative = null) {
+  function setDocumentXmlAlts(documentXml, expected, decorative = null, shapes = null) {
     const drawings = [];
     for (const m of documentXml.matchAll(DRAWING_RE)) {
       if (m[0].includes("<pic:pic")) {
@@ -317,7 +459,7 @@
       const docPr = DOC_PR_RE.exec(d.text);
       return decodeEntities((docPr && readAttr(docPr[0], "descr")) || "");
     });
-    const reason = confirmPairs(expected, found);
+    const reason = confirmPairs(expected, found) || confirmShapes(shapes, drawings);
     if (reason) {
       return { documentXml, changed: 0, pictures: drawings.length, reason };
     }
@@ -364,9 +506,10 @@
    * @param {Blob} blob - the docx after the heading pass
    * @param {Array<string|null|Object>|null} expected - from expectedAltsFromMMD
    * @param {boolean[]|null} [decorative] - from expectedAltsFromMMD; marks those pictures decorative
+   * @param {Array<number|null>|null} [shapes] - from expectedAltsFromMMD; the shape check (WCX-2)
    * @returns {Promise<{blob:Blob, applied:boolean, changed:number, pictures:number, expected:number, failed:boolean, reason:string}>}
    */
-  async function setDocxAltText(blob, expected, decorative = null) {
+  async function setDocxAltText(blob, expected, decorative = null, shapes = null) {
     if (!Array.isArray(expected) || expected.length === 0) {
       return outcome(blob, { reason: REASON.NOTHING_OWED });
     }
@@ -386,6 +529,7 @@
         await docEntry.async("string"),
         expected,
         decorative,
+        shapes,
       );
       if (result.reason) {
         logWarn(`setDocxAltText: ${result.reason}, original kept`);

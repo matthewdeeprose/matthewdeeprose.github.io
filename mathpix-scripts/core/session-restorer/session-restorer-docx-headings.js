@@ -146,6 +146,27 @@
       .trim();
   }
 
+  // WCX-2, measured on one converted probe: the docx heading keeps a link's
+  // text and drops its URL, and keeps \textbf{...}'s text and drops the command.
+  const MD_LINK_RE = /(?<!!)\[([^\]]*)\]\([^)]*\)/g;
+  const TEXT_STYLE_RE =
+    /\\(?:textbf|textit|emph|underline|textsl|textsc|texttt|textrm|textsf|textup|textmd)\s*\{([^{}]*)\}/g;
+  const STYLE_UNWRAP_LIMIT = 8;
+
+  /**
+   * The MMD heading as the converter writes its text: links to their text,
+   * text-style commands to their argument. MMD side only. Pure.
+   */
+  function plainMmdHeading(s) {
+    let out = String(s).replace(MD_LINK_RE, "$1");
+    for (let n = 0; n < STYLE_UNWRAP_LIMIT; n++) {
+      const next = out.replace(TEXT_STYLE_RE, "$1");
+      if (next === out) break;
+      out = next;
+    }
+    return out;
+  }
+
   /** A \section{} number arrives in the docx as literal text: drop it there only. */
   function stripLeadingNumber(s) {
     return String(s).replace(/^\s*\d+(?:\.\d+)*\.?\s+/, "");
@@ -369,27 +390,29 @@
         const para = candidates[k];
         if (!para) {
           logWarn(
-            `mapHeadings: heading-shaped paragraphs ran out at position ${k + 1}`,
-            { mmd: entry && entry.text, docx: null },
+            `mapHeadings: heading-shaped paragraphs ran out at position ${k + 1} of ${sequence.length}: MMD "${entry && entry.text}" has no docx paragraph`,
           );
           return null;
         }
-        const mmdText = normaliseText(entry && entry.text);
-        const docxText = normaliseText(stripLeadingNumber(para.text));
-        if (!entry || entry.level !== para.level || mmdText !== docxText) {
-          logWarn(`mapHeadings: no match at position ${k + 1}`, {
-            mmd: entry && entry.text,
-            mmdLevel: entry && entry.level,
-            docx: para.text,
-            docxLevel: para.level,
-          });
+        // A numbered \section{} carries its number in the docx only, so the
+        // docx text is compared with the number stripped. A heading whose own
+        // text starts with a number ("34 Pythagoras ...") carries it on BOTH
+        // sides, so the unstripped docx text is accepted too. Nothing else is
+        // loosened: the level and every other word must still agree.
+        const mmdText = normaliseText(plainMmdHeading(entry && entry.text));
+        const textMatches =
+          mmdText === normaliseText(stripLeadingNumber(para.text)) ||
+          mmdText === normaliseText(para.text);
+        if (!entry || entry.level !== para.level || !textMatches) {
+          logWarn(
+            `mapHeadings: no match at position ${k + 1}: MMD level ${entry && entry.level} "${entry && entry.text}", docx level ${para.level} "${para.text}"`,
+          );
           return null;
         }
       }
       if (candidates.length > sequence.length) {
         logWarn(
-          `mapHeadings: sequence exhausted with ${candidates.length - sequence.length} heading-shaped paragraph(s) left`,
-          { mmd: null, docx: candidates[sequence.length].text },
+          `mapHeadings: the MMD has ${sequence.length} heading(s) but the docx has ${candidates.length} heading-shaped paragraph(s); the first extra is "${candidates[sequence.length].text}"`,
         );
         return null;
       }

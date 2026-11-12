@@ -1441,11 +1441,17 @@ if (context.eagerDiff) {
     if (archiveMMD) {
       const toBlobForm = (mmd) =>
         this.rewriteMMDWithBlobUrls(this.rewriteRelativePathsToBlobUrls(mmd));
-      this.restoredSession.originalMMD = toBlobForm(
-        this.parseResult?.results?.mmd || archiveMMD,
-      );
+      // PM-1 (PM-D1b): page markers on the raw text before it takes blob form.
+      const rawOcrMMD = this.parseResult?.results?.mmd || archiveMMD;
+      const markPages = (text) =>
+        MathPixSessionRestorer.prototype._applyPageMarkers.call(this, {
+          workingMMD: text,
+          originalMMD: rawOcrMMD,
+          linesData: this.restoredSession?.linesData,
+        });
+      this.restoredSession.originalMMD = toBlobForm(markPages(rawOcrMMD));
       this.restoredSession.selectedEdit = archiveEdit;
-      originalMMD = toBlobForm(archiveMMD);
+      originalMMD = toBlobForm(markPages(archiveMMD));
     }
 
     if (originalMMD) {
@@ -1538,6 +1544,13 @@ if (context.eagerDiff) {
           `loadZIPEdit: rebuilt from the archive, ${rebuilt.relinked} re-linked, ${rebuilt.reextracted} re-extracted`,
         );
       }
+
+      // PM-1 (PM-D1b): page markers on the raw edit before it takes blob form.
+      editContent = MathPixSessionRestorer.prototype._applyPageMarkers.call(this, {
+        workingMMD: editContent,
+        originalMMD: this.parseResult?.results?.mmd,
+        linesData: this.restoredSession?.linesData,
+      });
 
       // Phase 8H.3: Rewrite relative image paths to blob URLs for display
       editContent = this.rewriteRelativePathsToBlobUrls(editContent);
@@ -2016,7 +2029,14 @@ if (context.eagerDiff) {
 
     // Update current session with recovered edits
     if (this.restoredSession && data.current) {
-      this.restoredSession.currentMMD = data.current;
+      // PM-1 (PM-D1b): a stored version written before page markers existed
+      // gets them here, from the raw OCR text and the lines data the session
+      // already holds. Idempotent: a version that carries markers is unchanged.
+      this.restoredSession.currentMMD = MathPixSessionRestorer.prototype._applyPageMarkers.call(this, {
+        workingMMD: data.current,
+        originalMMD: this.restoredSession.results?.mmd,
+        linesData: this.restoredSession.linesData,
+      });
 
       // VS-3d: a version stored with a registry snapshot (VS-3c) restores the
       // registry, the pictures and the document from it, not from the mirror.
@@ -2029,7 +2049,7 @@ if (context.eagerDiff) {
         try {
           snapshotResult = await this._restoreRegistryFromSnapshot(
             data.registrySnapshot,
-            { mmd: data.current, render: false },
+            { mmd: this.restoredSession.currentMMD, render: false },
           );
         } catch (snapshotError) {
           logWarn(

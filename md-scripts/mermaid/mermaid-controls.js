@@ -353,7 +353,7 @@ window.MermaidControls = (function () {
 
     // Method 2: Look for SVG with mermaid-specific attributes
     const mermaidSvgs = container.querySelectorAll(
-      'svg[aria-roledescription*="flowchart"], svg[class*="flowchart"], svg[id*="mermaid-diagram"]'
+      `${window.MermaidDiagramType.selector("flowchart", "*=")}, svg[class*="flowchart"], svg[id*="mermaid-diagram"]`
     );
     if (mermaidSvgs.length > 0) {
       return mermaidSvgs[0]; // Return the first one found
@@ -1438,6 +1438,9 @@ window.MermaidControls = (function () {
         savedHeight,
         lockAspectRatio === "true" || lockAspectRatio === true
       );
+      // The first-paint SVG is an image with an interim name from now on
+      // (item 126, G1); the loaders only wrote "Mermaid diagram" onto it.
+      applyInterimImageForm(container, svgElement);
     }
 
     // Add theme selector if MermaidThemes is available
@@ -1609,6 +1612,149 @@ window.MermaidControls = (function () {
   }
 
   /**
+   * Anything inside a diagram's SVG that a keyboard can reach. A diagram with
+   * one keeps its full structure (DI4): hiding focusable content from a
+   * screen reader fails WCAG, and every drawn link is also a working link in
+   * the description. The root SVG itself is not tested; querySelector looks
+   * only at its descendants. `a[*|href]` is the namespace-wildcard form that
+   * catches Mermaid's xlink:href links.
+   */
+  const SVG_FOCUSABLE_SELECTOR =
+    'a[href], a[*|href], area[href], [tabindex]:not([tabindex="-1"]), button, input, select, textarea, summary, iframe, [contenteditable="true"]';
+
+  /**
+   * Write a diagram SVG's name, role and description, at ONE choke point.
+   * Called by the first build (initAccessibilityFeatures) and by
+   * reapplyAfterRender, so every render site gets the same result. Mermaid
+   * re-writes role and aria-roledescription on every render, so this runs on
+   * every render.
+   *
+   * No focusable content (DI1 to DI3): the SVG is ONE image stop. role="img"
+   * makes its contents presentational, aria-roledescription is removed, the
+   * short description is its name (the plain tier, never escaped), the
+   * sr-only figcaption (which repeats that sentence) is hidden from the
+   * accessibility tree, and the SVG points at a hidden element holding one
+   * sentence about the full description.
+   *
+   * Focusable content (DI4): today's structure. Mermaid's role and
+   * aria-roledescription stay as written, the SVG is described by the
+   * figcaption, and the figcaption is exposed.
+   *
+   * The container holds every value, because it outlives the SVG:
+   * dataset.svgAccessibleName, dataset.figcaptionId, dataset.pointerId.
+   *
+   * @param {HTMLElement} container - The .mermaid-container element
+   * @param {SVGElement} svgElement - The diagram SVG as just rendered
+   * @returns {boolean} True when the attributes read back as written
+   */
+  function applyDiagramAccessibleWiring(container, svgElement) {
+    if (!container || !svgElement) return false;
+    const accessibleName = container.dataset.svgAccessibleName;
+    if (!accessibleName) return false;
+
+    const figcaptionId = container.dataset.figcaptionId;
+    const pointerId = container.dataset.pointerId;
+    const figcaption = figcaptionId
+      ? document.getElementById(figcaptionId)
+      : null;
+    const pointer = pointerId ? document.getElementById(pointerId) : null;
+
+    // Keep the diagram's type in a second place BEFORE anything is removed:
+    // the theme passes and the controls find a diagram's type by
+    // aria-roledescription, and the image branch below removes it. Taken from
+    // THIS SVG's own attribute (Mermaid writes a fresh SVG every render); a
+    // DI4 diagram keeps the attribute and is stamped too, so every reader has
+    // one route (window.MermaidDiagramType, resolved at call time).
+    if (window.MermaidDiagramType) window.MermaidDiagramType.stamp(svgElement);
+
+    // aria-label is an attribute sink: the name goes in verbatim.
+    svgElement.setAttribute("aria-label", accessibleName);
+
+    const hasFocusable = !!svgElement.querySelector(SVG_FOCUSABLE_SELECTOR);
+
+    if (hasFocusable || !pointer) {
+      // DI4 (or no pointer to point at): today's structure, unchanged.
+      if (figcaptionId) {
+        svgElement.setAttribute("aria-describedby", figcaptionId);
+      }
+      if (figcaption) figcaption.removeAttribute("aria-hidden");
+      return (
+        svgElement.getAttribute("aria-label") === accessibleName &&
+        (!figcaptionId ||
+          svgElement.getAttribute("aria-describedby") === figcaptionId)
+      );
+    }
+
+    svgElement.setAttribute("role", "img");
+    svgElement.removeAttribute("aria-roledescription");
+    // An author's accTitle / accDescr make Mermaid write aria-labelledby and
+    // aria-describedby at its own <title> and <desc>, and aria-labelledby
+    // outranks aria-label. In the image form the name is ALWAYS the short tier
+    // and the description ALWAYS the pointer, so Mermaid's pair is removed on
+    // every render (its <title> and <desc> stay in the SVG for a saved file).
+    svgElement.removeAttribute("aria-labelledby");
+    svgElement.setAttribute("aria-describedby", pointerId);
+    if (figcaption) figcaption.setAttribute("aria-hidden", "true");
+
+    return (
+      svgElement.getAttribute("aria-label") === accessibleName &&
+      svgElement.getAttribute("role") === "img" &&
+      !svgElement.hasAttribute("aria-roledescription") &&
+      !svgElement.hasAttribute("aria-labelledby") &&
+      svgElement.getAttribute("aria-describedby") === pointerId
+    );
+  }
+
+  /** The interim image form's role, and the attributes it must not carry. */
+  const INTERIM_ROLE = "img";
+  const INTERIM_REMOVED_ATTRIBUTES = Object.freeze([
+    "aria-roledescription",
+    "aria-labelledby",
+    "aria-describedby",
+  ]);
+
+  /**
+   * The interim image form (item 126, G1), at ONE function. Called wherever a
+   * freshly rendered SVG enters a container and no full accessible name is
+   * stored yet (reapplyAfterRender and addControlsToContainer), so a diagram
+   * that has never been near the screen is already an image with a name and
+   * NVDA's G (graphic quick navigation) can find it. It writes the type stamp
+   * (before the attribute is removed, as the choke point does), role="img", no
+   * aria-roledescription, none of Mermaid's aria-labelledby or
+   * aria-describedby, and the interim name; nothing else. Initialisation
+   * replaces the name, adds the pointer and hides the figcaption.
+   *
+   * A diagram holding anything focusable keeps Mermaid's own structure (DI4).
+   * A container that already stores its full name is left to
+   * applyDiagramAccessibleWiring.
+   *
+   * @param {HTMLElement} container - The .mermaid-container element
+   * @param {SVGElement} svgElement - The diagram SVG as just rendered
+   * @returns {boolean} True when the interim form was written
+   */
+  function applyInterimImageForm(container, svgElement) {
+    if (!container || !svgElement) return false;
+    if (container.dataset.svgAccessibleName) return false;
+    if (svgElement.querySelector(SVG_FOCUSABLE_SELECTOR)) return false;
+
+    const core = window.MermaidAccessibility;
+    if (!core || typeof core.interimDiagramName !== "function") return false;
+
+    let code = "";
+    try {
+      code = decodeURIComponent(container.getAttribute("data-diagram-code") || "");
+    } catch (e) {
+      code = "";
+    }
+
+    if (window.MermaidDiagramType) window.MermaidDiagramType.stamp(svgElement);
+    svgElement.setAttribute("role", INTERIM_ROLE);
+    INTERIM_REMOVED_ATTRIBUTES.forEach((name) => svgElement.removeAttribute(name));
+    svgElement.setAttribute("aria-label", core.interimDiagramName(code));
+    return true;
+  }
+
+  /**
    * Re-apply everything we know about a diagram after a fresh SVG has landed.
    *
    * THE NAMED AFTER-RENDER INVARIANT. Every render replaces the SVG
@@ -1720,21 +1866,9 @@ window.MermaidControls = (function () {
       : undefined;
 
     if (svgElement && accessibleName) {
-      svgElement.setAttribute("aria-label", accessibleName);
-
-      const figcaptionId = container.dataset.figcaptionId;
-      if (figcaptionId) {
-        svgElement.setAttribute("aria-describedby", figcaptionId);
-      }
-
-      // Read the attribute back rather than reporting success from having
-      // called the setter — item 58's note, which caught a size block that
-      // logged success on a path where nothing was written. Unlike its two
-      // siblings above, this flag is VERIFIED rather than optimistic.
-      applied.a11y =
-        svgElement.getAttribute("aria-label") === accessibleName &&
-        (!figcaptionId ||
-          svgElement.getAttribute("aria-describedby") === figcaptionId);
+      // The one writer of the SVG's name, role and description (item 126,
+      // single-image change). The first build calls it too.
+      applied.a11y = applyDiagramAccessibleWiring(container, svgElement);
 
       if (!applied.a11y) {
         Logger.debug(
@@ -1743,6 +1877,9 @@ window.MermaidControls = (function () {
           }`
         );
       }
+    } else if (svgElement) {
+      // Not initialised yet: the interim image form (item 126, G1).
+      applyInterimImageForm(container, svgElement);
     }
 
     Logger.debug(
@@ -2694,6 +2831,11 @@ window.MermaidControls = (function () {
     announceToScreenReader: announceToScreenReader,
     applyDiagramSize: applyDiagramSize,
     reapplyAfterRender: reapplyAfterRender,
+    applyInterimImageForm: applyInterimImageForm,
+    applyDiagramAccessibleWiring: applyDiagramAccessibleWiring,
+    // Item 168, fix 1 (12 November 2026): the DI4 test's selector, read by
+    // mermaid-view-controls.js at call time so the two files never disagree.
+    svgFocusableSelector: SVG_FOCUSABLE_SELECTOR,
     noteRenderFailure: noteRenderFailure,
     clearRenderFailureNote: clearRenderFailureNote,
     reviveRendered: reviveRendered,

@@ -70,6 +70,24 @@ const MermaidPanZoom = (function () {
   }
 
   logInfo("Script loaded and initialising");
+  // Delays, in ms after the first fit, of the two later safety-net fits
+  const FIT_SAFETY_NET_MS = Object.freeze({ second: 200, third: 500 });
+
+  // Mouse wheel zoom. One notch (100 px of deltaY, or 3 lines) changes the
+  // scale by notchFactor (10 per cent); a smaller delta changes it by the
+  // matching fraction of that, so a trackpad's stream of small deltas zooms
+  // smoothly. A single event is clamped to maxDeltaPx, so none can jump.
+  const WHEEL = Object.freeze({
+    notchPx: 100,
+    notchFactor: 1.1,
+    lineHeightPx: 100 / 3,
+    pagePx: 800,
+    maxDeltaPx: 100,
+  });
+
+  // A fit within these of the view already shown writes nothing
+  const FIT_UNCHANGED_TOLERANCE = Object.freeze({ scale: 0.001, px: 0.5 });
+
   // Configuration
   const config = {
     // Zoom settings
@@ -137,6 +155,47 @@ const MermaidPanZoom = (function () {
   // Counter for container ids minted when the figure carries none
   let containerIdCounter = 0;
 
+  // The six inline size properties MermaidControls.applyDiagramSize writes on a
+  // diagram SVG. Saved at activation and put back on exit, so a diagram comes
+  // out of full screen the size it went in (MRC-34, register item 160).
+  const SIZE_PROPERTIES = Object.freeze([
+    "width",
+    "max-width",
+    "min-width",
+    "height",
+    "max-height",
+    "min-height",
+  ]);
+
+  /**
+   * Read the SVG's inline size values exactly as they are, empty ones included
+   * @param {SVGElement} svg - The diagram SVG
+   * @returns {Array<{property: string, value: string, priority: string}>}
+   */
+  function readInlineSize(svg) {
+    return SIZE_PROPERTIES.map((property) => ({
+      property,
+      value: svg.style.getPropertyValue(property),
+      priority: svg.style.getPropertyPriority(property),
+    }));
+  }
+
+  /**
+   * Put back inline size values read by readInlineSize. An empty value removes
+   * the property, which is how it was.
+   * @param {SVGElement} svg - The diagram SVG
+   * @param {Array<{property: string, value: string, priority: string}>} saved
+   */
+  function restoreInlineSize(svg, saved) {
+    saved.forEach(({ property, value, priority }) => {
+      if (value === "") {
+        svg.style.removeProperty(property);
+      } else {
+        svg.style.setProperty(property, value, priority);
+      }
+    });
+  }
+
   /**
    * Initialize a container for pan and zoom
    * @param {HTMLElement} container - The container element
@@ -181,6 +240,17 @@ const MermaidPanZoom = (function () {
     const wrapperDiv = document.createElement("div");
     wrapperDiv.className = config.panZoomContainerClass;
 
+    // F-TAB (12 November 2026): the wrapper is a scroll container, which
+    // Chrome makes a keyboard stop of its own. Tab went from the full-screen
+    // button to the wrapper and back, so Zoom in and the pan buttons were
+    // never reached going forward. Pan and zoom run from the panel buttons
+    // and the keys, so the wrapper needs no stop. It exists only in full
+    // screen and is removed on every exit, so there is nothing to restore.
+    wrapperDiv.setAttribute("tabindex", "-1");
+
+    // Save the SVG's inline size before anything below or the fit can change it
+    const savedSize = readInlineSize(diagramElement);
+
     // Add diagram type classes based on detection
     if (diagramTypes.isWide || diagramTypes.isHorizontalFlow) {
       wrapperDiv.classList.add("mermaid-wide-diagram");
@@ -212,6 +282,7 @@ const MermaidPanZoom = (function () {
       container,
       diagram: diagramElement,
       wrapper: wrapperDiv,
+      savedSize: savedSize,
       scale: 1,
       translateX: 0,
       translateY: 0,
@@ -324,11 +395,26 @@ const MermaidPanZoom = (function () {
     };
   }
   /**
+   * Remove every pan and zoom control panel from a container. The buttons'
+   * click listeners go with the elements.
+   * @param {HTMLElement} container - The container element
+   */
+  function removeControlPanels(container) {
+    container
+      .querySelectorAll(`.${config.controlPanelClass}`)
+      .forEach((panel) => panel.remove());
+  }
+
+  /**
    * Add control panel to the container
    * @param {HTMLElement} container - The container element
    * @param {string} containerId - Unique ID for this container
    */
   function addControlPanel(container, containerId) {
+    // One panel per container: a panel left by an earlier entry goes first,
+    // so a second entry never leaves two panels or duplicate ids
+    removeControlPanels(container);
+
     // Create control panel
     const controlPanel = document.createElement("div");
     controlPanel.className = config.controlPanelClass;
@@ -393,8 +479,9 @@ const MermaidPanZoom = (function () {
     controlPanel.appendChild(zoomOutButton);
     controlPanel.appendChild(upButton);
     controlPanel.appendChild(downButton);
-    controlPanel.appendChild(rightButton);
+    // Tab order is DOM order: zoom in, zoom out, up, down, left, right, reset
     controlPanel.appendChild(leftButton);
+    controlPanel.appendChild(rightButton);
 
     controlPanel.appendChild(resetButton);
 
@@ -450,8 +537,21 @@ const MermaidPanZoom = (function () {
     // listeners go with the wrapper when it is removed.
     state.documentHandlers = {};
 
-    // Keyboard event listener
-    const handleDocumentKeydown = (event) => {
+    // Keyboard event listener. It sits on the container, not the document, so
+    // a shortcut acts only while focus is inside this diagram's container
+    // (WCAG 2.1.4, "active only on focus"). It also leaves every chord with
+    // Ctrl, Meta or Alt alone, so the browser keeps its own zoom, reload and
+    // back (WCAG 1.4.4). Slice 1 of the full-screen work, 10 November 2026.
+    const handleContainerKeydown = (event) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
+      // A listener left on the container by an exit that threw is stale
+      if (containerStates.get(containerId) !== state) {
+        return;
+      }
+
       // Only process keyboard events if this container is in fullscreen
       if (!state.container.classList.contains("fullscreen-mode")) {
         return;
@@ -506,8 +606,8 @@ const MermaidPanZoom = (function () {
         }
       }
     };
-    document.addEventListener("keydown", handleDocumentKeydown);
-    state.documentHandlers.keydown = handleDocumentKeydown;
+    state.container.addEventListener("keydown", handleContainerKeydown);
+    state.containerKeydown = handleContainerKeydown;
 
     if (config.wheelZoomEnabled) {
       // Mouse wheel zoom
@@ -518,12 +618,7 @@ const MermaidPanZoom = (function () {
 
         event.preventDefault();
 
-        // Zoom in or out based on wheel direction
-        if (event.deltaY < 0) {
-          zoomIn(containerId);
-        } else {
-          zoomOut(containerId);
-        }
+        zoomByWheel(containerId, event);
       });
     }
 
@@ -534,11 +629,19 @@ const MermaidPanZoom = (function () {
           return;
         }
 
+        // Keep focus where it is (inside the container), so the single-key
+        // shortcuts still work after a drag; a mousedown on a non-focusable
+        // wrapper would otherwise move focus to the body
+        event.preventDefault();
+
         state.isDragging = true;
         state.lastMouseX = event.clientX;
         state.lastMouseY = event.clientY;
 
         state.wrapper.style.cursor = "grabbing";
+
+        // The diagram follows the pointer: no transition while dragging
+        setDiagramTransition(state, false);
       });
 
       const handleDocumentMousemove = (event) => {
@@ -562,6 +665,7 @@ const MermaidPanZoom = (function () {
         if (state.isDragging) {
           state.isDragging = false;
           state.wrapper.style.cursor = "grab";
+          setDiagramTransition(state, true);
         }
       };
       document.addEventListener("mouseup", handleDocumentMouseup);
@@ -585,6 +689,9 @@ const MermaidPanZoom = (function () {
           // Single touch - prepare for panning
           touchStartX = event.touches[0].clientX;
           touchStartY = event.touches[0].clientY;
+
+          // A one-finger pan follows the finger: no transition until it lifts
+          setDiagramTransition(state, false);
         } else if (event.touches.length === 2) {
           // Two touches - prepare for pinch zoom
           initialPinchDistance = Math.hypot(
@@ -595,6 +702,10 @@ const MermaidPanZoom = (function () {
 
         event.preventDefault();
       });
+
+      const endTouch = () => setDiagramTransition(state, true);
+      state.wrapper.addEventListener("touchend", endTouch);
+      state.wrapper.addEventListener("touchcancel", endTouch);
 
       state.wrapper.addEventListener("touchmove", (event) => {
         if (!state.container.classList.contains("fullscreen-mode")) {
@@ -641,6 +752,19 @@ const MermaidPanZoom = (function () {
         event.preventDefault();
       });
     }
+  }
+
+  /**
+   * Switch the diagram's transform transition off (a drag or a first fit,
+   * where the diagram must be where it is told at once) or back on. "On"
+   * clears the inline value, so the stylesheet's short transition applies
+   * again, and its reduced-motion rule still removes it.
+   * @param {Object} state - The container's state entry
+   * @param {boolean} enabled - False to switch the transition off
+   */
+  function setDiagramTransition(state, enabled) {
+    if (!state || !state.diagram) return;
+    state.diagram.style.transition = enabled ? "" : "none";
   }
 
   /**
@@ -805,6 +929,37 @@ const MermaidPanZoom = (function () {
   }
 
   /**
+   * Zoom by one wheel event: deltaMode normalised to pixels, clamped per
+   * event, applied as a multiplicative change (a notch is 10 per cent).
+   * Scrolling the wheel away from the reader (deltaY above 0) zooms out.
+   * @param {string} containerId - Unique ID for this container
+   * @param {WheelEvent} event - The wheel event
+   */
+  function zoomByWheel(containerId, event) {
+    const state = containerStates.get(containerId);
+    if (!state) return;
+
+    let unit = 1;
+    if (event.deltaMode === 1) unit = WHEEL.lineHeightPx;
+    if (event.deltaMode === 2) unit = WHEEL.pagePx;
+
+    const deltaPx = Math.max(
+      -WHEEL.maxDeltaPx,
+      Math.min(WHEEL.maxDeltaPx, event.deltaY * unit)
+    );
+    if (!deltaPx) return;
+
+    const factor = Math.pow(WHEEL.notchFactor, -deltaPx / WHEEL.notchPx);
+    state.scale = Math.max(
+      config.minZoom,
+      Math.min(state.scale * factor, config.maxZoom)
+    );
+
+    applyTransform(containerId);
+    logDebug(`Wheel zoom to ${state.scale.toFixed(3)}x`);
+  }
+
+  /**
    * Pan up
    * @param {string} containerId - Unique ID for this container
    */
@@ -915,19 +1070,27 @@ const MermaidPanZoom = (function () {
       controlPanel.style.display = "flex";
     }
 
-    // Auto-fit diagram to screen with multiple attempts to ensure proper scaling
-    setTimeout(() => {
-      fitDiagramToScreen(containerId);
+    // First fit on the first animation frame after full screen is in place,
+    // with the transition off, so the diagram appears at its fitted size
+    // and does not animate up from small. The visibility correction is part
+    // of that one write (it used to land at about 630 ms and move a wide
+    // diagram by its margin). Two later fits stay as a safety net for a late
+    // layout change; each writes the scale the first one did.
+    requestAnimationFrame(() => {
+      if (containerStates.get(containerId) === undefined) return;
 
-      // Make additional attempts with increasing delays
-      setTimeout(() => fitDiagramToScreen(containerId), 200);
+      ensureDiagramVisibility(containerId);
+      fitDiagramToScreen(containerId, { instant: true });
 
-      // Final attempt with fallback visibility fix
-      setTimeout(() => {
-        fitDiagramToScreen(containerId);
-        ensureDiagramVisibility(containerId);
-      }, 500);
-    }, 100);
+      setTimeout(
+        () => fitDiagramToScreen(containerId),
+        FIT_SAFETY_NET_MS.second
+      );
+      setTimeout(
+        () => fitDiagramToScreen(containerId),
+        FIT_SAFETY_NET_MS.third
+      );
+    });
   }
 
   /**
@@ -936,6 +1099,11 @@ const MermaidPanZoom = (function () {
    * @param {Object} state - The container's state entry
    */
   function removeDocumentListeners(state) {
+    if (state && state.containerKeydown) {
+      state.container.removeEventListener("keydown", state.containerKeydown);
+      state.containerKeydown = null;
+    }
+
     const handlers = state && state.documentHandlers;
     if (!handlers) return;
 
@@ -978,27 +1146,37 @@ const MermaidPanZoom = (function () {
 
     cleanupDuplicateControls(container, containerId);
 
-    // Hide control panel
-    const controlPanel = container.querySelector(
-      `.${config.controlPanelClass}`
-    );
-    if (controlPanel) {
-      controlPanel.style.display = "none";
-    }
+    // Remove the control panel (it was only hidden, so every later entry
+    // added another and left duplicate ids)
+    removeControlPanels(container);
 
     // Reset view
     resetView(container.id);
 
     // Get state for this container
     const state = containerStates.get(containerId);
-    if (state && state.diagram && state.wrapper) {
-      try {
-        // Restore original DOM structure
+
+    // Everything this module added to the container comes off in the finally,
+    // whatever the DOM restore does. A theme change inside full screen
+    // replaces the SVG and takes the wrapper out of the document with it; the
+    // restore then has nothing to unwrap, and must neither throw nor skip the
+    // class, the listeners or the state (register item 160, slice 2b).
+    try {
+      if (state && state.diagram && state.wrapper) {
+        // Restore original DOM structure, against the nodes that are in the
+        // document now
         const diagram = state.diagram;
         const wrapper = state.wrapper;
 
-        // Only unwrap if the diagram is still in the wrapper
-        if (diagram.parentElement === wrapper) {
+        if (!wrapper.parentNode) {
+          logWarn(
+            `Wrapper for container ${containerId} left the document (the diagram was replaced); nothing to unwrap`
+          );
+        }
+
+        // Only unwrap if the diagram is still in a wrapper that is still in
+        // the document
+        if (wrapper.parentNode && diagram.parentElement === wrapper) {
           // Move the diagram back to its original parent
           wrapper.parentNode.insertBefore(diagram, wrapper);
 
@@ -1007,38 +1185,39 @@ const MermaidPanZoom = (function () {
             wrapper.parentNode.removeChild(wrapper);
           }
 
-          // Reset all styles on the diagram
+          // Reset the styles full screen added to the diagram
           diagram.style.transform = "";
           diagram.style.transformOrigin = "";
-          diagram.style.width = "";
-          diagram.style.maxWidth = "";
-          diagram.style.minWidth = "";
-          diagram.style.height = "";
-          diagram.style.maxHeight = "";
-          diagram.style.minHeight = "";
           diagram.style.margin = "";
           diagram.style.overflow = "";
 
-          // Remove wide diagram classes from container
-          container.classList.remove("fullscreen-wide-diagram");
+          // Put back the six size values the diagram had at activation
+          // (applyDiagramSize's), exactly as they were. Blanking them left
+          // the SVG's width="100%" to fill its box (MRC-34, register item 160).
+          restoreInlineSize(diagram, state.savedSize);
 
-          // Force diagram back to reasonable dimensions
-          diagram.style.maxWidth = "100%";
+          // Centre the diagram in its box
           diagram.style.margin = "0 auto";
 
           logInfo(
             `Restored original DOM structure for container ${containerId}`
           );
         }
+      }
+    } catch (error) {
+      logError(`Error restoring DOM structure:`, error);
+    } finally {
+      // Remove wide diagram classes from container, whether or not there was
+      // anything to unwrap
+      container.classList.remove("fullscreen-wide-diagram");
 
+      if (state) {
         // Remove the document-level listeners before the state that holds
         // them goes; otherwise every enter/exit cycle leaves a set behind (F2)
         removeDocumentListeners(state);
 
         // Clear the state
         containerStates.delete(containerId);
-      } catch (error) {
-        logError(`Error restoring DOM structure:`, error);
       }
     }
   }
@@ -1096,12 +1275,27 @@ const MermaidPanZoom = (function () {
   /**
    * Automatically scale diagram to fit the screen
    * @param {string} containerId - Unique ID for this container
+   * @param {Object} [options] - Fit options
+   * @param {boolean} [options.instant] - Write the fit with the transform
+   *   transition off, so the diagram appears at its fitted size
+   * @returns {number|null} The fitted scale, or null when it cannot fit
    */
-  function fitDiagramToScreen(containerId) {
+  function fitDiagramToScreen(containerId, options = {}) {
     const state = containerStates.get(containerId);
     if (!state) {
       logWarn(`Cannot fit diagram: No state for container ${containerId}`);
       return null;
+    }
+
+    // An instant fit switches the transition off for its one write, then
+    // puts it back after the new transform has been flushed (so putting it
+    // back does not animate). A drag in progress keeps its own "off".
+    if (options.instant && !state.isDragging) {
+      setDiagramTransition(state, false);
+      const fitted = fitDiagramToScreen(containerId);
+      state.diagram.getBoundingClientRect();
+      setDiagramTransition(state, true);
+      return fitted;
     }
 
     try {
@@ -1113,7 +1307,20 @@ const MermaidPanZoom = (function () {
 
       // Get the current dimensions
       const containerRect = container.getBoundingClientRect();
+
+      // Measure the diagram's own size, not a frame of its transform
+      // transition (MRC-34, register item 160). With the transform and its
+      // transition off, the box is the settled one; the transform goes back
+      // and is flushed before the transition is, so putting it back does not
+      // animate. Repeated calls then read one size and write one scale.
+      const priorTransform = diagram.style.transform;
+      const priorTransition = diagram.style.transition;
+      diagram.style.transition = "none";
+      diagram.style.transform = "none";
       const diagramRect = diagram.getBoundingClientRect();
+      diagram.style.transform = priorTransform;
+      diagram.getBoundingClientRect();
+      diagram.style.transition = priorTransition;
 
       debugLog("Current dimensions", {
         containerRect,
@@ -1178,9 +1385,25 @@ const MermaidPanZoom = (function () {
           : (containerRect.height - scaledHeight) / 2;
 
       // Ensure centerX and centerY are valid numbers
-      state.scale = scale || 1; // Fallback to 1 if scale is invalid
-      state.translateX = isNaN(centerX) ? 0 : centerX;
-      state.translateY = isNaN(centerY) ? 0 : centerY;
+      const nextScale = scale || 1; // Fallback to 1 if scale is invalid
+      const nextX = isNaN(centerX) ? 0 : centerX;
+      const nextY = isNaN(centerY) ? 0 : centerY;
+
+      // A later fit that lands on the view already shown writes nothing: a
+      // sub-pixel difference between fits otherwise moves the box by a pixel
+      // each time (measured as a one-pixel flicker until about 700 ms)
+      const unchanged =
+        Math.abs(state.scale - nextScale) < FIT_UNCHANGED_TOLERANCE.scale &&
+        Math.abs(state.translateX - nextX) < FIT_UNCHANGED_TOLERANCE.px &&
+        Math.abs(state.translateY - nextY) < FIT_UNCHANGED_TOLERANCE.px;
+      if (unchanged) {
+        debugLog("Fit unchanged, nothing written", { scale: nextScale });
+        return state.scale;
+      }
+
+      state.scale = nextScale;
+      state.translateX = nextX;
+      state.translateY = nextY;
 
       // Apply the transformation
       applyTransform(containerId);

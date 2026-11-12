@@ -1622,6 +1622,103 @@ const ALLY_TENANT_UI = (function () {
   // Initialisation
   // ========================================================================
 
+  // ========================================================================
+  // The file pickers' drop zones (register 68, RA-121)
+  // ========================================================================
+  // Each of the four pickers is a native file input, visually hidden, inside a
+  // .setup-file-drop box (tools.html). The input keeps its name, description,
+  // inline onchange handler and Tab stop; this only adds the two ways the box
+  // reaches it: a click, and a drop. A drop assigns the dropped files to the
+  // input and fires its change event, so it runs the SAME handler a choice
+  // does, including the import's confirmation. Pattern: Captions Fixer's
+  // bindDragAndDrop, minus its page-wide dragover/drop guard, which would
+  // also swallow text dropped into any other field on this page.
+
+  const FILE_DROP_BOX_CLASS = "setup-file-drop";
+  const FILE_DROP_NAME_CLASS = "setup-file-drop-name";
+  const FILE_DROP_ACTIVE_CLASS = "setup-file-drop-active";
+  const FILE_DROP_ROLES = ["importFileInput", "dataFilesInput"];
+
+  /**
+   * Binds one box to its input.
+   * @param {HTMLInputElement} input - The hidden native file input
+   * @param {Element} box - Its .setup-file-drop wrapper
+   */
+  function bindFileDropZone(input, box) {
+    const nameLine = box.querySelector("." + FILE_DROP_NAME_CLASS);
+
+    // CAPTURE on the box: the handler behind the input's inline onchange empties
+    // the input (so the same file can be chosen again), and an ancestor's capture
+    // listener runs before the target's own handlers, so the names are read first.
+    // The line is plain text, aria-hidden, never a live region.
+    box.addEventListener(
+      "change",
+      function (event) {
+        if (event.target !== input || !nameLine) return;
+        const names = Array.prototype.map.call(input.files || [], function (f) {
+          return f.name;
+        });
+        if (names.length > 0) nameLine.textContent = names.join(", ");
+      },
+      true,
+    );
+
+    // A click anywhere on the box opens the picker. The input's own click bubbles
+    // back up to the box, so it is ignored here or it would reopen forever.
+    box.addEventListener("click", function (event) {
+      if (event.target === input) return;
+      input.click();
+    });
+
+    box.addEventListener("dragenter", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      box.classList.add(FILE_DROP_ACTIVE_CLASS);
+    });
+    box.addEventListener("dragover", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+      box.classList.add(FILE_DROP_ACTIVE_CLASS);
+    });
+    box.addEventListener("dragleave", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      // Only when the pointer has really left the box, not crossed its children.
+      if (!box.contains(event.relatedTarget)) {
+        box.classList.remove(FILE_DROP_ACTIVE_CLASS);
+      }
+    });
+    box.addEventListener("drop", function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      box.classList.remove(FILE_DROP_ACTIVE_CLASS);
+      const dropped = event.dataTransfer && event.dataTransfer.files;
+      if (!dropped || dropped.length === 0) return;
+      // A single-file picker takes the first file only, as a choice would.
+      const transfer = new DataTransfer();
+      const files = input.multiple ? Array.from(dropped) : [dropped[0]];
+      files.forEach(function (file) {
+        transfer.items.add(file);
+      });
+      input.files = transfer.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  }
+
+  /**
+   * Binds every picker's drop zone on both surfaces. Idempotent through
+   * initialise()'s flag.
+   */
+  function watchFileDropZones() {
+    FILE_DROP_ROLES.forEach(function (role) {
+      getElements(role).forEach(function (input) {
+        const box = input.closest("." + FILE_DROP_BOX_CLASS);
+        if (box) bindFileDropZone(input, box);
+      });
+    });
+  }
+
   let initialised = false;
 
   /**
@@ -1635,6 +1732,7 @@ const ALLY_TENANT_UI = (function () {
     initialised = true;
     watchCardForDataStatus();
     watchMirroredFields();
+    watchFileDropZones();
     subscribeToCredentialChanges();
     logInfo(
       "Tenant UI initialised across " +

@@ -472,11 +472,144 @@
    * M-10g: models whose correction defaults to extended thinking ON until the
    * person chooses. Measured on Foundry gpt-6.1-sol (M-10d, M-10e): reasoning
    * kept the author's `0 \leq r<4` in 3 of 3 replies (1 of 5 off) at about
-   * 20 to 40% more cost. A later parcel adds a model here after testing it.
+   * 20 to 40% more cost. M-10h2 (n=1 per fixture) added Fable 5.1: capacitors
+   * F4/15 against F3/15 off, moderate 4/4 with the author's `<4` kept, about 2%
+   * more cost, the same time. A later parcel adds a model here after testing it.
    */
   const REASONING_DEFAULT_ON_MODELS = Object.freeze([
     "azure-openai/gpt-6.1-sol",
+    "anthropic/claude-fable-5.1",
   ]);
+
+  /**
+   * M-10br-3: the constants behind the correction's cost RANGE. Each part of
+   * the cost has a LOW and a HIGH bound taken from its own measured extremes
+   * on the 13 correction cells; nothing is fitted. MEASURED on three document
+   * families only (FEEG1050, kinetic, three exam sheets), on Fable 5.1 through
+   * OpenRouter's `native` PDF path; not calibrated for Foundry or any other
+   * model. Each rate is rounded OUTWARD to one decimal place.
+   *   - PDF_TOKENS_PER_PAGE: M-10bi measured 1,578 to 1,590 prompt tokens a page.
+   *   - PROMPT_CHARS_PER_TOKEN_LOW / _HIGH: M-10bs measured the real system plus
+   *     user prompt at 2.013 (2021-22 exam, densest in LaTeX) to 2.678 (kinetic)
+   *     characters a token. The LOW cost uses the highest rate (2.7), the HIGH
+   *     cost the lowest (2.0). NOT AI_ENHANCER_CONFIG.CHARS_PER_TOKEN (4), which
+   *     the other callers still use.
+   *   - REPLY_CHARS_PER_TOKEN_LOW / _HIGH: M-10bn's compare.json gives the
+   *     visible reply at 1.342 (2022-23 exam r2) to 1.799 (FEEG1050 r1) MMD
+   *     characters a token, about 2.2 to 3.0 times the old chars / 4. The LOW
+   *     cost uses the highest rate (1.8), the HIGH cost the lowest (1.3).
+   *   - REASONING_LOW_MULTIPLE / REASONING_HIGH_MULTIPLE: reasoning tokens
+   *     divided by the MMD's tokens (MMD chars / 4) across the 13 cells of
+   *     M-10bn. Lowest 1.42, highest 5.46. Kept on that definition, since the
+   *     multiples were measured on it.
+   */
+  const ESTIMATE_BOUNDS = Object.freeze({
+    PDF_TOKENS_PER_PAGE: 1590,
+    PROMPT_CHARS_PER_TOKEN_LOW: 2.7,
+    PROMPT_CHARS_PER_TOKEN_HIGH: 2.0,
+    REPLY_CHARS_PER_TOKEN_LOW: 1.8,
+    REPLY_CHARS_PER_TOKEN_HIGH: 1.3,
+    REASONING_LOW_MULTIPLE: 1.4,
+    REASONING_HIGH_MULTIPLE: 5.5,
+  });
+
+  /**
+   * M-10bt-2: the PDF writer the correction loads, at call time and only when
+   * a trim is needed, so the request carries just the pages MathPix processed.
+   * pdf-lib 1.17.1 (MIT) from cdnjs, a host the page already uses. The
+   * integrity value is the SHA-384 of the 525,099 bytes M-10bt Part A measured
+   * (SHA-256 0f9a5cad...694f), so a changed file fails closed.
+   */
+  const PDF_LIB_LOADER = Object.freeze({
+    URL: "https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js",
+    INTEGRITY:
+      "sha384-weMABwrltA6jWR8DDe9Jp5blk+tZQh7ugpCsF3JwSA53WZM9/14PjS5LAJNHNjAI",
+    GLOBAL_NAME: "PDFLib",
+    TIMEOUT_MS: 20000,
+  });
+
+  /** M-10bt-2: the longest run of pages named one by one in the prompt sentence. */
+  const MAX_LISTED_RUN = 2;
+
+  /**
+   * M-10bt-2: read the processed-pages string a person typed ("2-3", "all",
+   * "1-5, 7, 10-12") into a sorted, de-duplicated list of 1-based page
+   * numbers inside the document. Pure. Returns null (no trim) for "all", an
+   * empty or unknown string or total, anything that does not parse, a range
+   * that runs backwards, a page below 1, no page left after clamping, and a
+   * range that covers the whole document.
+   *
+   * @param {*} range - the stored range string
+   * @param {*} totalPages - the document's page count
+   * @returns {number[]|null}
+   */
+  function parseProcessedPages(range, totalPages) {
+    const total = Number(totalPages);
+    if (!Number.isInteger(total) || total < 1) return null;
+    if (typeof range !== "string" && typeof range !== "number") return null;
+
+    const text = String(range).trim().replace(/\s*-\s*/g, "-");
+    if (text === "" || text.toLowerCase() === "all") return null;
+
+    const found = new Set();
+    for (const token of text.split(/[\s,]+/)) {
+      const single = /^(\d+)$/.exec(token);
+      const span = /^(\d+)-(\d+)$/.exec(token);
+      if (!single && !span) return null;
+
+      const first = Number(single ? single[1] : span[1]);
+      const last = Number(single ? single[1] : span[2]);
+      if (first < 1 || last < first) return null;
+
+      for (let page = first; page <= Math.min(last, total); page++) {
+        found.add(page);
+      }
+    }
+
+    const pages = Array.from(found).sort((a, b) => a - b);
+    if (pages.length === 0 || pages.length === total) return null;
+    return pages;
+  }
+
+  /**
+   * M-10bt-2: the one sentence the correction's user prompt gains when the
+   * attached PDF is trimmed. Says in plain words that the attachment holds
+   * only the processed pages, in order, and which document page each
+   * attached page is. Runs of three or more pages are given as a range.
+   *
+   * @param {number[]} pages - 1-based document pages, ascending
+   * @returns {string}
+   */
+  function describeAttachedPages(pages) {
+    const runs = [];
+    for (const page of pages) {
+      const run = runs[runs.length - 1];
+      if (run && page === run.last + 1) run.last = page;
+      else runs.push({ first: page, last: page });
+    }
+
+    const clauses = [];
+    let attached = 1;
+    for (const run of runs) {
+      const length = run.last - run.first + 1;
+      if (length > MAX_LISTED_RUN) {
+        clauses.push(
+          `its pages ${attached} to ${attached + length - 1} are pages ${run.first} to ${run.last} of the document`,
+        );
+      } else {
+        for (let i = 0; i < length; i++) {
+          clauses.push(`its page ${attached + i} is page ${run.first + i} of the document`);
+        }
+      }
+      attached += length;
+    }
+
+    const list =
+      clauses.length > 1
+        ? `${clauses.slice(0, -1).join(", ")} and ${clauses[clauses.length - 1]}`
+        : clauses[0];
+    return `The attached PDF holds only the pages that were processed, in their original order, so ${list}, and the page numbers above refer to the document and not to the attachment.`;
+  }
 
   /**
    * M-5y: the two browser wordings of "no response reached the page".
@@ -1017,6 +1150,181 @@
       missingIds,
       line: composeDescriptionsLostLine(missingIds.length, inputIds.size),
     };
+  }
+
+  /** The validation warning's message when a correction drops a page marker. */
+  const PAGE_MARKER_LOST_MESSAGE = "A page number marker was lost";
+
+  /**
+   * M-10ao: the page-marker guard. Page numbers are page furniture that code
+   * writes and the AI never does, so every marker in the reply whose number the
+   * input did not carry is REMOVED (M-10an: one reply wrote `<!-- page: 102 -->`
+   * the input never had) and a duplicate collapses to its first. A marker the
+   * input held and the reply lost is REPORTED, never refused: the page number
+   * can be written again later, and the correction is otherwise good.
+   *
+   * Returns the cleaned reply in `mmd`; the caller carries on with that text.
+   * An input with no markers and a reply with none is the identity. Without
+   * `window.MathPixPageMarkers` the reply comes back unchanged.
+   *
+   * MODULE SCOPE and pure for the same reason `findLostDescriptions` is.
+   *
+   * @param {string} originalMMD
+   * @param {string} replyMMD
+   * @returns {{ mmd: string, lost: boolean, lostCount: number, totalCount: number,
+   *   missingPages: number[], removedUnknown: number[],
+   *   collapsedDuplicates: number[], line: string }}
+   */
+  function findLostPageMarkers(originalMMD, replyMMD) {
+    const reply = String(
+      replyMMD === undefined || replyMMD === null ? "" : replyMMD,
+    );
+    const markers =
+      typeof window !== "undefined" ? window.MathPixPageMarkers : undefined;
+    if (!markers || typeof markers.keepKnownMarkers !== "function") {
+      logWarn("MathPixPageMarkers is not loaded — page markers are not checked");
+      return {
+        mmd: reply,
+        lost: false,
+        lostCount: 0,
+        totalCount: 0,
+        missingPages: [],
+        removedUnknown: [],
+        collapsedDuplicates: [],
+        line: PAGE_MARKER_LOST_MESSAGE,
+      };
+    }
+    const kept = markers.keepKnownMarkers(
+      String(originalMMD === undefined || originalMMD === null ? "" : originalMMD),
+      reply,
+    );
+    return {
+      mmd: kept.text,
+      lost: kept.lost.length > 0,
+      lostCount: kept.lost.length,
+      totalCount: kept.totalCount,
+      missingPages: kept.lost,
+      removedUnknown: kept.removedUnknown,
+      collapsedDuplicates: kept.collapsedDuplicates,
+      line: PAGE_MARKER_LOST_MESSAGE,
+    };
+  }
+
+  /** The validation warning's message when a correction adds a mark (M-10bj-2). */
+  const ADDED_MARK_MESSAGE =
+    "Added a tag, arrow or label the original did not have";
+
+  /** How many added marks the warning's detail names before "(and N more)". */
+  const ADDED_MARK_MAX_LISTED = 5;
+
+  /**
+   * M-10bj-2: the structural marks a correction can invent. A bracketed mark
+   * tag such as `[8]` (never the display delimiter `\[`), an arrow, or a label
+   * command with a `\text` label. Measured on three exam sheets and twelve
+   * fixture replies (`.claude/measurements/mai-10bj2-exam-prompt/`): it caught
+   * every invented tag, arrow and label and raised no false alarm. A wider
+   * "new words" check fired on 20 to 42 correct fixes a sheet and was dropped.
+   */
+  const ADDED_MARK_TAG = /(?<!\\)\[\d+\]/g;
+  const ADDED_MARK_ARROW =
+    /[←→⇒]|\\(?:leftarrow|rightarrow|Rightarrow|to)(?![A-Za-z])/g;
+  const ADDED_MARK_LABEL_HEAD = /\\(overset|underset|underbrace)(?![A-Za-z])/g;
+  // Lines from this heading on are the descriptions appendix, not the page.
+  const DESCRIPTIONS_HEADING = /^## Long descriptions/;
+  const PICTURE_LINE = /^(!\[|\\includegraphics|\\caption|\\begin\{figure|\\end\{figure)/;
+
+  /**
+   * Read one balanced `{...}` group that opens at `text[start]`.
+   * @returns {{ content: string, end: number } | null}
+   */
+  function readBraceGroup(text, start) {
+    if (text[start] !== "{") return null;
+    let depth = 0;
+    for (let i = start; i < text.length; i += 1) {
+      if (text[i] === "\\") {
+        i += 1;
+        continue;
+      }
+      if (text[i] === "{") depth += 1;
+      else if (text[i] === "}") {
+        depth -= 1;
+        if (depth === 0) return { content: text.slice(start + 1, i), end: i + 1 };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Every structural mark in `text`, each as `{ key, shown }`: `key` compares
+   * marks (a label's spaces ignored), `shown` is what the warning prints.
+   */
+  function structuralMarksOf(text) {
+    const marks = [];
+    (text.match(ADDED_MARK_TAG) || []).forEach((t) => marks.push({ key: t, shown: t }));
+    (text.match(ADDED_MARK_ARROW) || []).forEach((t) => marks.push({ key: t, shown: t }));
+    const skipSpaces = (i) => {
+      while (text[i] === " ") i += 1;
+      return i;
+    };
+    for (const m of text.matchAll(ADDED_MARK_LABEL_HEAD)) {
+      const command = m[1];
+      const first = readBraceGroup(text, skipSpaces(m.index + m[0].length));
+      if (!first) continue;
+      let label = null;
+      let end = first.end;
+      if (command === "underbrace") {
+        const at = skipSpaces(first.end);
+        if (text[at] !== "_") continue;
+        const second = readBraceGroup(text, skipSpaces(at + 1));
+        if (second && /\\text/.test(second.content)) {
+          label = second.content;
+          end = second.end;
+        }
+      } else if (/\\text/.test(first.content)) {
+        label = first.content;
+      }
+      if (label === null) continue;
+      marks.push({
+        key: `\\${command}:${label.replace(/\s+/g, "")}`,
+        shown: command === "underbrace" ? `\\underbrace{…}_{${label}}` : text.slice(m.index, end),
+      });
+    }
+    return marks;
+  }
+
+  /**
+   * M-10bj-2: the tags, arrows and labels the correction wrote that appear
+   * nowhere in the original. Lines the AI marked uncertain are skipped (it has
+   * already told the person), as are picture lines and the descriptions
+   * appendix. A line found verbatim in the original cannot hold a new mark, so
+   * only changed lines can fire.
+   *
+   * MODULE SCOPE and pure, like `findLostPageMarkers`.
+   *
+   * @param {string} originalMMD
+   * @param {string} enhancedMMD
+   * @param {Array<{contextLine: string}>} [uncertainty] uncertaintyMetadata
+   * @returns {Array<{ lineNumber: number, mark: string }>}
+   */
+  function findAddedStructuralMarks(originalMMD, enhancedMMD, uncertainty) {
+    const known = new Set(structuralMarksOf(String(originalMMD || "")).map((m) => m.key));
+    const uncertain = new Set(
+      (uncertainty || []).map((a) => String(a.contextLine || "").trim()),
+    );
+    const added = [];
+    const lines = String(enhancedMMD || "").split("\n");
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i].trim();
+      if (DESCRIPTIONS_HEADING.test(line)) break;
+      if (!line || PICTURE_LINE.test(line) || uncertain.has(line)) continue;
+      const seen = new Set();
+      structuralMarksOf(lines[i]).forEach((m) => {
+        if (known.has(m.key) || seen.has(m.key)) return;
+        seen.add(m.key);
+        added.push({ lineNumber: i + 1, mark: m.shown });
+      });
+    }
+    return added;
   }
 
   /**
@@ -1900,8 +2208,7 @@
           prefs.reasoningChosen === true || prefs.reasoning === true;
         if (this.reasoningChosen && typeof prefs.reasoning === "boolean") {
           this.reasoningEnabled = prefs.reasoning;
-          const box = document.getElementById("ai-reasoning-checkbox");
-          if (box) box.checked = this.reasoningEnabled;
+          this._syncReasoningBox();
           logDebug("Restored reasoning preference:", prefs.reasoning);
         } else {
           this._applyReasoningDefault();
@@ -1923,12 +2230,66 @@
      *
      */
     _applyReasoningDefault() {
-      if (this.reasoningChosen) return;
-      this.reasoningEnabled = REASONING_DEFAULT_ON_MODELS.includes(
-        this.selectedModel,
+      if (!this.reasoningChosen) {
+        this.reasoningEnabled = REASONING_DEFAULT_ON_MODELS.includes(
+          this.selectedModel,
+        );
+      }
+      this._syncReasoningBox();
+    }
+
+    /**
+     * M-10bl-2: does the selected model always reason? Asked of the capability
+     * module's public answer at CALL TIME, never cached (the module is a plain
+     * global that may load after this file). Module absent: behave as for an
+     * optional model and warn, never throw.
+     *
+     * @param {string} [modelId] - defaults to the selected model
+     * @returns {boolean}
+     */
+    _reasoningMandatory(modelId) {
+      const capability = window.MathPixModelCapability;
+      if (!capability || typeof capability.reasoningMandatory !== "function") {
+        logWarn(
+          "M-10bl-2: MathPixModelCapability.reasoningMandatory is unavailable; treating reasoning as optional.",
+        );
+        return false;
+      }
+      return (
+        capability.reasoningMandatory(
+          modelId === undefined ? this.selectedModel : modelId,
+        ) === true
       );
+    }
+
+    /**
+     * M-10bl-2: is reasoning on for the request and the estimate? A model that
+     * always reasons is on whatever the box last held; the person's own choice
+     * (reasoningEnabled / reasoningChosen) is left as it was, so it comes back
+     * if they switch to an optional model.
+     *
+     * @returns {boolean}
+     */
+    _reasoningOn() {
+      return this._reasoningMandatory() || this.reasoningEnabled === true;
+    }
+
+    /**
+     * M-10bl-2: make the checkbox (when present) show what will be sent. A
+     * mandatory model shows ticked and carries aria-disabled (never disabled, so
+     * it stays focusable); any other model shows the person's value and has the
+     * attribute removed. No announcement: the help text is the voice.
+     */
+    _syncReasoningBox() {
       const box = document.getElementById("ai-reasoning-checkbox");
-      if (box) box.checked = this.reasoningEnabled;
+      if (!box) return;
+      const mandatory = this._reasoningMandatory();
+      box.checked = mandatory || this.reasoningEnabled === true;
+      if (mandatory) {
+        box.setAttribute("aria-disabled", "true");
+      } else {
+        box.removeAttribute("aria-disabled");
+      }
     }
 
     /**
@@ -2620,11 +2981,8 @@
       // Load saved preferences before building UI
       this.loadEnhancerPreferences();
 
-      const costValue = this.calculateCost(this.selectedModel, estimatedTokens);
-      const costDisplay =
-        costValue !== null
-          ? this.formatCost(costValue)
-          : "Cost data unavailable";
+      // M-10j: after the preferences (and so the reasoning default) are applied
+      const costDisplay = this.getCostDisplayText();
 
       return `
       <div class="ai-enhance-configuration" data-state="configuration">
@@ -3438,7 +3796,11 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         </div>`;
 
       // --- Reasoning checkbox ---
-      const reasoningChecked = this.reasoningEnabled ? " checked" : "";
+      const reasoningChecked = this._reasoningOn() ? " checked" : "";
+      // M-10bl-2: a model that always reasons opens ticked and aria-disabled
+      const reasoningAriaDisabled = this._reasoningMandatory()
+        ? ' aria-disabled="true"'
+        : "";
       const reasoningHelpText = this.getReasoningHelpText(this.selectedModel);
 
       const reasoningHTML = `
@@ -3446,7 +3808,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
           <label class="ai-reasoning-label">
             <input type="checkbox"
                    id="ai-reasoning-checkbox"
-                   ${reasoningChecked}
+                   ${reasoningChecked}${reasoningAriaDisabled}
                    onchange="window.handleAIReasoningChange(this.checked)"
                    aria-describedby="ai-reasoning-help" />
             Enable extended thinking
@@ -3685,6 +4047,12 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       ).toFixed(0);
       const withinLimit =
         pdfBlob.size <= AI_ENHANCER_CONFIG.MAX_PDF_SIZE_FOR_ENHANCEMENT;
+      // M-10bt-3: with a trim plan the limit is judged on the trimmed PDF,
+      // whose size is only known once it is made. The size shown is then the
+      // whole source's, labelled as such, and the status says what will be
+      // checked instead of claiming a refusal that will not happen.
+      const hasPlan = !!this.getTrimPlan();
+      const sizeLabel = hasPlan ? "Size of whole PDF" : "Size";
       const estimatedBase64MB = ((pdfBlob.size * 1.37) / (1024 * 1024)).toFixed(
         2,
       );
@@ -3694,19 +4062,55 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         "mistral-ocr": "Mistral OCR (best for scanned documents)",
       };
 
-      const statusText = withinLimit
-        ? "Will be attached"
-        : `Exceeds ${maxSizeMB} MB limit`;
+      let statusText = "Will be attached";
+      if (!withinLimit) {
+        statusText = hasPlan
+          ? `The whole PDF is over the ${maxSizeMB} MB limit. Only the processed pages will be attached, and the limit is checked on those when you send`
+          : `Exceeds ${maxSizeMB} MB limit`;
+      }
+      const warn = !withinLimit && !hasPlan;
 
       fileInfoDl.innerHTML = `
         <dt>File</dt>
         <dd>${this.escapeHtml(filename)}</dd>
-        <dt>Size</dt>
+        <dt>${sizeLabel}</dt>
         <dd>${sizeMB} MB (${estimatedBase64MB} MB as base64)</dd>
         <dt>Processing engine</dt>
         <dd>${this.escapeHtml(engineLabels[engine] || engine)}</dd>
         <dt>Status</dt>
-        <dd class="${withinLimit ? "" : "ai-preview-file-warning"}">${statusText}</dd>`;
+        <dd class="${warn ? "ai-preview-file-warning" : ""}">${statusText}</dd>`;
+    }
+
+    /**
+     * M-10bt-3: the refusal for a PDF over the limit. One message, naming the
+     * size of the PDF that would be sent.
+     *
+     * @param {number} sizeBytes
+     * @returns {Error}
+     */
+    buildPdfTooLargeError(sizeBytes) {
+      const maxSize = AI_ENHANCER_CONFIG.MAX_PDF_SIZE_FOR_ENHANCEMENT;
+      const sizeMB = (sizeBytes / (1024 * 1024)).toFixed(1);
+      const maxMB = (maxSize / (1024 * 1024)).toFixed(0);
+      return new Error(
+        `PDF too large for AI enhancement: ${sizeMB}MB (maximum ${maxMB}MB). ` +
+          `Large PDFs can cause timeouts. Try processing a smaller document or fewer pages.`,
+      );
+    }
+
+    /**
+     * M-10bt-3: the pre-flight size check, before any expensive work. With a
+     * trim plan the check waits for the trimmed PDF (attachPDF applies it);
+     * with none it judges the whole source exactly as before.
+     *
+     * @param {Blob} pdfBlob - the whole source PDF
+     * @throws {Error} when the whole PDF will be sent and is over the limit
+     */
+    checkPdfSizeBeforeAttach(pdfBlob) {
+      const maxSize = AI_ENHANCER_CONFIG.MAX_PDF_SIZE_FOR_ENHANCEMENT;
+      if (pdfBlob.size <= maxSize) return;
+      if (this.getTrimPlan()) return;
+      throw this.buildPdfTooLargeError(pdfBlob.size);
     }
 
     /**
@@ -3854,6 +4258,13 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
      * @param {boolean} enabled - Whether reasoning is enabled
      */
     handleReasoningChange(enabled) {
+      // M-10bl-2: a model that always reasons cannot be unticked. The toggle is
+      // put back, no choice is recorded, and nothing is announced.
+      if (this._reasoningMandatory()) {
+        logDebug("Reasoning toggle ignored: this model always reasons");
+        this._syncReasoningBox();
+        return;
+      }
       logDebug("Reasoning changed:", enabled);
       this.reasoningEnabled = enabled;
       this.reasoningChosen = true; // M-10g: from here the person's choice rules
@@ -3883,6 +4294,14 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
      * @returns {string} Help text for the reasoning checkbox
      */
     getReasoningHelpText(modelId) {
+      // M-10bl-2: a model that always reasons says so, in plain words.
+      if (this._reasoningMandatory(modelId)) {
+        return (
+          "This model always thinks before it answers, so this cannot be turned off. " +
+          "Thinking is billed as output, and the estimate below includes it."
+        );
+      }
+
       const modelKey = this.getModelKeyById(modelId);
       const modelDef = modelKey ? this.models?.[modelKey] : null;
 
@@ -3949,7 +4368,9 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
      * @returns {Object} Reasoning config for the embed constructor
      */
     buildReasoningConfig() {
-      if (!this.reasoningEnabled) {
+      // M-10bl-2: a model that always reasons is sent enabled whatever the box
+      // last held (before this, an unticked or default-off one got no key).
+      if (!this._reasoningOn()) {
         return { enabled: false };
       }
 
@@ -3981,34 +4402,360 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       const costElement = document.getElementById("ai-cost-value");
       if (!costElement) return;
 
-      const estimatedTokens = Math.ceil(
-        this.originalMMD.length / AI_ENHANCER_CONFIG.CHARS_PER_TOKEN,
+      costElement.textContent = this.getCostDisplayText();
+    }
+
+    /**
+     * M-10j: the estimate text for the current settings. Shared by the opening
+     * markup (buildConfigurationContent) and updateCostDisplay, so the box opens
+     * showing the figure a reselect would show (it used to open on the bare
+     * model cost, missing the reasoning, multi-pass and OCR-engine factors).
+     * Pure: writes nothing.
+     *
+     * @returns {string}
+     */
+    getCostDisplayText() {
+      const range = this.estimateCostRange();
+      if (range === null) return "Cost data unavailable";
+
+      const low = this.formatCost(range.low);
+      const high = this.formatCost(range.high);
+
+      // One figure when the two ends format the same (reasoning off, or a
+      // range too narrow to show). Otherwise "about $L to $H".
+      if (low === high) return low;
+      const stripTilde = (text) => text.replace(/^~/, "");
+      return `about ${stripTilde(low)} to ${stripTilde(high)}`;
+    }
+
+    /**
+     * M-10br-3: the correction's cost as a RANGE, in US dollars. Pure: writes
+     * nothing and announces nothing. `calculateCost` is left as it was (the
+     * actual-cost path shares it); this prices the real request instead.
+     *
+     *   input  = (system prompt + user prompt, in characters) / 2.7 (low)
+     *            or 2.0 (high) + the PDF's pages as attachPDF sends them x 1,590
+     *   output = the visible reply (MMD chars / 1.8 low, / 1.3 high) + reasoning
+     *   reasoning = REASONING_LOW_MULTIPLE .. REASONING_HIGH_MULTIPLE x the
+     *               MMD's tokens (MMD chars / 4), only when _reasoningOn()
+     *
+     * The prompts are built at each estimate (M-10br-2 measured the slowest
+     * buildUserPrompt at 17.9 ms cold, 6 ms warm, on the largest exam sheet).
+     * buildUserPrompt records the two analyser results on the instance; they
+     * are put back so this stays free of side effects.
+     * The PDF term counts the pages attachPDF will send: the pages MathPix
+     * processed when the PDF is trimmed (M-10bt-2), else the whole document.
+     * It applies to the `native` engine only.
+     * Multi-pass x1.5 and the Mistral OCR surcharge apply to both ends.
+     *
+     * @returns {{low:number, high:number, pdfPages:(number|null),
+     *   inputTokens:number}|null} null when the model has no price
+     */
+    estimateCostRange() {
+      const prices = this._modelPricesPerToken(this.selectedModel);
+      if (prices === null) return null;
+
+      const mmd = this.originalMMD || "";
+      // Reasoning is a multiple of the MMD's tokens at chars / 4, the
+      // definition the multiples were measured on (M-10bn).
+      const mmdTokens = Math.ceil(mmd.length / AI_ENHANCER_CONFIG.CHARS_PER_TOKEN);
+      const promptChars = this._estimatePromptChars(mmd);
+
+      // The PDF term: only when a PDF will be attached on the measured engine.
+      // M-10bt-2: the pages that WILL be attached, the processed ones when
+      // the PDF is trimmed, else the whole document's.
+      const trimPlan = this.getTrimPlan();
+      const pdfPages = trimPlan
+        ? trimPlan.pages.length
+        : this.getSourcePageCount();
+      const sendsPdf =
+        this.selectedEngine === "native" && !!this.getSourcePDF();
+      const pdfTokens =
+        sendsPdf && pdfPages !== null
+          ? pdfPages * ESTIMATE_BOUNDS.PDF_TOKENS_PER_PAGE
+          : 0;
+
+      // Each part is bounded by its own measured extremes (M-10br-3): the LOW
+      // cost takes the highest chars-a-token rate, the HIGH cost the lowest.
+      const inputTokensLow =
+        Math.ceil(promptChars / ESTIMATE_BOUNDS.PROMPT_CHARS_PER_TOKEN_LOW) +
+        pdfTokens;
+      const inputTokensHigh =
+        Math.ceil(promptChars / ESTIMATE_BOUNDS.PROMPT_CHARS_PER_TOKEN_HIGH) +
+        pdfTokens;
+      const reasoningOn = this._reasoningOn();
+      const costAt = (inputTokens, replyCharsPerToken, reasoningMultiple) => {
+        const replyTokens = Math.ceil(mmd.length / replyCharsPerToken);
+        const reasoningTokens = reasoningOn ? mmdTokens * reasoningMultiple : 0;
+        return (
+          inputTokens * prices.input +
+          (replyTokens + reasoningTokens) * prices.output
+        );
+      };
+
+      let low = costAt(
+        inputTokensLow,
+        ESTIMATE_BOUNDS.REPLY_CHARS_PER_TOKEN_LOW,
+        ESTIMATE_BOUNDS.REASONING_LOW_MULTIPLE,
       );
-      let cost = this.calculateCost(this.selectedModel, estimatedTokens);
+      let high = costAt(
+        inputTokensHigh,
+        ESTIMATE_BOUNDS.REPLY_CHARS_PER_TOKEN_HIGH,
+        ESTIMATE_BOUNDS.REASONING_HIGH_MULTIPLE,
+      );
 
-      if (cost !== null) {
-        // Add Mistral OCR engine surcharge ($2 per 1000 pages, estimate 1 page minimum)
-        if (this.selectedEngine === "mistral-ocr") {
-          const estimatedPages = Math.max(
-            1,
-            Math.ceil(this.originalMMD.split("\n").length / 60),
-          );
-          cost += (estimatedPages / 1000) * 2.0;
-        }
+      // Add Mistral OCR engine surcharge ($2 per 1000 pages, estimate 1 page minimum)
+      if (this.selectedEngine === "mistral-ocr") {
+        const estimatedPages = Math.max(
+          1,
+          Math.ceil(mmd.split("\n").length / 60),
+        );
+        const surcharge = (estimatedPages / 1000) * 2.0;
+        low += surcharge;
+        high += surcharge;
+      }
 
-        // Multi-pass doubles the LLM cost (Pass 2 uses same model)
-        if (this.multiPassEnabled) {
-          cost *= 1.5;
-        }
+      // Multi-pass doubles the LLM cost (Pass 2 uses same model)
+      if (this.multiPassEnabled) {
+        low *= 1.5;
+        high *= 1.5;
+      }
 
-        // Reasoning adds ~30% token overhead (billed separately)
-        if (this.reasoningEnabled) {
-          cost *= 1.3;
+      return {
+        low,
+        high,
+        pdfPages: sendsPdf ? pdfPages : null,
+        inputTokensLow,
+        inputTokens: inputTokensHigh,
+      };
+    }
+
+    /**
+     * M-10br-2: the characters the request's two text prompts carry. Builds the
+     * real system and user prompts (analysis blocks included). If the MMD or
+     * the semantic analysers are not on the page, or building throws, falls
+     * back to the MMD's characters plus the system prompt, which is what the
+     * request carries at the least. Restores the two `last*Analysis` fields
+     * that buildUserPrompt overwrites.
+     *
+     * @param {string} mmd
+     * @returns {number}
+     */
+    _estimatePromptChars(mmd) {
+      const systemChars = this.buildSystemPrompt().length;
+      const analysersPresent =
+        typeof window.getMathPixMMDAnalyser === "function" &&
+        typeof window.getMathPixSemanticMapper === "function";
+      if (!analysersPresent) return systemChars + mmd.length;
+
+      const keptStructural = this.lastStructuralAnalysis;
+      const keptSemantic = this.lastSemanticAnalysis;
+      try {
+        return systemChars + this.buildUserPrompt(mmd).length;
+      } catch (err) {
+        logWarn("Estimate: could not build the user prompt:", err.message);
+        return systemChars + mmd.length;
+      } finally {
+        this.lastStructuralAnalysis = keptStructural;
+        this.lastSemanticAnalysis = keptSemantic;
+      }
+    }
+
+    /**
+     * M-10br-2: price per token (USD) for a model, from the prompts file's
+     * per-1K figures or the registry's per-1M figures. null when none.
+     * Mirrors the lookup in calculateCost, which is shared and not changed.
+     *
+     * @param {string} modelId
+     * @returns {{input:number, output:number}|null}
+     */
+    _modelPricesPerToken(modelId) {
+      const promptsModel = Object.values(this.models || {}).find(
+        (m) => m.id === modelId,
+      );
+      if (
+        promptsModel &&
+        typeof promptsModel.costPer1kInput === "number" &&
+        typeof promptsModel.costPer1kOutput === "number"
+      ) {
+        return {
+          input: promptsModel.costPer1kInput / 1000,
+          output: promptsModel.costPer1kOutput / 1000,
+        };
+      }
+
+      if (typeof window.modelRegistry?.getAllModels === "function") {
+        const registryModel = window.modelRegistry
+          .getAllModels()
+          .find((m) => m.id === modelId);
+        if (registryModel?.costs) {
+          return {
+            input: (registryModel.costs.input || 0) / 1_000_000,
+            output: (registryModel.costs.output || 0) / 1_000_000,
+          };
         }
       }
 
-      costElement.textContent =
-        cost !== null ? this.formatCost(cost) : "Cost data unavailable";
+      logWarn("No cost data for model:", modelId);
+      return null;
+    }
+
+    /**
+     * M-10br-2: the number of pages in the source PDF, which is what attachPDF
+     * sends (the whole file). Read from the active session: a restored
+     * session's `totalPdfPages`, or the upload result's `totalPages` /
+     * `pageCount`. null when it is not recorded.
+     *
+     * @returns {number|null}
+     */
+    getSourcePageCount() {
+      const provider = this.ensureDataProvider();
+      if (!provider) return null;
+
+      let total;
+      if (provider.mode === "resume") {
+        total = this.getSessionRestorer()?.restoredSession?.totalPdfPages;
+      } else {
+        const renderer = window.getMathPixController?.()?.pdfResultRenderer;
+        total =
+          renderer?.currentResults?.processingMetadata?.totalPages ??
+          renderer?.documentInfo?.pageCount;
+      }
+
+      const pages = Number(total);
+      return Number.isFinite(pages) && pages > 0 ? pages : null;
+    }
+
+    /**
+     * M-10bt-2: the processed-pages string for the active session ("2-3",
+     * "all", a typed list), read the way the data provider reads it. The
+     * provider's own text is shared with the Context tab and is not changed.
+     *
+     * @returns {string} the range, or "" when none is recorded
+     */
+    getSourcePageRange() {
+      const provider = this.ensureDataProvider();
+      if (!provider) return "";
+
+      let range;
+      if (provider.mode === "resume") {
+        range = this.getSessionRestorer()?.restoredSession?.pageRange;
+      } else {
+        const renderer = window.getMathPixController?.()?.pdfResultRenderer;
+        range =
+          renderer?.currentResults?.processingMetadata?.pageRange ||
+          renderer?.documentInfo?.pageRange;
+      }
+
+      return range === undefined || range === null ? "" : String(range);
+    }
+
+    /**
+     * M-10bt-2: which pages the correction will attach, or null when the
+     * whole PDF goes (range "all", empty, unparsable, or no page count).
+     * The same parsed range drives the trim, the prompt sentence and the
+     * estimate.
+     *
+     * @returns {{pages:number[], range:string, total:number}|null}
+     */
+    getTrimPlan() {
+      const range = this.getSourcePageRange();
+      if (!range) return null;
+
+      const total = this.getSourcePageCount();
+      const pages = parseProcessedPages(range, total);
+      return pages ? { pages, range, total } : null;
+    }
+
+    /**
+     * M-10bt-2: load the PDF writer once, only when a trim needs it, with
+     * Subresource Integrity and no credentials. Reuses a library already on
+     * the page. Rejects when the load fails, the integrity check fails or
+     * the 20-second limit passes; the caller then sends the whole PDF.
+     *
+     * @param {{URL:string, INTEGRITY:string}} [spec] - tests pass a wrong integrity
+     * @returns {Promise<Object>} the library's global
+     */
+    _loadPdfLib(spec = PDF_LIB_LOADER) {
+      const present = window[PDF_LIB_LOADER.GLOBAL_NAME];
+      if (present && present.PDFDocument) return Promise.resolve(present);
+      if (this._pdfLibLoading) return this._pdfLibLoading;
+
+      const loading = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        const timer = setTimeout(() => {
+          script.remove();
+          reject(new Error("pdf-lib load timed out"));
+        }, PDF_LIB_LOADER.TIMEOUT_MS);
+
+        script.onload = () => {
+          clearTimeout(timer);
+          const lib = window[PDF_LIB_LOADER.GLOBAL_NAME];
+          if (lib && lib.PDFDocument) resolve(lib);
+          else reject(new Error("pdf-lib loaded but its global is missing"));
+        };
+        script.onerror = () => {
+          clearTimeout(timer);
+          script.remove();
+          reject(new Error("pdf-lib failed to load (network or integrity)"));
+        };
+
+        script.src = spec.URL;
+        script.integrity = spec.INTEGRITY;
+        script.crossOrigin = "anonymous";
+        document.head.appendChild(script);
+      });
+
+      this._pdfLibLoading = loading;
+      const clear = () => {
+        this._pdfLibLoading = null;
+      };
+      loading.then(clear, clear);
+      return loading;
+    }
+
+    /**
+     * M-10bt-2: copy the named pages of the source PDF into a new, smaller
+     * PDF. Any failure (the library does not load, the source is not the
+     * expected length, the trim throws, the output has the wrong page count)
+     * returns null with a warning, and the caller sends the whole PDF.
+     *
+     * @param {Blob} pdfBlob - the whole source PDF
+     * @param {{pages:number[], total:number}} plan
+     * @returns {Promise<Blob|null>}
+     */
+    async trimPdfToPages(pdfBlob, plan) {
+      try {
+        const lib = await this._loadPdfLib();
+        const bytes = new Uint8Array(await pdfBlob.arrayBuffer());
+        const source = await lib.PDFDocument.load(bytes, {
+          ignoreEncryption: true,
+        });
+        if (source.getPageCount() !== plan.total) {
+          throw new Error(
+            `source has ${source.getPageCount()} pages, expected ${plan.total}`,
+          );
+        }
+
+        const target = await lib.PDFDocument.create();
+        const copied = await target.copyPages(
+          source,
+          plan.pages.map((page) => page - 1),
+        );
+        copied.forEach((page) => target.addPage(page));
+        const out = await target.save();
+
+        const written = await lib.PDFDocument.load(out);
+        if (written.getPageCount() !== plan.pages.length) {
+          throw new Error(
+            `trimmed file has ${written.getPageCount()} pages, expected ${plan.pages.length}`,
+          );
+        }
+        return new Blob([out], { type: "application/pdf" });
+      } catch (err) {
+        logWarn("PDF trim failed; sending the whole PDF:", err.message);
+        return null;
+      }
     }
     /**
      * Calculate estimated cost for enhancement
@@ -5035,13 +5782,25 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
      * @param {string} mmdContent - Current MMD content
      * @returns {string} Complete chain-of-thought user prompt
      */
-    buildUserPrompt(mmdContent) {
+    buildUserPrompt(mmdContent, attachedPages) {
       const parts = [];
 
       // Phase H.3: Add page range context for partial processing
       const pageRangeContext = this.getPageRangeContext();
       if (pageRangeContext) {
         parts.push(pageRangeContext);
+      }
+
+      // M-10bt-2: when the attached PDF holds only the processed pages, say
+      // so after the shared provider's wording. `attachedPages` is the list
+      // actually attached (null: the whole PDF); left out, the planned trim
+      // is used, which is what the preview and the estimate show.
+      const trimmedPages =
+        attachedPages === undefined
+          ? (this.getTrimPlan()?.pages ?? null)
+          : attachedPages;
+      if (trimmedPages && trimmedPages.length > 0) {
+        parts.push(describeAttachedPages(trimmedPages));
       }
 
       // STEP 1 — Document understanding
@@ -5429,6 +6188,31 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         throw new Error("File utilities not available");
       }
 
+      // M-10bt-2: send only the pages MathPix processed. Any failure keeps
+      // the whole PDF, byte for byte; the pages actually attached are kept
+      // so the prompt describes the file that is sent.
+      this._lastAttachedPages = null;
+      const plan = this.getTrimPlan();
+      if (plan) {
+        const trimmed = await this.trimPdfToPages(pdfBlob, plan);
+        if (trimmed) {
+          logInfo("PDF trimmed to the processed pages", {
+            pages: plan.pages,
+            fromBytes: pdfBlob.size,
+            toBytes: trimmed.size,
+          });
+          pdfBlob = trimmed;
+          this._lastAttachedPages = plan.pages;
+        }
+      }
+
+      // M-10bt-3: the limit applies to the PDF that will be sent. A failed
+      // trim leaves the whole PDF, so an oversize source is still refused.
+      if (pdfBlob.size > AI_ENHANCER_CONFIG.MAX_PDF_SIZE_FOR_ENHANCEMENT) {
+        this._lastAttachedPages = null;
+        throw this.buildPdfTooLargeError(pdfBlob.size);
+      }
+
       // Create File object from blob
       const filename = this.getSourceFilename();
       const file = new File([pdfBlob], filename, { type: "application/pdf" });
@@ -5775,15 +6559,10 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         }
 
         // Pre-flight: Check PDF size before expensive base64 conversion
+        // M-10bt-3: with a trim plan the limit is judged on the trimmed PDF
+        // inside attachPDF; with none, on the whole source, as before.
         const maxSize = AI_ENHANCER_CONFIG.MAX_PDF_SIZE_FOR_ENHANCEMENT;
-        if (pdfBlob.size > maxSize) {
-          const sizeMB = (pdfBlob.size / (1024 * 1024)).toFixed(1);
-          const maxMB = (maxSize / (1024 * 1024)).toFixed(0);
-          throw new Error(
-            `PDF too large for AI enhancement: ${sizeMB}MB (maximum ${maxMB}MB). ` +
-              `Large PDFs can cause timeouts. Try processing a smaller document or fewer pages.`,
-          );
-        }
+        this.checkPdfSizeBeforeAttach(pdfBlob);
 
         this.logTiming("SIZE_CHECK_PASSED", {
           pdfSize: pdfBlob.size,
@@ -5814,7 +6593,10 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         // Yield — CRITICAL: let "Enhancing..." render before the API call
         await new Promise((r) => setTimeout(r, 0));
 
-        const userPrompt = this.buildUserPrompt(this.originalMMD);
+        const userPrompt = this.buildUserPrompt(
+          this.originalMMD,
+          this._lastAttachedPages ?? null,
+        );
 
         // Phase 7.3: Log before API call with full diagnostic dump
         // This auto-logs BEFORE the potentially blocking call so data is
@@ -6027,13 +6809,32 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
           return;
         }
 
+        // M-10ao: page numbers are page furniture and the AI never writes
+        // them. Drop any page marker the input did not carry (and collapse a
+        // duplicate); a marker the input held and the reply lost becomes a
+        // validation warning later, never a refusal. Reached through the
+        // STATIC like the guards above. The cleaned reply is what carries on.
+        const pageMarkers = MathPixAIEnhancer.findLostPageMarkers(
+          this.originalMMD,
+          replyMMD,
+        );
+        if (
+          pageMarkers.removedUnknown.length > 0 ||
+          pageMarkers.collapsedDuplicates.length > 0
+        ) {
+          logWarn("Removed page markers the AI wrote", {
+            removedUnknown: pageMarkers.removedUnknown,
+            collapsedDuplicates: pageMarkers.collapsedDuplicates,
+          });
+        }
+
         // M-5q: a correction never changes a picture description. Put back
         // the original body of any the reply changed and keep the rest. The
         // person is told once, inside the completion line (no new voice).
         this.descriptionKeysRestored = new Set();
         const restored = MathPixAIEnhancer.restoreDescriptionBodies(
           this.originalMMD,
-          replyMMD,
+          pageMarkers.mmd,
         );
         restored.restoredKeys.forEach((key) =>
           this.descriptionKeysRestored.add(key),
@@ -6102,10 +6903,25 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
                 );
                 return;
               }
+              // M-10ao: the page-marker guard on Pass 2, against the original
+              // (the same known set as Pass 1), so Pass 2 cannot add one either.
+              const pass2PageMarkers = MathPixAIEnhancer.findLostPageMarkers(
+                this.originalMMD,
+                verifiedMMD,
+              );
+              if (
+                pass2PageMarkers.removedUnknown.length > 0 ||
+                pass2PageMarkers.collapsedDuplicates.length > 0
+              ) {
+                logWarn("Removed page markers the AI wrote in Pass 2", {
+                  removedUnknown: pass2PageMarkers.removedUnknown,
+                  collapsedDuplicates: pass2PageMarkers.collapsedDuplicates,
+                });
+              }
               // M-5q: the same repair on Pass 2, against the original.
               const pass2Restored = MathPixAIEnhancer.restoreDescriptionBodies(
                 this.originalMMD,
-                verifiedMMD,
+                pass2PageMarkers.mmd,
               );
               pass2Restored.restoredKeys.forEach((key) =>
                 this.descriptionKeysRestored.add(key),
@@ -6709,6 +7525,36 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       })();
       if (mathsWarning) {
         warnings.push(mathsWarning);
+      }
+
+      // M-10ao: a page number marker the input held and the enhanced text lost
+      // is a warning, never a refusal (the page number can be written again).
+      const pageMarkerCheck = findLostPageMarkers(originalMMD, enhancedMMD);
+      if (pageMarkerCheck.lost) {
+        warnings.push({
+          severity: "warning",
+          message: PAGE_MARKER_LOST_MESSAGE,
+          detail: `Page ${pageMarkerCheck.missingPages.join(", ")} (${pageMarkerCheck.lostCount} of ${pageMarkerCheck.totalCount} markers)`,
+        });
+      }
+
+      // M-10bj-2: a tag such as [8], an arrow or a \text label the original
+      // never had, on a line the AI did not mark uncertain. One warning per run.
+      const addedMarks = findAddedStructuralMarks(
+        originalMMD,
+        enhancedMMD,
+        this && this.uncertaintyMetadata,
+      );
+      if (addedMarks.length > 0) {
+        const shown = addedMarks.slice(0, ADDED_MARK_MAX_LISTED);
+        const more = addedMarks.length - shown.length;
+        warnings.push({
+          severity: "warning",
+          message: ADDED_MARK_MESSAGE,
+          detail:
+            shown.map((a) => `line ${a.lineNumber}: ${a.mark}`).join("; ") +
+            (more > 0 ? ` (and ${more} more)` : ""),
+        });
       }
 
       logInfo("Validation complete:", {
@@ -8419,6 +9265,14 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
   // inverts the product and the seam rows together.
   MathPixAIEnhancer.describeProviderFailure = describeProviderFailure;
 
+  /** M-10br-2: the range's measured constants, so rows can pin them. */
+  MathPixAIEnhancer.ESTIMATE_BOUNDS = ESTIMATE_BOUNDS;
+
+  /** M-10bt-2: the trim's parser, sentence and loader spec, so rows can pin them. */
+  MathPixAIEnhancer.parseProcessedPages = parseProcessedPages;
+  MathPixAIEnhancer.describeAttachedPages = describeAttachedPages;
+  MathPixAIEnhancer.PDF_LIB_LOADER = PDF_LIB_LOADER;
+
   // M-5y: the bare-fetch-failure describer and its two lines, published on the
   // same terms so the rows assert the sentences by identity and one patch of
   // the static inverts the send path and the rows together.
@@ -8445,6 +9299,11 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
   MathPixAIEnhancer.extractPictureRefs = extractPictureRefs;
   MathPixAIEnhancer.composePicturesLostLine = composePicturesLostLine;
   MathPixAIEnhancer.findLostDescriptions = findLostDescriptions;
+  // M-10ao: the page-marker guard, published on the same terms.
+  MathPixAIEnhancer.findLostPageMarkers = findLostPageMarkers;
+  MathPixAIEnhancer.PAGE_MARKER_LOST_MESSAGE = PAGE_MARKER_LOST_MESSAGE;
+  // M-10bj-2: the added-mark warning's message, for the rows.
+  MathPixAIEnhancer.ADDED_MARK_MESSAGE = ADDED_MARK_MESSAGE;
   MathPixAIEnhancer.restoreDescriptionBodies = restoreDescriptionBodies;
   MathPixAIEnhancer.composeDescriptionsLostLine = composeDescriptionsLostLine;
 

@@ -95,6 +95,45 @@ const PROCESSING_CONFIG = {
 const TEMP_CONTAINER_STYLE =
   "position:fixed;visibility:hidden;pointer-events:none;left:0;top:0;width:800px;height:0;overflow:hidden;";
 
+// MRC-43: dev-only switch that renders through MarkdownRenderCore instead of the
+// bridge's own markdown-it instance. Off unless the dev harness flag AND this key
+// are both set, so the default path is unchanged for everyone.
+const CORE_FLAG_KEY = "md-bridge-core";
+const CORE_FLAG_ON = "1";
+const DEV_HARNESS_FLAG_KEY = "dev-test-harnesses";
+const DEV_HARNESS_FLAG_ON = "true";
+
+// Counts renders that went through the core, so a run can PROVE the flagged path
+// ran. Absent from window until the first flagged render (nothing on a default load).
+const CORE_COUNTER_NAME = "__mrcBridgeCount";
+
+// Editor option set (MRC-28) plus plain task lists, which is the markup Chat's
+// renderers have always emitted (MRC-36 taskListStyle). Everything else is the
+// core's default, which MRC-37 measured as equal or better for Chat.
+const CORE_BRIDGE_OPTIONS = Object.freeze({
+  anchorStyle: "inside",
+  figureRole: false,
+  tocSlugMatchesAnchor: false,
+  longInlineMathScrolls: false,
+  containerInit: [],
+  mermaidDefaults: { width: 70, height: 100, lockAspectRatio: false },
+  taskListStyle: "plain",
+  // MRC-47: Chat's contents list has always been numbered; NVDA speaks "1.", "2." (position), the core's bullets speak glyphs.
+  tocListType: "ol",
+  // MRC-74: AI output never needs {.class}, and the plugin deletes a trailing {...} from prose (JSON, {name}, bare \frac{a}{b}). Owner ruling, 12 November 2026.
+  attrs: false,
+});
+
+// MRC-43: markPrices runs inside the core's render AND again inside
+// MathProtect's restore, and it is not idempotent: the second pass wraps the
+// first pass's "$" a second time. Measured on 03-tables and 09-maths. The flagged
+// path collapses the nested pair back to the single wrapper the default path emits.
+const PRICE_MARK_DOUBLE =
+  /<span class="mathjax-ignore"><span class="mathjax-ignore">\$<\/span><\/span>/g;
+const PRICE_MARK_SINGLE = '<span class="mathjax-ignore">$</span>';
+
+let coreMissingWarned = false;
+
 export class MarkdownItBridge extends ContentProcessorBase {
   /**
    * Create a new MarkdownItBridge instance
@@ -139,6 +178,7 @@ export class MarkdownItBridge extends ContentProcessorBase {
    */
   createDebouncedProcess() {
     let timeoutId = null;
+    let maxTimeoutId = null; // One maximum-wait timer per pending burst (MRC-71)
     let lastCallTime = 0;
     let lastArgs = null;
     let leadingProcessed = false;
@@ -196,6 +236,11 @@ export class MarkdownItBridge extends ContentProcessorBase {
       // ✅ Trailing edge: Process after delay
       const trailingPromise = new Promise((resolve, reject) => {
         timeoutId = setTimeout(() => {
+          // Null the id once the timer has fired, otherwise the maximum-wait guard below
+          // stays true for the instance's life and every burst gets a stale second pass.
+          timeoutId = null;
+          clearTimeout(maxTimeoutId);
+          maxTimeoutId = null;
           leadingProcessed = false;
           this.lastProcessedHash = contentHash;
           logInfo("⏱️ Processing content after debounce delay (trailing edge)");
@@ -212,9 +257,12 @@ export class MarkdownItBridge extends ContentProcessorBase {
         }, PROCESSING_CONFIG.DEBOUNCE_DELAY);
 
         // ✅ Maximum wait safeguard
-        setTimeout(() => {
+        if (!maxTimeoutId)
+          maxTimeoutId = setTimeout(() => {
+          maxTimeoutId = null;
           if (timeoutId) {
             clearTimeout(timeoutId);
+            timeoutId = null;
             leadingProcessed = false;
             this.lastProcessedHash = this.generateContentHash(lastArgs[0]);
             logInfo("⏰ Processing content after maximum wait time");
@@ -464,10 +512,14 @@ export class MarkdownItBridge extends ContentProcessorBase {
   async processWithMarkdownEditor(content, container, processingId) {
     return new Promise((resolve, reject) => {
       try {
+        // MRC-43: the flag is read per render. Off (the default), the
+        // statements below run exactly as they always have.
+        const useCore = this.shouldUseRenderCore();
+
         logDebug(`🔧 Creating MarkdownIt instance (ID: ${processingId})`);
 
         // Access MarkdownEditor's internal markdown-it instance
-        const md = this.createMarkdownItInstance();
+        const md = useCore ? null : this.createMarkdownItInstance();
 
         logDebug(`🔧 Rendering markdown content (ID: ${processingId})`);
 
@@ -489,11 +541,19 @@ export class MarkdownItBridge extends ContentProcessorBase {
         }
 
         const math = canProtect ? mathProtect.protect(content) : null;
-        let htmlResult = md.render(math ? math.text : content);
+        let htmlResult = useCore
+          ? this.renderThroughCore(math ? math.text : content)
+          : md.render(math ? math.text : content);
         if (math) {
           // Restore BEFORE enhanceHeaderAnchors, which rewrites heading markup
           // and must not have to reason about placeholder comments inside one.
           htmlResult = math.restore(htmlResult);
+          if (useCore) {
+            htmlResult = htmlResult.replace(
+              PRICE_MARK_DOUBLE,
+              PRICE_MARK_SINGLE
+            );
+          }
           logDebug(
             `🔧 Restored ${math.count} protected maths span(s) (ID: ${processingId})`
           );
@@ -501,7 +561,12 @@ export class MarkdownItBridge extends ContentProcessorBase {
 
         logDebug(`🔧 Enhancing header anchors (ID: ${processingId})`);
 
-        // Apply the same enhancements as MarkdownEditor
+        // Apply the same enhancements as MarkdownEditor. The flagged path runs
+        // it too, after the restore above: the core labels anchors while this
+        // file's maths placeholders (HTML comments, skipped by textContent)
+        // are still in a heading, so its label loses the equation (MRC-59).
+        // Relabelling here gives both arms the same text; it is idempotent
+        // for a heading with no maths.
         htmlResult = this.enhanceHeaderAnchors(htmlResult);
 
         logDebug(`🔧 Setting container content (ID: ${processingId})`);
@@ -525,6 +590,53 @@ export class MarkdownItBridge extends ContentProcessorBase {
         reject(error);
       }
     });
+  }
+
+  /**
+   * MRC-43: decide, per render, whether to use MarkdownRenderCore. The flag is
+   * read at call time because the core is a gated dev script that loads after
+   * this file. Flag on but core absent runs the old path and warns once.
+   * @returns {boolean} true when the core path should run
+   */
+  shouldUseRenderCore() {
+    let flagOn = false;
+    try {
+      flagOn =
+        localStorage.getItem(DEV_HARNESS_FLAG_KEY) === DEV_HARNESS_FLAG_ON &&
+        localStorage.getItem(CORE_FLAG_KEY) === CORE_FLAG_ON;
+    } catch (error) {
+      return false;
+    }
+    if (!flagOn) return false;
+
+    if (!window.MarkdownRenderCore) {
+      if (!coreMissingWarned) {
+        coreMissingWarned = true;
+        logWarn(
+          "md-bridge-core flag is on but MarkdownRenderCore is not loaded; using the bridge's own render path"
+        );
+      }
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * MRC-43: render (already MathProtect-stashed) markdown to an HTML string
+   * through the core, with its messages routed to this file's log helpers.
+   * @param {string} markdownText - Markdown with maths already stashed
+   * @returns {string} HTML, maths placeholders not yet restored
+   */
+  renderThroughCore(markdownText) {
+    window[CORE_COUNTER_NAME] = (window[CORE_COUNTER_NAME] || 0) + 1;
+    const options = Object.assign({}, CORE_BRIDGE_OPTIONS, {
+      report: {
+        debug: (message, ...args) => logDebug(message, ...args),
+        warn: (message, ...args) => logWarn(message, ...args),
+        error: (message, err) => logError(message, err),
+      },
+    });
+    return window.MarkdownRenderCore.render(markdownText, options);
   }
 
   /**
@@ -898,6 +1010,7 @@ export class MarkdownItBridge extends ContentProcessorBase {
       { name: "container", plugin: window.markdownitContainer },
       { name: "anchor", plugin: window.markdownItAnchor },
       { name: "toc", plugin: window.markdownItTocDoneRight },
+      // MRC-74: deliberately OFF for AI output. This lowercase name is never defined, so the plugin is not installed; do not "fix" it (the core path sets attrs: false for the same reason).
       { name: "attrs", plugin: window.markdownitAttrs },
       { name: "multimd-table", plugin: window.markdownitMultimdTable },
       { name: "implicit-figures", plugin: window.markdownitImplicitFigures },

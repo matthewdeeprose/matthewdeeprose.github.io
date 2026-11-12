@@ -61,6 +61,14 @@
   position: relative;
 }
 
+/* Dragging to pan must not select the labels under the pointer, whether the
+   drag starts on the diagram or on the space around it. Only the diagram area
+   is affected; the toolbar and the description panel stay selectable. */
+.mermaid-container.fullscreen-mode .mermaid {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .mermaid-zoomable {
   transform-origin: 0 0;
   transition: transform 0.1s ease-out;
@@ -123,18 +131,17 @@
 }
 
 .mermaid-pan-zoom-controls .btn:nth-child(5) {
-  /* Third row: down button in middle column */
-  order: 4;
-  grid-column: 2;
-}
-
-.mermaid-pan-zoom-controls .btn:nth-child(6) {
-  /* Third row: left button */
+  /* Second row: left button (DOM order is up, down, left, right, reset) */
   order: 3;
 }
 
+.mermaid-pan-zoom-controls .btn:nth-child(6) {
+  /* Second row: right button */
+  order: 4;
+}
+
 .mermaid-pan-zoom-controls .btn:nth-child(7) {
-  /* Third row: right button */
+  /* Third row: reset view */
   order: 5;
 }
 /* SVG icon styling */

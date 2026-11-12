@@ -226,6 +226,23 @@
     }
   }
 
+  // A name that draws nothing is only white space and Unicode format
+  // characters (the project's emptiness test). It is tested, never trimmed into
+  // the narrated bytes.
+  const EMPTY_NAME_PATTERN = /^[\s\p{Cf}]*$/u;
+
+  // An empty-named `state "" <<choice>>` is drawn by Mermaid and held in its
+  // db, but has no name to narrate. It enters the parse under a synthetic id
+  // that no author text can equal (it opens with a NUL) and is named through
+  // displayNames, the seam every other name already crosses (7 November 2026,
+  // docs/mermaid-empty-name-fix-2026-11-07.md).
+  const UNLABELLED_CHOICE_ID_PREFIX = "\u0000unlabelled-choice-";
+  const UNLABELLED_CHOICE_PHRASE = "unlabelled choice point";
+  const EMPTY_NAMED_CHOICE_PATTERN =
+    /^state\s+"([^"{}]*)"\s*<<\s*choice\s*>>/;
+  // `id : description`, read only to know which names a description line holds.
+  const DESCRIPTION_LINE_PATTERN = /^([^\s:]+)\s*:\s*\S/;
+
   /**
    * Clean state name to handle quoted strings and special formats
    * @param {string} stateName - The raw state name from the diagram
@@ -792,10 +809,30 @@
     // empties). Such a state stays out of displayNames, so every site names
     // it by its id; the state list discloses the empty name.
     const emptyNames = {};
+    // Synthetic ids of the empty-named choice points, in declaration order.
+    const unlabelledChoiceIds = [];
 
     // Parse line by line
     const lines = code.split("\n");
+
+    // The names a description line (`z : text`) holds. Mermaid holds a state
+    // for such a line, so a bare `state z` declaration that one names is kept.
+    const describedNames = new Set();
     for (const line of lines) {
+      const described = line.trim().match(DESCRIPTION_LINE_PATTERN);
+      if (described) describedNames.add(described[1]);
+    }
+
+    // Lines the description-line rule below must not read: the frontmatter
+    // block, and the body of a multi-line `accDescr { ... }`.
+    const frontmatterMatch = FRONTMATTER_PATTERN.exec(code);
+    const frontmatterLineCount = frontmatterMatch
+      ? frontmatterMatch[0].split("\n").length -
+        (frontmatterMatch[0].endsWith("\n") ? 1 : 0)
+      : 0;
+    let inAccDescrBlock = false;
+
+    for (const [lineIndex, line] of lines.entries()) {
       const trimmedLine = line.trim();
 
       // Skip empty lines, the stateDiagram declaration, and comments
@@ -805,6 +842,31 @@
         trimmedLine.startsWith("%")
       ) {
         continue;
+      }
+
+      // A state given only by a description line (`z : Some text`) is held by
+      // Mermaid and drawn, so it is a state here (measured on 11.17.2,
+      // 7 November 2026: the db entry and the canvas match the declared form).
+      // Not read: frontmatter, the accessible title and description (held as
+      // no state), and a transition written without spaces (`a-->b: x`).
+      // The line carries on to the handlers below, which ignore it.
+      if (inAccDescrBlock) {
+        if (trimmedLine.includes("}")) inAccDescrBlock = false;
+        continue;
+      }
+      if (/^accDescr\s*\{/.test(trimmedLine) && !trimmedLine.includes("}")) {
+        inAccDescrBlock = true;
+        continue;
+      }
+      if (lineIndex >= frontmatterLineCount) {
+        const described = trimmedLine.match(DESCRIPTION_LINE_PATTERN);
+        if (
+          described &&
+          !/^acc(?:Title|Descr)$/.test(described[1]) &&
+          !described[1].includes("-->")
+        ) {
+          allStates.add(described[1]);
+        }
       }
 
       // Handle composite state definitions - state StateName { ... }
@@ -866,7 +928,11 @@
         );
         if (match) {
           const stateName = match[1] || match[2] || match[3];
-          allStates.add(stateName);
+          // A bare declaration holds nothing in Mermaid and draws nothing
+          // (measured on 11.17.2, 7 November 2026: `state ""`, `state 'Zed'`,
+          // `state z`). Only a description line for the same name holds the
+          // state, so only then is the name added here.
+          if (describedNames.has(stateName)) allStates.add(stateName);
           logDebug("[Mermaid Accessibility] Found simple state:", stateName);
         }
         continue;
@@ -899,9 +965,24 @@
         continue;
       }
 
+      // Handle a choice state whose double-quoted name draws nothing: Mermaid
+      // draws and holds it, so it is counted and read as an unlabelled choice
+      // point. The pattern below needs one character or more, so it never saw
+      // `state "" <<choice>>`.
+      const emptyChoice = trimmedLine.match(EMPTY_NAMED_CHOICE_PATTERN);
+      if (emptyChoice && EMPTY_NAME_PATTERN.test(emptyChoice[1])) {
+        const choiceId = `${UNLABELLED_CHOICE_ID_PREFIX}${unlabelledChoiceIds.length + 1}`;
+        unlabelledChoiceIds.push(choiceId);
+        allStates.add(choiceId);
+        logDebug("[Mermaid Accessibility] Found unlabelled choice state");
+        continue;
+      }
+
       // Handle choice states
       if (trimmedLine.match(/^state\s+"?[^"{}]+"?\s*<<\s*choice\s*>>/)) {
-        const match = trimmedLine.match(/^state\s+("?[^"{}]+"?)/);
+        // The capture stops at `<<`: a bare `state Zed <<choice>>` names the
+        // state Zed, not a second state `Zed <<choice>>` (7 November 2026).
+        const match = trimmedLine.match(/^state\s+("?[^"{}<]+?"?)\s*<</);
         if (match) {
           allStates.add(cleanStateName(match[1]));
           logDebug(
@@ -973,6 +1054,15 @@
         );
       }
     }
+
+    // Name the unlabelled choice points: numbered in declaration order when
+    // there are two or more, so the reader can tell them apart.
+    unlabelledChoiceIds.forEach((choiceId, index) => {
+      displayNames[choiceId] =
+        unlabelledChoiceIds.length > 1
+          ? `${UNLABELLED_CHOICE_PHRASE} ${index + 1}`
+          : UNLABELLED_CHOICE_PHRASE;
+    });
 
     const parsedResult = {
       stateTransitions,

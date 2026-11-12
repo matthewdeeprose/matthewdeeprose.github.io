@@ -799,3 +799,72 @@
   font-size: 0.85em;
   opacity: 0.8;
 }
+
+/* Register 66 (RA-108, RA-109): a focus ring the key rows can show. The section's
+   overflow: hidden (above) cuts off any ring drawn outside the summary, so the
+   global summary ring never showed here. Draw it inside the row instead; style,
+   width and colour still come from the theme sheets (and the forced-colours rule
+   at the end of main.css). 0-2-1 with !important beats both. */
+.setup-credential-section > summary:focus-visible {
+  outline-offset: -0.3rem !important;
+}
+
+/* Register 68 (RA-114, RA-116): at 320 px the title and status badge no longer
+   fit on one line, and the section's overflow: hidden cut the badge ("Not
+   configured" read "configu"). Let the row wrap so the badge drops below. */
+.setup-credential-section > summary {
+  flex-wrap: wrap;
+}
+
+/* Register 68 (RA-121): the four Ally file pickers (Set Up and the Ally page share
+   these rules; this sheet loads on both) are a drop zone, copied from Captions
+   Fixer's .captions-fixer-upload-area: a dashed box that turns solid on hover and
+   while a file is dragged over it, and takes the focus ring when the visually
+   hidden native input is focused. The box fills the row like the group's other
+   inputs; the native control it replaces needed 291 px and was cut at 320. Border
+   and ring are currentColor, so they follow both themes and forced colours. The
+   box sits inside the section's padding, so its ring is not cut by the section's
+   overflow: hidden. ally-tenant-ui.js binds the click and the drop. */
+.setup-file-drop {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 0 0 0.4rem;
+  padding: 0.75rem 1rem;
+  border: 2px dashed currentColor;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.setup-file-drop:hover {
+  border-style: solid;
+}
+
+.setup-file-drop.setup-file-drop-active {
+  border-style: solid;
+  border-width: 3px;
+  padding: calc(0.75rem - 1px) calc(1rem - 1px); /* keeps the box from growing */
+}
+
+.setup-file-drop:has(input:focus-visible) {
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+}
+
+.setup-file-drop-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem; /* the group's label above is 20 px; the prompt reads as a prompt, not a second heading */
+  font-weight: 600;
+}
+
+.setup-file-drop-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.setup-file-drop-name {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}

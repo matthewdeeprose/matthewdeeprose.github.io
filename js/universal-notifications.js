@@ -26,6 +26,11 @@ const UniversalNotifications = (function () {
   // Current logging level
   let currentLogLevel = DEFAULT_LOG_LEVEL;
 
+  // Set on a keydown event once a toast system has acted on it, so the other
+  // toast file's listener (same event, later in the same dispatch) leaves it alone.
+  // Symbol.for gives both files the same key without a global.
+  const ESCAPE_HANDLED = Symbol.for("mp73.toastEscapeHandled");
+
   function shouldLog(level) {
     if (DISABLE_ALL_LOGGING) return false;
     if (ENABLE_ALL_LOGGING) return true;
@@ -100,6 +105,7 @@ const UniversalNotifications = (function () {
       this.duplicateWindowMs = 2000; // 2 second window to suppress duplicates
 
       this._trackFocusOutside();
+      this._bindEscapeToClose();
 
       logInfo(
         "Notification manager created (container will be initialised when needed)",
@@ -704,6 +710,42 @@ const UniversalNotifications = (function () {
         if (target === document.body || target === document.documentElement) return;
         if (target.closest(".gb-toast-container, .gb-toast")) return;
         for (const toastData of this.toasts.values()) toastData.returnFocusTo = target;
+      });
+    }
+
+    /**
+     * Escape closes ONE toast per press: the newest on screen, whichever toast
+     * system raised it. Both toast files write into one container on tools.html,
+     * so "newest" is the last live .gb-toast in document order; only the manager
+     * that owns that element acts, which keeps two listeners to one close.
+     * Ignored while a dialogue is open (UniversalModal or a native <dialog>), for
+     * a repeat, a composition, a modified key, or a key already handled. Focus is
+     * left where it is, unless it was inside the toast being closed. Adds no
+     * announcement: the toast was already spoken when it appeared.
+     */
+    _bindEscapeToClose() {
+      document.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape" || e[ESCAPE_HANDLED]) return;
+        if (e.defaultPrevented || e.isComposing || e.repeat) return;
+        if (e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+        if (this.isModalActive() || document.querySelector("dialog:modal, dialog[open]")) return;
+
+        const live = Array.from(document.querySelectorAll(".gb-toast")).filter(
+          (el) => el.getAttribute("data-dismissing") !== "true",
+        );
+        const newest = live[live.length - 1];
+        if (!newest) return;
+
+        const owned = Array.from(this.toasts.entries()).find(([, data]) => data.element === newest);
+        if (!owned) return;
+
+        e[ESCAPE_HANDLED] = true;
+        const [toastId] = owned;
+        const focusInToast = newest.contains(document.activeElement);
+        this.dismiss(toastId, { returnFocus: focusInToast });
+        // A close that does not move focus has not marked the toast as leaving,
+        // so mark it here: a second press must reach the next toast, not this one.
+        newest.setAttribute("data-dismissing", "true");
       });
     }
 

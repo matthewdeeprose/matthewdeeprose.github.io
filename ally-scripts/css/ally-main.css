@@ -4854,3 +4854,17 @@ span.ally-sp-disclosure-text {
   padding: 0.5rem 1rem;
   line-height: 1.5;
 }
+
+/* Register 66 (RA-108, RA-109): the Ally key rows' ring, drawn inside the row,
+   because .ally-credentials-details has overflow: hidden. The theme sheets'
+   own -2px offset loses to the global summary:focus-visible (!important); this
+   wins: 0-2-0 !important, and this sheet loads after main.css. */
+.ally-credentials-summary:focus-visible {
+  outline-offset: -0.3rem !important;
+}
+
+/* Register 68 (RA-114, RA-116): let the row wrap at narrow widths so its text
+   is not cut by the section's overflow: hidden. */
+.ally-credentials-summary {
+  flex-wrap: wrap;
+}

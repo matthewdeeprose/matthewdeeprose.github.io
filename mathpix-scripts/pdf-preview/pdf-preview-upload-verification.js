@@ -414,6 +414,17 @@ export class PDFUploadVerification {
   }
 
   /**
+   * End the wait for Yes or No without either answer (parcel P20).
+   * Used when another file takes over the confirmation step. It hides the box and clears its
+   * state, and calls neither callback, so no "Upload cancelled" toast and no second voice.
+   */
+  abandon() {
+    logInfo("Upload preview abandoned: another file took over the confirmation step");
+    this.hide();
+    this.cleanup();
+  }
+
+  /**
    * Hide the upload preview
    */
   hide() {

@@ -144,6 +144,17 @@ window.ToolRegistry = (function () {
   const FIELDSET_ID = "toolSelection";
   const WRAPPER_SELECTOR = ".tool-option-wrapper";
   const FLAG_CLASS = "tool-flag";
+
+  /**
+   * Text character placed after a tool's name when it carries a badge.
+   * The label is a flex row, so the name and the badge are separate flex items
+   * with only a CSS gap between them, and NVDA's browse mode read them as one
+   * word ("MathPixBeta"). Listen of 8 November 2026 (Chrome): a no-break space
+   * after the name was read "Ally Reporting Beta"; a visually hidden space
+   * span between them was NOT enough. Harmless to code that reads the name,
+   * because trim() strips it.
+   */
+  const NAME_FLAG_SEPARATOR = " ";
   const QUICK_START_SELECTOR = ".setup-quick-start-list";
   const TOOL_COUNT_SELECTOR = "[data-tool-count]";
 
@@ -202,6 +213,22 @@ window.ToolRegistry = (function () {
     container
       .querySelectorAll(`.${FLAG_CLASS}`)
       .forEach((existing) => existing.remove());
+  }
+
+  /**
+   * Put the separator after the tool's name when it has a badge, and remove it
+   * when it has none. Idempotent, so applying twice cannot stack separators.
+   *
+   * @param {HTMLElement} wrapper
+   * @param {{hasFlag: boolean}} options
+   */
+  function separateNameFromFlag(wrapper, { hasFlag }) {
+    const nameSpan = wrapper.querySelector(".radio");
+    if (!nameSpan) return;
+
+    const name = nameSpan.textContent.trim();
+    const wanted = hasFlag ? name + NAME_FLAG_SEPARATOR : name;
+    if (nameSpan.textContent !== wanted) nameSpan.textContent = wanted;
   }
 
   /**
@@ -289,6 +316,7 @@ window.ToolRegistry = (function () {
       clearExistingFlag(wrapper);
       const flag = buildFlag(tool.status, tool.value);
       if (flag) wrapper.appendChild(flag);
+      separateNameFromFlag(wrapper, { hasFlag: Boolean(flag) });
 
       ordered.push(wrapper);
     });

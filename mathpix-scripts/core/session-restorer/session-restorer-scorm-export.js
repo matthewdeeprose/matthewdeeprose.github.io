@@ -800,7 +800,25 @@
     if (typeof window.markdownToHTML !== "function") {
       throw new Error("The markdown renderer has not loaded yet.");
     }
-    const renderedHTML = window.markdownToHTML(stripped.mmd, EXPORT_RENDER_OPTIONS);
+    // PM-1 (PM-D1e): page furniture is placed on a render copy, after the
+    // appendix strip. The copy has no markers; a placeholder token stands at
+    // each page start and is swapped for the Read Aloud contract's element
+    // LAST, after promoteParagraphs. Any failure falls back to a plain strip.
+    let furniture = null;
+    let renderMMD = stripped.mmd;
+    if (typeof window.MathPixPageMarkers?.placePageFurniture === "function") {
+      try {
+        furniture = window.MathPixPageMarkers.placePageFurniture(stripped.mmd);
+        renderMMD = furniture.text;
+      } catch (furnitureErr) {
+        furniture = null;
+        renderMMD = MathPixSessionRestorer.prototype._stripPageMarkers.call(this, stripped.mmd);
+        logWarn("scorm export: page furniture could not be placed; markers stripped", furnitureErr);
+      }
+    } else {
+      renderMMD = MathPixSessionRestorer.prototype._stripPageMarkers.call(this, stripped.mmd);
+    }
+    const renderedHTML = window.markdownToHTML(renderMMD, EXPORT_RENDER_OPTIONS);
 
     // --- 5. post-pass ------------------------------------------------------
     setStatus("Applying image descriptions…");
@@ -819,7 +837,22 @@
     } else {
       logWarn("scorm export: paragraph promotion unavailable, paragraphs stay as divs");
     }
-    const content = doc.body.innerHTML;
+    let content = doc.body.innerHTML;
+
+    // PM-1 (PM-D1e): the swap runs last, on the promoted body.
+    if (furniture) {
+      const swapped = furniture.swap(content);
+      content = swapped.html;
+      stats.pageFurniture = {
+        placed: swapped.swapped,
+        placements: furniture.placements,
+        unplaced: furniture.unplaced,
+        left: swapped.left,
+      };
+      if (furniture.unplaced.length || swapped.left.length) {
+        logWarn("scorm export: page furniture not fully placed", stats.pageFurniture);
+      }
+    }
 
     if (stats.misses.length) {
       logWarn(

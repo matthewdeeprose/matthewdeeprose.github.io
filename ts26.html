@@ -41,6 +41,7 @@
     <link rel="stylesheet" href="md-scripts/css/markdown-editor.css" />
     <link rel="stylesheet" href="md-scripts/css/mermaid-view-controls.css" />
     <link rel="stylesheet" href="md-scripts/css/chart-view-controls.css" />
+    <link rel="stylesheet" href="md-scripts/css/graph-builder.css" />
     <link
       rel="stylesheet"
       href="md-scripts/css/mermaid-description-styles.css"
@@ -109,7 +110,9 @@
     />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 
-    <!-- MathJax for mathematical notation -->
+    <!-- MathJax for mathematical notation. The configuration (and the SI unit macros it reads) must come before the MathJax script. -->
+    <script src="scorm-builder/source/templates/js/si-macros.js"></script>
+    <script src="md-scripts/markdown-utils/mathjax-content-config.js"></script>
     <script
       type="text/javascript"
       id="MathJax-script"
@@ -141,9 +144,13 @@
         vertical-align: middle;
       }
     </style>
+    <script src="js/universal-notifications.js"></script>
   </head>
 
   <body>
+    <span class="sr-only" role="status" aria-live="polite" id="a11y-sr-announce"></span>
+    <span class="sr-only" role="alert" aria-live="assertive" id="a11y-sr-alert"></span>
+    <script src="accessibility-announcer.js"></script>
     <div class="page-wrap" id="start">
       <a class="skip-link" id="skipToContent" href="#main">Skip to content</a>
 
@@ -622,7 +629,7 @@
     <script src="https://matthewdeeprose.github.io/markdownit/chart.min.js"></script>
 
     <!-- Mermaid for diagrams -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@11.6.0/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js"></script>
     <script>
       // Initialise Mermaid
       if (window.mermaid) {
@@ -665,19 +672,50 @@
     <script src="md-scripts/mermaid/mermaid-accessibility-export-utils.js"></script>
     <script src="md-scripts/mermaid/mermaid-diagram-detection.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-common.js"></script>
+    <script src="md-scripts/mermaid/mermaid-parse-adapter.js"></script>
+    <script src="md-scripts/mermaid/mermaid-type-primers.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-core.js"></script>
     <script src="md-scripts/mermaid/mermaid-export-utils.js"></script>
+    <script src="vendor/chart-describe/src/text.js"></script>
+    <script src="vendor/chart-describe/src/model.js"></script>
+    <script src="vendor/chart-describe/src/render.js"></script>
+    <script src="vendor/chart-describe/src/charts-shared.js"></script>
+    <script src="vendor/chart-describe/src/charts-xychart.js"></script>
+    <script src="vendor/chart-describe/src/charts-pie.js"></script>
+    <script src="vendor/chart-describe/src/charts-radar.js"></script>
+    <script src="vendor/chart-describe/src/charts.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-flowchart.js"></script>
-    <script src="md-scripts/mermaid/mermaid-accessibility-flowchart-complex.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-sequence.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-pie.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-gantt.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-state.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-mindmap.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-block.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-c4.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-kanban.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-radar.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-info.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-requirement.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-packet.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-treemap.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-venn.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-treeview.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-ishikawa.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-wardley.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-cynefin.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-architecture.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-quadrant.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-er.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-class.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-git.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-sankey.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-xychart.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-timeline.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-user-journey.js"></script>
+
+    <!-- Maths protection and the shared render core, both needed by the loader -->
+    <script src="js/math-protect.js"></script>
+    <script src="md-scripts/markdown-utils/markdown-render-core.js"></script>
 
     <!-- THE MARKDOWN PAGE LOADER - This does the magic -->
     <script src="md-scripts/markdown-utils/markdown-page-loader.js"></script>

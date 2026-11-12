@@ -197,8 +197,10 @@ const MermaidAccessibilityPieChart = (function () {
   function parseSegments(code, svgElement) {
     logDebug("Parsing segments from code and SVG");
 
-    // Parse from mermaid code first (more reliable)
-    const pieSegmentPattern = /"([^"]+)"\s*:\s*(\d+\.?\d*)/g;
+    // Parse from mermaid code first (more reliable). The name may be empty ("" : 30):
+    // Mermaid holds and draws that slice, so it passes through with its name as
+    // written and the chart core's own emptiness test names it.
+    const pieSegmentPattern = /"([^"]*)"\s*:\s*(\d+\.?\d*)/g;
     let segments = [];
     let match;
 

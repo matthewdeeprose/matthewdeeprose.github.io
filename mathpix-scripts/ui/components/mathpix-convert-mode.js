@@ -1959,12 +1959,17 @@ class MathPixConvertMode {
     const downloadLead = `${this.completedDownloads.size} ${fileWord} ready for download.`;
 
     // Notify user
+    // WCX (6 November 2026): a Word file without heading styles cannot be
+    // navigated by heading, so that line is an error, which stays until dismissed.
     if (this.completedDownloads.size > 0 && errors.length === 0) {
-      this.showNotification(`${downloadLead}${headingsClause}`, "success");
+      this.showNotification(
+        `${downloadLead}${headingsClause}`,
+        docxHeadingsFailed ? "error" : "success",
+      );
     } else if (this.completedDownloads.size > 0) {
       this.showNotification(
         `${downloadLead}${headingsClause} ${failures}`,
-        "warning",
+        docxHeadingsFailed ? "error" : "warning",
       );
     } else {
       this.showNotification(`All conversions failed. ${failures}`, "error");

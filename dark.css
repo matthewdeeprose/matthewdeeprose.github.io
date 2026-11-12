@@ -4908,17 +4908,19 @@ main a.gb-skip-progress-link:focus {
   color: #fffff4;
   border-right: 1px solid #fffff4;
 }
-/* Sort Button Styles. HOV-2b: keyboard focus only; hover takes the global tint. */
+/* Sort Button Styles. HOV-2b: keyboard focus only; hover takes the global tint.
+   MRC-19: no border at rest, hover or focus, so the header is the same height as in light
+   and nothing jumps; the rest width 0 comes from sortable-table.css and the global
+   button:hover border (0.2rem !important) is overridden below. */
 .mdSortableTable-sort-button:focus-visible {
   outline: 2px solid #fffff4 !important;
-  border: 0.2rem solid #495961 !important;
   box-shadow: 0 0 0 0rem #005c84 !important;
   color: #fffff4;
   background: none;
 }
 
-.mdSortableTable-sort-button {
-  border: 0.2rem solid #495961 !important;
+.mdSortableTable-sort-button:hover:not(:where(:focus-visible)) {
+  border: 0 !important;
 }
 
 /* Table Body Styles */
@@ -8031,4 +8033,10 @@ pre.language-json {
     background: #b3dbd2 !important;
     color: #00131d !important;
   }
+}
+
+/* RA-99: Read Aloud controls bar. Page background and text colours; the buttons take the global button treatment. */
+.tts-controls-bar {
+  background: #161415;
+  color: #e1e8ec;
 }

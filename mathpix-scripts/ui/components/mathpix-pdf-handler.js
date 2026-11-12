@@ -559,10 +559,13 @@ class MathPixPDFHandler extends MathPixBaseModule {
       if (formatInfo?.showPdfPreview) {
         // PDF format - show full PDF preview
         return new Promise((resolve) => {
+          // Parcel P20: lets a later non-PDF file end this wait without a toast or an announcement
+          this.settlePdfPreviewQuietly = () => resolve(false);
           this.uploadVerification.showUploadPreview(
             pdfFile,
             // onConfirm callback - user confirmed file is correct
             (confirmedFile) => {
+              this.settlePdfPreviewQuietly = null;
               logInfo("User confirmed document upload", {
                 fileName: confirmedFile.name,
                 format: formatName,
@@ -579,6 +582,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
             },
             // onCancel callback - user cancelled
             () => {
+              this.settlePdfPreviewQuietly = null;
               logInfo("User cancelled document upload during preview");
 
               // Announce cancellation to screen readers
@@ -4016,6 +4020,23 @@ class MathPixPDFHandler extends MathPixBaseModule {
   }
 
   /**
+   * @method abandonPdfPreview
+   * @description Ends a waiting PDF "Verify Your Upload" box without Yes or No (parcel P20).
+   * Hides the box, clears its state and resolves the pending wait as "not this file", through
+   * neither callback, so there is no "Upload cancelled" toast and no announcement.
+   *
+   * @returns {boolean} True if a PDF box was waiting
+   */
+  abandonPdfPreview() {
+    const settle = this.settlePdfPreviewQuietly;
+    if (typeof settle !== "function") return false;
+    this.settlePdfPreviewQuietly = null;
+    this.uploadVerification.abandon();
+    settle();
+    return true;
+  }
+
+  /**
    * @method showSimpleFilePreview
    * @description Shows simple file information preview for non-PDF formats (Phase 4)
    *
@@ -4049,6 +4070,10 @@ class MathPixPDFHandler extends MathPixBaseModule {
       format: formatName,
       size: sizeFormatted,
     });
+
+    // Parcel P20: a PDF's "Verify Your Upload" box may still be waiting for Yes or No. This file's
+    // own box is the one to answer now, so end that wait quietly and hide the old box.
+    this.abandonPdfPreview();
 
     // Show the PDF interface container
     const pdfInterface = document.getElementById("mathpix-pdf-interface");

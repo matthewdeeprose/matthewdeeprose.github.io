@@ -123,6 +123,30 @@
   };
 
   /**
+   * PM-1 (PM-D1c): page markers are page furniture, never part of what the
+   * converter receives. Applied at each converter call site and to the
+   * convert-size readout's input, and never inside getMMDForAPI (its second
+   * caller writes the result back to currentMMD and would delete the markers).
+   * Returns the text unchanged when the module is absent or the input is not
+   * a string.
+   * @param {string} text
+   * @returns {string}
+   * @private
+   */
+  proto._stripPageMarkers = function (text) {
+    const markers = window.MathPixPageMarkers;
+    if (typeof text !== "string" || typeof markers?.stripMarkers !== "function") {
+      return text;
+    }
+    try {
+      return markers.stripMarkers(text);
+    } catch (error) {
+      logWarn("stripMarkers threw; text left as it was", error);
+      return text;
+    }
+  };
+
+  /**
    * Decide the band-transition announcement. Pure. Returns null on the first
    * compute (previousBand null) and when the band is unchanged, so a freshly
    * loaded document never startles and steady editing stays silent. Otherwise
@@ -205,7 +229,8 @@
       if (!readoutEl) return; // enhancement absent — nothing to update
       const detailEl = this.elements?.convertSizeDetail;
 
-      const mmd = this.getCurrentMMDContent();
+      // PM-1 (PM-D1c): the readout sizes what the converter will receive.
+      const mmd = proto._stripPageMarkers.call(this, this.getCurrentMMDContent());
       if (!mmd) {
         readoutEl.hidden = true;
         readoutEl.textContent = "";
@@ -500,7 +525,9 @@
 
     // Canonical read, shared by both branches. No longer reassigned here — the
     // API branch does its own image embedding on a local copy.
-    const mmdContent = this.getCurrentMMDContent();
+    // PM-1 (PM-D1c): the converter, and the docx heading map that reads the
+    // same text, never see a page marker.
+    const mmdContent = proto._stripPageMarkers.call(this, this.getCurrentMMDContent());
     if (!mmdContent) {
       this.showNotification(
         "No MMD content available for conversion.",
@@ -631,15 +658,20 @@
     // screen reader speaks as "format s". Zero takes the plural.
     const readyCount = this.conversionResults.size;
     const readyLine = `${readyCount} ${readyCount === 1 ? "format" : "formats"} ready to download.`;
+    // WCX (6 November 2026): a file that lost its headings or alt text is one a
+    // reader may be unable to navigate or understand, so the line is an error.
+    // An error toast stays until dismissed; a success or plain warning vanishes.
+    // The appendix-copies clause alone is information and keeps its type.
+    const accessibilityLost = Boolean(headingsClause || altClause || htmlAltClause);
     if (this.conversionResults.size > 0 && failureLines === "") {
       this.showNotification(
         `${readyLine}${copiesClause}${headingsClause}${altClause}${htmlAltClause}`,
-        "success",
+        accessibilityLost ? "error" : "success",
       );
     } else if (this.conversionResults.size > 0) {
       this.showNotification(
         `${readyLine}${copiesClause}${headingsClause}${altClause}${htmlAltClause} ${failureLines}`,
-        "warning",
+        accessibilityLost ? "error" : "warning",
       );
     } else if (failureLines !== "") {
       this.showNotification(`Conversion failed. ${failureLines}`, "error");
@@ -942,6 +974,7 @@
           docx,
           expected.alts,
           expected.decorative,
+          expected.shapes,
         );
         this.conversionResults.set("docx", result.blob);
         this._docxAltFailed = result.failed;

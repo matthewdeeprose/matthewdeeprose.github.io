@@ -5,6 +5,14 @@
 import { ContentProcessorBase } from "./results-manager-content-base.js";
 import { ContentProcessorUtils } from "./results-manager-content-utils.js";
 
+// The visible Copy/Copied label sits in an aria-hidden span, so only the
+// button's constant aria-label is read and the swap itself is not spoken
+// (the same shape as MarkdownCodeCopy, MRC-45).
+const COPY_LABEL_CLASS = "code-copy-button-label";
+const COPY_TEXT = "Copy";
+const COPIED_TEXT = "Copied";
+const COPIED_RESET_MS = 2000;
+
 export class CodeContentProcessor extends ContentProcessorBase {
   /**
    * Create a new CodeContentProcessor instance
@@ -259,7 +267,7 @@ export class CodeContentProcessor extends ContentProcessorBase {
     try {
       const copyButton = document.createElement("button");
       copyButton.className = "code-copy-button";
-      copyButton.innerHTML = `${this.processorUtils.getCopyButtonIcon()} Copy`;
+      copyButton.innerHTML = `${this.processorUtils.getCopyButtonIcon()} <span class="${COPY_LABEL_CLASS}" aria-hidden="true">${COPY_TEXT}</span>`;
       copyButton.setAttribute("aria-label", "Copy code to clipboard");
       copyButton.setAttribute("type", "button");
 
@@ -288,14 +296,9 @@ export class CodeContentProcessor extends ContentProcessorBase {
         navigator.clipboard
           .writeText(code)
           .then(() => {
-            const originalContent = button.innerHTML;
-            button.innerHTML = `${this.processorUtils.getCopyButtonIcon()} Copied`;
+            this.showCopiedState(button);
 
             this.announceToScreenReader("Code snippet copied to clipboard");
-
-            setTimeout(() => {
-              button.innerHTML = originalContent;
-            }, 2000);
           })
           .catch((error) => {
             this.utils.log("Error copying to clipboard", { error }, "error");
@@ -330,18 +333,42 @@ export class CodeContentProcessor extends ContentProcessorBase {
       document.body.removeChild(textarea);
 
       if (successful) {
-        const originalContent = button.innerHTML;
-        button.innerHTML = `${this.processorUtils.getCopyButtonIcon()} Copied`;
+        this.showCopiedState(button);
 
         this.announceToScreenReader("Code snippet copied to clipboard");
-
-        setTimeout(() => {
-          button.innerHTML = originalContent;
-        }, 2000);
       }
     } catch (error) {
       this.utils.log("Error in fallback copy to clipboard", { error }, "error");
     }
+  }
+
+  /**
+   * Show the "Copied" state on a copy button, then reset it.
+   * Swaps only the aria-hidden label span, so the swap is not spoken. A button
+   * built without the span keeps the old whole-content swap.
+   * @param {HTMLElement} button - Copy button element
+   */
+  showCopiedState(button) {
+    const label = button.querySelector(`.${COPY_LABEL_CLASS}`);
+
+    if (label) {
+      label.textContent = COPIED_TEXT;
+
+      // Restore the configured text, not what was read, so a second press
+      // inside the delay cannot leave "Copied" behind.
+      clearTimeout(label._resetTimer);
+      label._resetTimer = setTimeout(() => {
+        label.textContent = COPY_TEXT;
+      }, COPIED_RESET_MS);
+      return;
+    }
+
+    const originalContent = button.innerHTML;
+    button.innerHTML = `${this.processorUtils.getCopyButtonIcon()} ${COPIED_TEXT}`;
+
+    setTimeout(() => {
+      button.innerHTML = originalContent;
+    }, COPIED_RESET_MS);
   }
 
   /**

@@ -1977,6 +1977,7 @@
     "azure-openai/gpt-6-luna",
     "azure-openai/gpt-6-sol",
     "azure-openai/gpt-6.1-sol",
+    "azure-openai/gpt-6.1-terra",
     "azure-openai/grok-4.7",
     "azure-openai/DeepSeek-V3.2",
     "azure-openai/o4-mini",

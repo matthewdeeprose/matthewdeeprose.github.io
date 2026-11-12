@@ -1118,6 +1118,16 @@ class OpenRouterEmbed {
       if (typeof callOptions.parallel_tool_calls === "boolean") {
         canonicalOptions.parallel_tool_calls = callOptions.parallel_tool_calls;
       }
+      // WF-8b: OpenRouter's `provider` routing object, only as a plain object
+      // (same predicate as the OpenRouter builder and the validator). The
+      // Foundry builder never reads it.
+      if (
+        callOptions.provider &&
+        typeof callOptions.provider === "object" &&
+        !Array.isArray(callOptions.provider)
+      ) {
+        canonicalOptions.provider = callOptions.provider;
+      }
     }
 
     // Delegate wire-format construction to the provider.
@@ -2645,13 +2655,23 @@ class OpenRouterEmbed {
 
     // Order matters: longer/greedy delimiters first
     // Display math: \[...\] (may span multiple lines)
-    let result = text.replace(/\\\[[\s\S]*?\\\]/g, stash);
+    // Registers 61/62: stash nothing inside code, and mark unpaired "$" so MathJax
+    // leaves prices alone. Falls back to plain replace without MathProtect helpers.
+    const mathHelpers = window.MathProtect;
+    const hasHelpers =
+      !!mathHelpers &&
+      typeof mathHelpers.outsideCode === "function" &&
+      typeof mathHelpers.markPrices === "function";
+    const outside = hasHelpers
+      ? mathHelpers.outsideCode
+      : (subject, re, fn) => subject.replace(re, fn);
+    let result = outside(text, /\\\[[\s\S]*?\\\]/g, stash);
     // Display math: $$...$$ (may span multiple lines)
-    result = result.replace(/\$\$[\s\S]*?\$\$/g, stash);
+    result = outside(result, /\$\$[\s\S]*?\$\$/g, stash);
     // Inline math: \(...\)
-    result = result.replace(/\\\(.*?\\\)/g, stash);
+    result = outside(result, /\\\(.*?\\\)/g, stash);
     // Inline math: $...$ (single line, not empty, not currency like $100)
-    result = result.replace(/\$(?!\d)([^\$\n]+?)\$/g, function (m, inner) {
+    result = outside(result, /\$(?!\d)([^\$\n]+?)\$/g, function (m, inner) {
       // Guard: reject if the content looks like prose rather than maths.
       // Three or more consecutive space-separated words (not inside \text{})
       // indicate the model wrapped a whole sentence in a single $ pair.
@@ -2663,18 +2683,18 @@ class OpenRouterEmbed {
     });
     // Bare brackets containing LaTeX commands: [ \frac{...} ]
     // Some local models omit the backslash on \[ \], outputting just [ ... ]
-    result = result.replace(/\[\s*\\[a-zA-Z][^\]]*\]/g, function (m) {
+    result = outside(result, /\[\s*\\[a-zA-Z][^\]]*\]/g, function (m) {
       // Convert to proper \[...\] so MathJax recognises it as display math
       return stash("\\[" + m.slice(1, -1) + "\\]");
     });
     // Bare parentheses containing LaTeX commands: ( \rho )
-    result = result.replace(/\(\s*\\[a-zA-Z][^\)]*\)/g, function (m) {
+    result = outside(result, /\(\s*\\[a-zA-Z][^\)]*\)/g, function (m) {
       // Convert to proper \(...\) so MathJax recognises it as inline math
       return stash("\\(" + m.slice(1, -1) + "\\)");
     });
     // Multiline bare display math with malformed closing:
     // [ on its own line, LaTeX content, then lone \ (model forgot the ])
-    result = result.replace(/\[\s*\n([\s\S]*?)\n[ \t]*\\[ \t]*(?:\n|$)/g, function (m, inner) {
+    result = outside(result, /\[\s*\n([\s\S]*?)\n[ \t]*\\[ \t]*(?:\n|$)/g, function (m, inner) {
       if (/\\[a-zA-Z]/.test(inner)) {
         return stash("\\[" + inner.trim() + "\\]");
       }
@@ -2682,7 +2702,7 @@ class OpenRouterEmbed {
     });
 
     function restore(html) {
-      let out = html;
+      let out = hasHelpers ? mathHelpers.markPrices(html) : html;
       for (let i = 0; i < placeholders.length; i++) {
         // HTML-escape < and > inside LaTeX so the browser does not parse them as tags.
         // MathJax reads decoded text nodes, so it still sees the correct characters.

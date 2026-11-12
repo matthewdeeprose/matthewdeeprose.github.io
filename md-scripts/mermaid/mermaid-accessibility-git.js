@@ -159,6 +159,42 @@ const GitGraphModule = (function () {
     return name;
   }
 
+  // A name that draws nothing is only white space and Unicode format
+  // characters (the project's emptiness test). Tested, never trimmed into the
+  // narrated bytes.
+  const EMPTY_NAME_PATTERN = /^[\s\p{Cf}]*$/u;
+  const UNLABELLED_BRANCH_PHRASE = "unlabelled branch";
+
+  /**
+   * How each branch whose name draws nothing is narrated (7 November 2026,
+   * docs/mermaid-empty-name-fix-2026-11-07.md). Mermaid draws a branch with a
+   * blank name (`mainBranchName: ''`, `branch ""`) and the graph counts it, so
+   * the words must not leave a hole where the name goes. One such branch reads
+   * "an unlabelled branch"; two or more read "unlabelled branch 1", "unlabelled
+   * branch 2" in creation order. No sentence opens with a branch name, so the
+   * capitalised form is never needed.
+   * @param {Array<{name: string}>} branches - The adapter's branches, in
+   *   creation order
+   * @returns {Map<string, string>} Raw branch name to narrated phrase; empty
+   *   when every branch has a name
+   */
+  function mapUnlabelledBranches(branches) {
+    const blank = [];
+    for (const branch of branches) {
+      if (EMPTY_NAME_PATTERN.test(branch.name) && !blank.includes(branch.name)) {
+        blank.push(branch.name);
+      }
+    }
+    return new Map(
+      blank.map((name, index) => [
+        name,
+        blank.length === 1
+          ? `an ${UNLABELLED_BRANCH_PHRASE}`
+          : `${UNLABELLED_BRANCH_PHRASE} ${index + 1}`,
+      ])
+    );
+  }
+
   /**
    * Escape author text at an HTML sink: every & < and > exactly once. This is
    * a module-local function, not Common.escapeHtml, because it leaves quote
@@ -439,6 +475,7 @@ const GitGraphModule = (function () {
     const branchCount = graph.branches.length;
 
     const rename = detectMainBranchRename(code);
+    const unlabelledBranchNames = mapUnlabelledBranches(graph.branches);
 
     /**
      * The narrated name of one branch: the rename when the data path's
@@ -447,6 +484,9 @@ const GitGraphModule = (function () {
      * @returns {string} The name as narrated
      */
     function branchDisplayName(name) {
+      if (unlabelledBranchNames.has(name)) {
+        return unlabelledBranchNames.get(name);
+      }
       return rename && name === "main" ? rename : name;
     }
 

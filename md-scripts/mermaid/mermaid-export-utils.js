@@ -363,6 +363,15 @@ window.MermaidExportUtils = (function () {
     disclosureSummary: "Description",
     fullscreenClass: "fullscreen-mode",
     panZoomContainerSelector: ".mermaid-pan-zoom-container",
+    // The lazy light/dark flip's page-only state (mermaid-theme.js): the veil,
+    // the stale and busy markers on a container, the paint record every
+    // container carries, and the inline opacity that hides a stale diagram's
+    // box. None of it is meant for a file, and every export path waits for the
+    // gate, so this only matters if an export is ever taken while stale.
+    themeFlipVeilSelector: ".mermaid-theme-veil",
+    themeFlipContainerSelector: ".mermaid-container",
+    themeFlipContainerAttributes: ["data-theme-stale", "aria-busy", "data-painted-theme"],
+    themeFlipBoxSelector: ":scope > .mermaid",
   });
 
   /**
@@ -671,6 +680,22 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
         svg.style.removeProperty("transform-origin");
       });
 
+    // 5b. The lazy flip's page-only state (see STATIC_EXPORT).
+    clone
+      .querySelectorAll(STATIC_EXPORT.themeFlipVeilSelector)
+      .forEach((veil) => veil.remove());
+    clone
+      .querySelectorAll(STATIC_EXPORT.themeFlipContainerSelector)
+      .forEach((container) => {
+        STATIC_EXPORT.themeFlipContainerAttributes.forEach((name) =>
+          container.removeAttribute(name)
+        );
+        const box = container.querySelector(STATIC_EXPORT.themeFlipBoxSelector);
+        if (!box) return;
+        box.style.removeProperty("opacity");
+        if (!(box.getAttribute("style") || "").trim()) box.removeAttribute("style");
+      });
+
     return clone.innerHTML;
   }
 
@@ -821,6 +846,19 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
         const value = liveSvg.getAttribute(name);
         if (value !== null) rendered.setAttribute(name, value);
       });
+      // The page's role and role description too, so the second copy is the
+      // same single image as the primary (a diagram with nothing focusable
+      // is role="img" with no role description). Mirrors the live SVG, so a
+      // diagram that kept Mermaid's own pair keeps it in both copies.
+      // The copy is a fresh Mermaid render and still holds its own type: keep
+      // it on the stamp BEFORE the mirror below removes the attribute, so the
+      // series-encoding pass after it still finds the diagram's type.
+      window.MermaidDiagramType.stamp(rendered);
+      ["role", "aria-roledescription"].forEach((name) => {
+        const value = liveSvg.getAttribute(name);
+        if (value === null) rendered.removeAttribute(name);
+        else rendered.setAttribute(name, value);
+      });
 
       // The page's own after-render paint, against this host's ground.
       themes.applySeriesEncoding(host);
@@ -970,6 +1008,12 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
     // A diagram in a named scroll box is hidden on the page, because the box
     // speaks for it (parcel 9e). The saved file is the diagram on its own.
     clone.removeAttribute("aria-hidden");
+
+    // The page's aria-describedby names an element on the page (the caption,
+    // or the hidden pointer to the Show Description button). A saved file
+    // holds neither, so the reference would dangle. The file keeps its
+    // aria-label as its name.
+    clone.removeAttribute("aria-describedby");
 
     // Carry the resolved cascade onto the clone before anything else touches it,
     // so the saved file matches the screen. Runs for every diagram type.

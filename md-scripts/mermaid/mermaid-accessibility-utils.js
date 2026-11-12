@@ -1425,17 +1425,18 @@ window.MermaidAccessibilityUtils = (function () {
       // Determine notification type based on error status
       const notificationType = isError ? "error" : "success";
 
-      // Configure options for consistent behaviour with original tooltip
+      // Success feedback clears itself after 3 seconds
       const options = {
-        duration: 3000, // Match original 3-second duration
+        duration: 3000,
         dismissible: true, // Allow manual dismissal
         persistent: false, // Auto-dismiss after duration
       };
 
-      // Special handling for errors - maintain original auto-hide behaviour
+      // An error stays on screen until the person closes it: duration 0 keeps
+      // the toast and draws its "Close notification" button, so a reader who
+      // looked away still sees what failed.
       if (isError) {
-        // Override default error behaviour to match original auto-hide
-        options.duration = 3000;
+        options.duration = 0;
       }
 
       // Show notification using UniversalNotifications
@@ -1449,6 +1450,18 @@ window.MermaidAccessibilityUtils = (function () {
         notificationType,
         options
       );
+
+      // Only one description error stays on screen at a time: once the new error
+      // has an id, the previous one goes. Dismissing after show() matters because
+      // show() returns null for a repeat inside the 2-second duplicate window,
+      // and then the earlier toast is still the one on screen. dismiss() takes no
+      // focus option, so focus is left where it is and nothing is announced.
+      if (isError && notificationId) {
+        if (lastFeedbackErrorId) {
+          UniversalNotifications.dismiss(lastFeedbackErrorId);
+        }
+        lastFeedbackErrorId = notificationId;
+      }
 
       // Return notification ID in case caller wants to dismiss it manually
       return notificationId;
@@ -1847,6 +1860,9 @@ window.MermaidAccessibilityUtils = (function () {
 
   // Log module initialisation
   logInfo("[Mermaid Accessibility] Utils module loaded");
+
+  // Id of the error toast showFeedbackTooltip last raised, so a newer error can replace it.
+  let lastFeedbackErrorId = null;
 
   // Public API
   return {

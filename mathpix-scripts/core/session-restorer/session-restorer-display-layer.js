@@ -344,6 +344,10 @@
   proto.updatePreview = async function (content) {
     if (!this.elements.mmdPreviewContent) return;
 
+    // PM-1 (PM-D1d): the renderer drops page markers already; strip first so
+    // that stays true whatever the renderer does.
+    content = MathPixSessionRestorer.prototype._stripPageMarkers.call(this, content);
+
     // Store content for potential recovery re-render
     this.pendingContent = content;
 

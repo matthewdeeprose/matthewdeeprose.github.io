@@ -76,8 +76,9 @@
   /**
    * Default model ID — fallback when no model is selected.
    * Mirrors CONTROLLER_CONFIG.model in the core file.
+   * H-183: was "anthropic/claude-haiku-5.5" (the default from H-46 to H-182).
    */
-  const DEFAULT_MODEL = "anthropic/claude-haiku-5.5";
+  const DEFAULT_MODEL = "anthropic/claude-sonnet-5.5";
 
   /**
    * Models shown first, in their own group, as "Tested for describing pictures".
@@ -145,6 +146,16 @@
    * Frozen and module-scope so a caller never receives a fresh array per call.
    */
   const EMPTY_VISION_LIST = Object.freeze([]);
+
+  /**
+   * Which estimate priced a cost line (H-189). The debug cost breakdown
+   * reports one of these so a person can see whether a figure came from the
+   * model's own measured use or from the shared estimate.
+   */
+  const TOKEN_ESTIMATE_SOURCE = Object.freeze({
+    MODEL: "model",
+    SHARED: "shared",
+  });
 
   /**
    * The shared known-vision list, reached at CALL time. An absence is a
@@ -781,16 +792,104 @@
 
     /**
      * Token estimation constants for typical image description
-     * Based on analysis of real-world usage patterns
+     *
+     * H-184 (5 November 2026): THE TOTALS ARE MEASURED; THE SPLIT IS AN
+     * ESTIMATE. Before H-184 these were 500 + 100 + 1000 = 1,600 in and 300
+     * out, which priced Sonnet 5.5 at under a cent while a real description
+     * cost about US $0.063. Measured per description on the shipped prompt
+     * (55e425628887d4b8), means over 27 records each (H-180, H-181, H-175
+     * `usage`): the three OpenRouter Claude models read 9,998 tokens in and
+     * wrote 3,534 to 4,309 out (hidden reasoning is billed as output),
+     * rounded here to 10,000 in and 4,000 out. One shared estimate stays one
+     * shared estimate: it overstates a model that writes less (GPT-6.1 Terra
+     * measured 6,791 in / 1,187 out), the safer error for a cost line.
+     *
+     * The split of the 10,000 is by character length at 4 characters a
+     * token: the joined system prompt (28,475 characters in the H-184 drive,
+     * 7,119 tokens), the user text (605 characters, 151 tokens, no OCR or
+     * typed context), and the image takes the rest (2,730). Only the total
+     * is measured.
      */
     TOKEN_ESTIMATES: {
-      SYSTEM_PROMPT: 500, // System prompt tokens
-      USER_PROMPT: 100, // User prompt tokens
-      IMAGE: 1000, // Image encoding tokens (varies by size/complexity)
-      OUTPUT: 300, // Expected output tokens
+      SYSTEM_PROMPT: 7119, // System prompt tokens (was 500 before H-184)
+      USER_PROMPT: 151, // User prompt tokens (was 100 before H-184)
+      IMAGE: 2730, // Image tokens: the rest of the measured 10,000 (was 1000 before H-184)
+      OUTPUT: 4000, // Output tokens incl. hidden reasoning (was 300 before H-184)
       get INPUT_TOTAL() {
         return this.SYSTEM_PROMPT + this.USER_PROMPT + this.IMAGE;
       },
+    },
+
+    /**
+     * Each model's OWN measured token use on the shipped prompt (H-189,
+     * 5 November 2026). The cost line prices a model found here with its own
+     * entry and every other model with the shared TOKEN_ESTIMATES above, which
+     * stays as it is. Keys are the option values, that is the model ids.
+     * Values are means per description over 27 records each, rounded to the
+     * nearest 100 tokens; the mean is in each comment. To re-measure a model,
+     * change its one entry.
+     */
+    TOKEN_ESTIMATES_BY_MODEL: Object.freeze({
+      // h181 __S__: 9,998 in, 4,309 out
+      "anthropic/claude-sonnet-5.5": Object.freeze({
+        INPUT_TOTAL: 10000,
+        OUTPUT: 4300,
+      }),
+      // h181 __O__: 9,998 in, 3,534 out
+      "anthropic/claude-opus-5.5": Object.freeze({
+        INPUT_TOTAL: 10000,
+        OUTPUT: 3500,
+      }),
+      // h185 __F__: 9,998 in, 4,274 out
+      "anthropic/claude-fable-5.1": Object.freeze({
+        INPUT_TOTAL: 10000,
+        OUTPUT: 4300,
+      }),
+      // h180 __R2__: 9,998 in, 4,096 out
+      "anthropic/claude-haiku-5.5": Object.freeze({
+        INPUT_TOTAL: 10000,
+        OUTPUT: 4100,
+      }),
+      // h175 __R2__: 6,791 in, 1,187 out
+      "azure-openai/gpt-6.1-terra": Object.freeze({
+        INPUT_TOTAL: 6800,
+        OUTPUT: 1200,
+      }),
+      // h177 __R2__: 7,272 in, 870 out
+      "azure-openai/Llama-4-Maverick-17B-128E-Instruct-FP8": Object.freeze({
+        INPUT_TOTAL: 7300,
+        OUTPUT: 900,
+      }),
+    }),
+
+    /**
+     * The token estimate to price a model with: its own entry in
+     * TOKEN_ESTIMATES_BY_MODEL, or the shared TOKEN_ESTIMATES for any id not
+     * in the table. Only an own property counts, so an id such as
+     * "constructor" cannot reach an inherited one.
+     *
+     * @param {string} modelId - The model id (the option's value)
+     * @returns {{INPUT_TOTAL: number, OUTPUT: number, source: string}}
+     */
+    getTokenEstimateFor(modelId) {
+      const table = this.TOKEN_ESTIMATES_BY_MODEL;
+      const hasOwn =
+        typeof modelId === "string" &&
+        Object.prototype.hasOwnProperty.call(table, modelId);
+
+      if (hasOwn) {
+        return {
+          INPUT_TOTAL: table[modelId].INPUT_TOTAL,
+          OUTPUT: table[modelId].OUTPUT,
+          source: TOKEN_ESTIMATE_SOURCE.MODEL,
+        };
+      }
+
+      return {
+        INPUT_TOTAL: this.TOKEN_ESTIMATES.INPUT_TOTAL,
+        OUTPUT: this.TOKEN_ESTIMATES.OUTPUT,
+        source: TOKEN_ESTIMATE_SOURCE.SHARED,
+      };
     },
 
     /**
@@ -821,11 +920,12 @@
         parseFloat(selectedOption.dataset.outputCost) || 0;
       const costTier = selectedOption.dataset.costTier || "medium";
 
-      // Calculate costs in USD
+      // Calculate costs in USD, with the model's own measured token use where
+      // there is one and the shared estimate otherwise (H-189).
+      const estimate = this.getTokenEstimateFor(selectedOption.value);
       const inputCostUSD =
-        (inputCostPer1M / 1_000_000) * this.TOKEN_ESTIMATES.INPUT_TOTAL;
-      const outputCostUSD =
-        (outputCostPer1M / 1_000_000) * this.TOKEN_ESTIMATES.OUTPUT;
+        (inputCostPer1M / 1_000_000) * estimate.INPUT_TOTAL;
+      const outputCostUSD = (outputCostPer1M / 1_000_000) * estimate.OUTPUT;
       const totalCostUSD = inputCostUSD + outputCostUSD;
 
       // CU-1 (17 September 2026): NO CONVERSION. Every input above is a US
@@ -966,11 +1066,13 @@
       const costTier = selectedOption.dataset.costTier || "medium";
       const provider = selectedOption.dataset.provider || "unknown";
 
-      // Calculate detailed costs
+      // Calculate detailed costs through the same helper as the cost line, so
+      // the line and this breakdown always agree (H-189).
+      const estimate = this.getTokenEstimateFor(selectedOption.value);
+      const isOwnEstimate = estimate.source === TOKEN_ESTIMATE_SOURCE.MODEL;
       const inputCostUSD =
-        (inputCostPer1M / 1_000_000) * this.TOKEN_ESTIMATES.INPUT_TOTAL;
-      const outputCostUSD =
-        (outputCostPer1M / 1_000_000) * this.TOKEN_ESTIMATES.OUTPUT;
+        (inputCostPer1M / 1_000_000) * estimate.INPUT_TOTAL;
+      const outputCostUSD = (outputCostPer1M / 1_000_000) * estimate.OUTPUT;
       const totalCostUSD = inputCostUSD + outputCostUSD;
 
       return {
@@ -984,12 +1086,17 @@
           inputCostPer1M_USD: inputCostPer1M,
           outputCostPer1M_USD: outputCostPer1M,
         },
+        // Which estimate priced this breakdown: the model's own measured use
+        // or the shared one (H-189). The split of the input into system
+        // prompt, user prompt and image exists only for the shared estimate,
+        // so it is null for a model with its own entry.
+        estimateSource: estimate.source,
         tokenEstimates: {
-          systemPrompt: this.TOKEN_ESTIMATES.SYSTEM_PROMPT,
-          userPrompt: this.TOKEN_ESTIMATES.USER_PROMPT,
-          image: this.TOKEN_ESTIMATES.IMAGE,
-          inputTotal: this.TOKEN_ESTIMATES.INPUT_TOTAL,
-          output: this.TOKEN_ESTIMATES.OUTPUT,
+          systemPrompt: isOwnEstimate ? null : this.TOKEN_ESTIMATES.SYSTEM_PROMPT,
+          userPrompt: isOwnEstimate ? null : this.TOKEN_ESTIMATES.USER_PROMPT,
+          image: isOwnEstimate ? null : this.TOKEN_ESTIMATES.IMAGE,
+          inputTotal: estimate.INPUT_TOTAL,
+          output: estimate.OUTPUT,
         },
         calculatedCosts: {
           inputCostUSD: inputCostUSD,
@@ -1665,9 +1772,9 @@
     },
 
     /**
-     * Set default model (economical option like Claude Haiku)
+     * Set default model (Claude Sonnet 5.5 since H-183; Claude Haiku before that)
      * Used when no saved preference exists or preference is invalid
-     * Prefers the configured default, falls back to newest Haiku, then first available
+     * Prefers the configured default, falls back to Haiku 5.5, then any Haiku, then first available
      */
     setDefaultModel() {
       if (!this.elements.modelSelector) return;
@@ -1691,15 +1798,16 @@
         return;
       }
 
-      // Priority 2: Claude Haiku 4.5, the previous default. This is the fallback
-      // when Haiku 5.5 (Priority 1) is missing from the list or disabled.
-      const haiku45 = optionsArray.find(
-        (opt) => opt.value === "anthropic/claude-haiku-4.5",
+      // Priority 2: Claude Haiku 5.5, the previous default (H-183; before that
+      // Haiku 4.5, H-46). This is the fallback when Sonnet 5.5 (Priority 1) is
+      // missing from the list or disabled.
+      const haiku55 = optionsArray.find(
+        (opt) => opt.value === "anthropic/claude-haiku-5.5",
       );
 
-      if (haiku45) {
-        this.elements.modelSelector.value = haiku45.value;
-        logInfo("Default model set to Claude Haiku 4.5");
+      if (haiku55) {
+        this.elements.modelSelector.value = haiku55.value;
+        logInfo("Default model set to Claude Haiku 5.5");
         this.onModelChange();
         return;
       }

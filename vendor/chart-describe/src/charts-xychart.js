@@ -145,7 +145,22 @@
     STABLE: "stable",
     UP_NOISY: "generally increasing with fluctuations",
     DOWN_NOISY: "generally decreasing with fluctuations",
+    UP_STEPPED: "generally increasing",
+    DOWN_STEPPED: "generally decreasing",
     NONE: "fluctuating with no clear trend",
+    LEVEL_RISE: "mostly level, apart from a large rise",
+    LEVEL_FALL: "mostly level, apart from a large fall",
+    LEVEL_SPIKE: "mostly level, apart from a large spike",
+    LEVEL_DIP: "mostly level, apart from a large dip",
+    LEVEL_RAISED: "mostly level, apart from a raised stretch",
+    LEVEL_RAISED_MANY: "mostly level, apart from raised stretches",
+    LEVEL_LOWERED: "mostly level, apart from a lowered stretch",
+    LEVEL_LOWERED_MANY: "mostly level, apart from lowered stretches",
+    LEVEL_RAISED_POINTS: "mostly level, apart from raised points",
+    LEVEL_LOWERED_POINTS: "mostly level, apart from lowered points",
+    LEVEL_APART: "mostly level, apart from raised and lowered stretches",
+    RISES: "rising",
+    FALLS: "falling",
     UNKNOWN: "unknown",
   });
 
@@ -153,7 +168,8 @@
   // for every member of the vocabulary above, which produces "shows a generally
   // decreasing with fluctuations trend" and "shows a fluctuating with no clear
   // trend trend". This code reorders the clause for each trend instead, which
-  // is why it is a table and not one template.
+  // is why it is a table and not one template. A series that turns once uses
+  // TURN_CLAUSE instead of the three noisy or unclear entries below.
   const TREND_CLAUSE = Object.freeze({
     [TRENDS.UP]: "shows a consistently increasing trend",
     [TRENDS.DOWN]: "shows a consistently decreasing trend",
@@ -161,7 +177,22 @@
     [TRENDS.UP_NOISY]: "shows a generally increasing trend, with fluctuations",
     [TRENDS.DOWN_NOISY]:
       "shows a generally decreasing trend, with fluctuations",
+    [TRENDS.UP_STEPPED]: "shows a generally increasing trend",
+    [TRENDS.DOWN_STEPPED]: "shows a generally decreasing trend",
     [TRENDS.NONE]: "fluctuates with no clear trend",
+    [TRENDS.LEVEL_RISE]: "is mostly level, apart from a large rise",
+    [TRENDS.LEVEL_FALL]: "is mostly level, apart from a large fall",
+    [TRENDS.LEVEL_SPIKE]: "is mostly level, apart from a large spike",
+    [TRENDS.LEVEL_DIP]: "is mostly level, apart from a large dip",
+    [TRENDS.LEVEL_RAISED]: "is mostly level, apart from a raised stretch",
+    [TRENDS.LEVEL_RAISED_MANY]: "is mostly level, apart from raised stretches",
+    [TRENDS.LEVEL_LOWERED]: "is mostly level, apart from a lowered stretch",
+    [TRENDS.LEVEL_LOWERED_MANY]: "is mostly level, apart from lowered stretches",
+    [TRENDS.LEVEL_RAISED_POINTS]: "is mostly level, apart from raised points",
+    [TRENDS.LEVEL_LOWERED_POINTS]: "is mostly level, apart from lowered points",
+    [TRENDS.LEVEL_APART]: "is mostly level, apart from raised and lowered stretches",
+    [TRENDS.RISES]: "rises",
+    [TRENDS.FALLS]: "falls",
   });
 
   // Chart.js's rankingWords, extended past "ninth" with a suffix rule. On a
@@ -189,6 +220,10 @@
   // can hold in mind. This threshold is a judgement about listening, not a
   // measured value.
   const TIED_POSITION_COLLAPSE_AT = 4;
+  // Every mention of a value the code holds and the picture does not draw carries this note, word for word.
+  const UNDRAWN_NOTE = "written in the code, not drawn in the picture";
+  // Past this many undrawn values the sentence gives a count and not the values.
+  const UNDRAWN_LIST_MAX = 3;
 
   // Chart.js's inner guard for the cyclic and start-to-end sentences.
   const LINE_ADVANCED_MIN_POINTS = 4;
@@ -199,6 +234,11 @@
   const LOW_POINT_RATIO = 0.5;
   const SKEW_TOLERANCE = 0.2;
   const OVERALL_CHANGE_MIN_PERCENT = 50;
+  // With a negative value in the series, the average must be at least this share of the largest absolute value
+  // before a value is called a percentage above it (the signs cancel, and the average stops meaning "typical").
+  const MIXED_SIGN_MEAN_MIN_SHARE = 0.25;
+  // A start smaller than this share of the series' largest absolute value is "near zero".
+  const NEAR_ZERO_START_SHARE = 0.01;
 
   // The fallback words for a band axis. The describer uses them when the author
   // declared no axis title and the label-type detector below found no shape
@@ -246,6 +286,86 @@
   // author's number stays exact wherever the reader can actually read it.
   const SHORT_TIER_MAX_DECIMALS = 4;
   const SHORT_TIER_ROUNDING = 2;
+
+  // The most decimals that a rounded value may be given back to keep it true
+  // (an average inside the range, a range whose two ends differ).
+  const MAX_RESTORED_DECIMALS = 15;
+  // A double carries 17 significant figures.
+  const MAX_SIGNIFICANT_FIGURES = 17;
+  // A derived whole number is spoken to this many significant figures (a double's last two are rounding noise).
+  const SPOKEN_SIGNIFICANT_FIGURES = 15;
+  // ...from here up, where JavaScript itself stops writing digits and numberDigits pads the double's 17 figures with zeros.
+  const PADDED_DIGITS_FROM = 1e21;
+  // A mean that bands to 0 but is not 0 is spoken to this many significant figures.
+  const SMALL_MEAN_FIGURES = 2;
+
+  // A typed decimal (0.1) is stored to within half a unit in the last place of its own size, so a mean of n of them is wrong by at most
+  // about this x the largest absolute value, whatever n is, once the sum itself is taken without loss (compensatedSum). A mean closer to 0
+  // than that is rounding noise; two means closer to each other than that are the same average. Whole numbers are stored exactly, so for
+  // them, while the compensated sum is exact (wholeSumIsExact), the bound is 0 and a real mean is never swallowed.
+  const FLOAT_ERROR_PER_VALUE = Number.EPSILON;
+
+  /**
+   * The sum of a list of numbers, with Neumaier's compensation: the low part that each addition
+   * drops is kept and added back at the end, so a small value beside a huge one is not lost
+   * (1e16 + 1 + 1 gives 10000000000000002, not 1e16). A sum that is not finite is returned exactly
+   * as a plain sum gives it, so an overflow is still seen as one.
+   * @param {number[]} values - The numbers to add
+   * @returns {number} The sum
+   */
+  function compensatedSum(values) {
+    let sum = 0;
+    let compensation = 0;
+    for (const value of values) {
+      const next = sum + value;
+      // The low-order part that this addition rounded away, from whichever operand is larger.
+      compensation +=
+        Math.abs(sum) >= Math.abs(value) ? sum - next + value : value - next + sum;
+      sum = next;
+    }
+    return Number.isFinite(sum) ? sum + compensation : sum;
+  }
+
+  /**
+   * The most that the mean of these values can be wrong by, from float error alone.
+   * @param {Array<number>} values - The values that were averaged
+   * @returns {number} The bound
+   */
+  function floatNoiseBound(values) {
+    const largest = values.reduce((most, value) => Math.max(most, Math.abs(value)), 0);
+    if (wholeSumIsExact(values)) return 0;
+    return FLOAT_ERROR_PER_VALUE * largest;
+  }
+
+  /**
+   * Whether compensatedSum is EXACT for these numbers: they are all whole numbers (a double holds one exactly) and the low parts that the
+   * additions drop are themselves whole numbers that stay within 2^53 - 1, so they are held and added back without a further rounding.
+   * Then the sum is the true sum rounded once, a real mean is never swallowed and a true 0 is exactly 0. The plain sum alone is exact
+   * only while every running total stays within 2^53 - 1; this also covers 1e16 + 1 + 1 - 1e16, where the running total does not.
+   * @param {Array<number>} values - The numbers that were added
+   * @returns {boolean} True when the sum is exact
+   */
+  function wholeSumIsExact(values) {
+    if (!values.every(Number.isInteger)) return false;
+    let sum = 0;
+    let dropped = 0;
+    for (const value of values) {
+      const next = sum + value;
+      dropped += Math.abs(sum) >= Math.abs(value) ? sum - next + value : value - next + sum;
+      if (!Number.isFinite(next) || Math.abs(dropped) > Number.MAX_SAFE_INTEGER) return false;
+      sum = next;
+    }
+    return true;
+  }
+
+  // A bare four-digit label is called a year only inside this span. A run such
+  // as 1000, 2000, 3000 is a set of bins, and the neutral noun is the true one.
+  const YEAR_LABEL_MIN = 1800;
+  const YEAR_LABEL_MAX = 2200;
+
+  // The days and months that a dotted, slashed or hyphenated date can hold.
+  const DATE_DAY_MAX = 31;
+  const DATE_MONTH_MAX = 12;
 
   // The noun that a COUNT OF VALUES takes, so that the mismatch sentence reads
   // "one value" and not "one values". It goes through `countedNoun`, so the
@@ -318,6 +438,63 @@
     "(?:january|february|march|april|may|june|july|august|september|october|" +
     "november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)";
 
+  /**
+   * A split year: two years in a row, such as 2020-21, 2020/21 or 2020-2021.
+   * The second year must follow the first, so 2024-01 (a month) is not one.
+   * @param {string} lower - A label, lower-cased
+   * @returns {boolean} True when the label is a split year
+   */
+  function isSplitYear(lower) {
+    const found = /^(\d{4})[-/](\d{2}(?:\d{2})?)$/.exec(lower);
+    if (!found) return false;
+    const first = Number(found[1]);
+    const second = Number(found[2]);
+    const next = found[2].length === 2 ? (first + 1) % 100 : first + 1;
+    return second === next;
+  }
+
+  /**
+   * A numeric date such as 3/4/24, 03-04-2024 or 3.4.2024. The day and the
+   * month must be possible. A dotted date needs a four-digit year, because
+   * 1.2.10 is as likely to be a version number as a date.
+   * @param {string} lower - A label, lower-cased
+   * @returns {boolean} True when the label reads as a numeric date
+   */
+  function isNumericDate(lower) {
+    const found = /^(\d{1,2})([/\-.])(\d{1,2})([/\-.])(\d{2}(?:\d{2})?)$/.exec(
+      lower
+    );
+    if (!found) return false;
+    const first = Number(found[1]);
+    const second = Number(found[3]);
+    if (first < 1 || second < 1) return false;
+    if (first > DATE_DAY_MAX || second > DATE_DAY_MAX) return false;
+    if (Math.min(first, second) > DATE_MONTH_MAX) return false;
+    const dotted = found[2] === "." || found[4] === ".";
+    return !dotted || found[5].length === 4;
+  }
+
+  // A time of day: hours 0 to 23 (1 to 12 beside am or pm), minutes and seconds 0 to 59.
+  function isClockTime(lower) {
+    const found = /^(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s?(am|pm))?$/.exec(lower);
+    if (found) {
+      const hour = Number(found[1]);
+      const hourOk = found[4] ? hour >= 1 && hour <= 12 : hour <= 23;
+      return hourOk && Number(found[2]) <= 59 && (found[3] === undefined || Number(found[3]) <= 59);
+    }
+    const bare = /^(\d{1,2})\s?(?:am|pm)$/.exec(lower);
+    return !!bare && Number(bare[1]) >= 1 && Number(bare[1]) <= 12;
+  }
+
+  // An ISO date: a month from 1 to DATE_MONTH_MAX and a day from 1 to DATE_DAY_MAX.
+  function isIsoDate(lower) {
+    const found = /^\d{4}-(\d{2})-(\d{2})$/.exec(lower);
+    if (!found) return false;
+    const month = Number(found[1]);
+    const day = Number(found[2]);
+    return month >= 1 && month <= DATE_MONTH_MAX && day >= 1 && day <= DATE_DAY_MAX;
+  }
+
   const LABEL_SHAPES = Object.freeze([
     {
       singular: "Day",
@@ -362,19 +539,15 @@
     {
       singular: "Time",
       plural: "times",
-      test: (label) =>
-        /^\d{1,2}:\d{2}(?::\d{2})?(?:\s?(?:am|pm))?$/.test(
-          label.toLowerCase()
-        ) || /^\d{1,2}\s?(?:am|pm)$/.test(label.toLowerCase()),
+      test: (label) => isClockTime(label.toLowerCase()),
     },
     {
       singular: "Date",
       plural: "dates",
       test: (label) => {
         const lower = label.toLowerCase();
-        if (/^\d{4}-\d{2}-\d{2}$/.test(lower)) return true;
-        if (/^\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2}(?:\d{2})?$/.test(lower))
-          return true;
+        if (isIsoDate(lower)) return true;
+        if (isNumericDate(lower)) return true;
         return new RegExp(
           `^\\d{1,2}\\s${MONTH_ALTERNATION}(?:\\s\\d{2}(?:\\d{2})?)?$`
         ).test(lower);
@@ -386,8 +559,11 @@
       test: (label) => {
         const lower = label.toLowerCase();
         // Plain, split (2020-21, 2020/21, 2020-2021) and financial years.
-        if (/^\d{4}$/.test(lower)) return true;
-        if (/^\d{4}[-/]\d{2}(?:\d{2})?$/.test(lower)) return true;
+        if (/^\d{4}$/.test(lower)) {
+          const year = Number(lower);
+          return year >= YEAR_LABEL_MIN && year <= YEAR_LABEL_MAX;
+        }
+        if (isSplitYear(lower)) return true;
         if (/^fy\s?\d{2}(?:\d{2})?(?:[-/]\d{2}(?:\d{2})?)?$/.test(lower))
           return true;
         return false;
@@ -443,7 +619,26 @@
    * @returns {string} The value as digits
    */
   function formatAuthorValue(value) {
-    return String(value);
+    return numberDigits(value);
+  }
+
+  /**
+   * A number in digits: exponent form is written out, because a screen reader says "2e-7" as letters and symbols.
+   * The same digit form as the radar family's `numberText`, nothing rounded.
+   * @param {number} value - A number
+   * @returns {string} Its digits
+   */
+  function numberDigits(value) {
+    const written = String(value);
+    // JavaScript switches to exponent form at 1e21 and above, and at 1e-7 and below.
+    const parts = /^(-?)(\d+)(?:\.(\d+))?e([+-]\d+)$/.exec(written);
+    if (!parts) return written;
+    const [, sign, whole, fraction = "", exponent] = parts;
+    const digits = whole + fraction;
+    const point = whole.length + Number(exponent);
+    if (point <= 0) return `${sign}0.${"0".repeat(-point)}${digits}`;
+    if (point >= digits.length) return sign + digits + "0".repeat(point - digits.length);
+    return `${sign}${digits.slice(0, point)}.${digits.slice(point)}`;
   }
 
   /**
@@ -470,11 +665,60 @@
    */
   function formatAuthorValueForTier(tier, value) {
     if (tier !== TIERS.SHORT) return formatAuthorValue(value);
-    const text = String(value);
+    const text = numberDigits(value);
     const point = text.indexOf(".");
     if (point === -1) return text;
     if (text.length - point - 1 <= SHORT_TIER_MAX_DECIMALS) return text;
-    return `about ${value.toFixed(SHORT_TIER_ROUNDING)}`;
+    const rounded = value.toFixed(SHORT_TIER_ROUNDING);
+    // A value that is not zero must not round to zero: keep two significant
+    // figures instead (0.00001 is "about 0.00001", not "about 0.00").
+    if (value !== 0 && Number(rounded) === 0) {
+      return `about ${numberDigits(Number(value.toPrecision(2)))}`;
+    }
+    return `about ${rounded}`;
+  }
+
+  /**
+   * The two ends of a range as a tier speaks them. In the short tier two
+   * different values never come out as the same text: where rounding would
+   * make them equal, decimals are added until they differ.
+   * @param {string} tier - A TIERS member
+   * @param {number} min - The lowest value
+   * @param {number} max - The highest value
+   * @returns {Object} `{ min, max }`, both as text
+   */
+  function formatRangeEndsForTier(tier, min, max) {
+    const ends = {
+      min: formatAuthorValueForTier(tier, min),
+      max: formatAuthorValueForTier(tier, max),
+    };
+    // Two ends are also "the same" when one is rounded to a figure that equals the other (1 and about 1.00).
+    const figure = (text) => Number(text.replace(/^about /, ""));
+    // An end rounded to fewer decimals than the other end is written with must not read as the other end's neighbour: where it would
+    // round to that end's own figure ("about 1.00" beside 1.005, for 1.0049999), the ends are written to enough decimals to differ.
+    const decimalsOf = (text) => Math.min((text.replace(/^about /, "").split(".")[1] || "").length, MAX_RESTORED_DECIMALS);
+    const roundsToOther = (value, own, other) =>
+      own.startsWith("about ") && decimalsOf(other) > SHORT_TIER_ROUNDING && Number(value.toFixed(decimalsOf(other))) === figure(other);
+    if (
+      tier !== TIERS.SHORT ||
+      min === max ||
+      (ends.min !== ends.max &&
+        figure(ends.min) !== figure(ends.max) &&
+        !roundsToOther(min, ends.min, ends.max) &&
+        !roundsToOther(max, ends.max, ends.min))
+    ) {
+      return ends;
+    }
+    for (let decimals = SHORT_TIER_ROUNDING + 1; decimals <= MAX_RESTORED_DECIMALS; decimals += 1) {
+      const lowText = dropTrailingZeros(min.toFixed(decimals));
+      const highText = dropTrailingZeros(max.toFixed(decimals));
+      if (lowText !== highText) {
+        // Where the two ends already read differently ("1" and "about 1.00"), an end the text reproduces exactly is not "about".
+        const spoken = (value, written) => (ends.min !== ends.max && Number(written) === value ? written : `about ${written}`);
+        return { min: spoken(min, lowText), max: spoken(max, highText) };
+      }
+    }
+    return { min: numberDigits(min), max: numberDigits(max) };
   }
 
   /**
@@ -486,7 +730,11 @@
    */
   function formatDerivedValue(value) {
     if (!Number.isFinite(value)) return String(value);
-    if (Number.isInteger(value)) return String(value);
+    // A whole-number statistic is spoken to 15 significant figures: the 16th and 17th of a double are rounding noise, and
+    // writing them out pads a number such as 3e22 as 29999999999999996000000.
+    if (Number.isInteger(value)) {
+      return numberDigits(Math.abs(value) >= PADDED_DIGITS_FROM ? Number(value.toPrecision(SPOKEN_SIGNIFICANT_FIGURES)) : value);
+    }
     const magnitude = Math.abs(value);
     const banded =
       magnitude >= 100
@@ -494,7 +742,18 @@
         : magnitude >= 10
           ? value.toFixed(1)
           : value.toFixed(2);
-    return dropTrailingZeros(banded);
+    const spoken = dropTrailingZeros(banded);
+    return spoken === "-0" ? "0" : spoken;
+  }
+
+  /**
+   * `toFixed`, except that from 1e21 (where it would switch to exponent form) the number is written out in digits.
+   * @param {number} value - A number
+   * @param {number} decimals - Decimal places
+   * @returns {string} The number in digits
+   */
+  function fixedDigits(value, decimals) {
+    return Math.abs(value) >= PADDED_DIGITS_FROM ? numberDigits(value) : value.toFixed(decimals);
   }
 
   /**
@@ -523,6 +782,78 @@
   function dropTrailingZeros(banded) {
     if (banded.indexOf(".") === -1) return banded;
     return banded.replace(/0+$/, "").replace(/\.$/, "");
+  }
+
+  /**
+   * An average as it is spoken, kept inside the range of the values it
+   * averages. The magnitude rule can round a mean past an end of the range
+   * (the mean of 100.6 and 100.8 is 100.7, and the rule says 101). Where it
+   * does, decimals are added until the spoken figure lies inside the range.
+   * Every other average is spoken as `formatDerivedValue` says it.
+   * @param {number} mean - The mean of the values
+   * @param {number} min - The lowest value
+   * @param {number} max - The highest value
+   * @returns {string} The mean as it is spoken
+   */
+  function formatMean(mean, min, max) {
+    const banded = formatDerivedValue(mean);
+    if (!Number.isFinite(mean) || !Number.isFinite(min) || !Number.isFinite(max)) {
+      return banded;
+    }
+    // The average of values that are all the same is that value, whatever the banded text would say.
+    if (min === max) return numberDigits(min);
+    const strictlyInside = mean > min && mean < max;
+    const inside = (text) => {
+      const spoken = Number(text);
+      if (strictlyInside && (spoken === min || spoken === max)) return false;
+      return spoken >= min && spoken <= max;
+    };
+    if (inside(banded)) {
+      // A mean that is not zero is never spoken as 0 (the range holds 0, so the search below would stop at it): add decimals until a figure shows.
+      if (mean !== 0 && Number(banded) === 0) {
+        const small = numberDigits(Number(mean.toPrecision(SMALL_MEAN_FIGURES)));
+        return inside(small) ? small : banded;
+      }
+      return banded;
+    }
+    for (let decimals = 0; decimals <= MAX_RESTORED_DECIMALS; decimals += 1) {
+      const restored = dropTrailingZeros(fixedDigits(mean, decimals));
+      if (inside(restored)) return restored;
+    }
+    // No figure up to 15 decimals is strictly inside (a range narrower than 1e-15, or a mean needing more digits): use the fewest
+    // significant figures that are, written as the range ends are.
+    let atAnEnd = null;
+    for (let decimals = 0; decimals <= MAX_RESTORED_DECIMALS; decimals += 1) {
+      const restored = dropTrailingZeros(fixedDigits(mean, decimals));
+      if (Number(restored) >= min && Number(restored) <= max) atAnEnd = restored;
+    }
+    // Only when the mean really is between the ends: an all-equal series (mean = both ends, off by float noise) keeps its banded text.
+    for (let figures = 1; strictlyInside && figures <= MAX_SIGNIFICANT_FIGURES; figures += 1) {
+      const spoken = numberDigits(Number(mean.toPrecision(figures)));
+      if (inside(spoken)) return spoken;
+    }
+    // The mean equals an end in doubles and no shorter figure fits between the ends: speak it in full rather than a rounded figure outside the range.
+    // (An all-equal series keeps its banded text, as the comment above says.)
+    return atAnEnd !== null ? atAnEnd : min === max ? banded : numberDigits(mean);
+  }
+
+  /**
+   * A standard deviation as it is spoken. Data that varies never has a spread spoken as zero: decimals are added
+   * until a non-zero figure appears. A series with no variance is zero, whatever float noise the mean carries.
+   * @param {Object} stats - Statistics from computeStatistics
+   * @returns {string} The spread as it is spoken
+   */
+  function formatSpread(stats) {
+    const spread = stats.standardDeviation;
+    if (stats.max === stats.min) return "0";
+    const banded = formatDerivedValue(spread);
+    if (!(spread > 0) || Number(banded) !== 0) return banded;
+    for (let decimals = 0; decimals <= MAX_RESTORED_DECIMALS; decimals += 1) {
+      const restored = dropTrailingZeros(spread.toFixed(decimals));
+      if (Number(restored) !== 0) return restored;
+    }
+    // Varies, but by less than the smallest figure the search can print: say so rather than speak zero.
+    return `less than ${(10 ** -MAX_RESTORED_DECIMALS).toFixed(MAX_RESTORED_DECIMALS)}`;
   }
 
   /**
@@ -561,8 +892,11 @@
    */
   function computeStatistics(values) {
     const count = values.length;
-    const total = values.reduce((sum, value) => sum + value, 0);
-    const mean = count > 0 ? total / count : 0;
+    if (count === 0) throw new Error("xychart: a series has no values");
+    const total = compensatedSum(values);
+    const rawMean = count > 0 ? total / count : 0;
+    const largest = values.reduce((most, value) => Math.max(most, Math.abs(value)), 0);
+    const mean = Math.abs(rawMean) <= floatNoiseBound(values) ? 0 : rawMean;
 
     let maxIndex = 0;
     let minIndex = 0;
@@ -583,12 +917,12 @@
       if (values[i] === values[minIndex]) minIndices.push(i);
     }
 
-    const variance =
-      count > 0
-        ? values.reduce(
-            (sum, value) => sum + (value - mean) * (value - mean),
-            0
-          ) / count
+    // The spread is worked out on values divided by the largest, so squaring can neither overflow (1e155 squared) nor underflow (1e-200
+    // squared), then scaled back.
+    const scaledMean = largest > 0 ? mean / largest : 0;
+    const scaledVariance =
+      largest > 0
+        ? compensatedSum(values.map((value) => (value / largest - scaledMean) ** 2)) / count
         : 0;
 
     const sorted = values.slice().sort((a, b) => a - b);
@@ -609,7 +943,7 @@
       minIndex: minIndex,
       maxIndices: maxIndices,
       minIndices: minIndices,
-      standardDeviation: Math.sqrt(variance),
+      standardDeviation: largest * Math.sqrt(scaledVariance),
       median: median,
     };
   }
@@ -634,10 +968,142 @@
     return stats.count >= 1 && stats.max === stats.min;
   }
 
+  // A mostly flat series is "stable" only if its net change is at most this share of its range.
+  const STABLE_NET_RANGE_SHARE = 0.5;
+  // Fewer steps than this cannot be called a consistent trend.
+  const TREND_MIN_STEPS = 3;
+  // A mostly flat series whose range is more than this share of its largest absolute value has a spike or a dip, not a wobble.
+  const LEVEL_SPIKE_MIN_SHARE = 0.5;
+  // ...and its highest (or lowest) value sticks out of BOTH end values by more than this share of the range.
+  const LEVEL_SPIKE_STICK_OUT = 0.75;
+  // "Consistently" also needs the end points to sit near the extremes: within this share of the range of the high (or low) at the end,
+  // and of the low (or high) at the start.
+  const CONSISTENT_END_SHARE = 0.25;
+  // A spike or a dip is held by this share of the points or fewer, in ONE stretch. A plateau or two spikes is not "a large spike".
+  const LEVEL_SPIKE_MAX_POINT_SHARE = 0.25;
+  // "Consistently" is not said when the single biggest step against the direction is more than this share of the range: a climb of
+  // 100 that gives back 70 in one step is not consistent.
+  const CONSISTENT_STEP_AGAINST_SHARE = 0.25;
+  // A mostly level series whose points off its level are more than this share of all its points is not "mostly level": a wide
+  // square wave is 43% off its level and a plateau holds 33%.
+  const LEVEL_APART_MAX_POINT_SHARE = 0.4;
+  // A point counts as raised or lowered when it is further than this share of the range from the series' level.
+  const LEVEL_APART_MIN_SHARE = 0.25;
+
   /**
-   * Chart.js's `analyzeTrend`, quoted. More than 70% of steps in one direction
-   * gives "consistently". Otherwise the sign of the last value minus the first
-   * decides.
+   * The value that most points hold (the first of those, where several tie): the level of a mostly level series.
+   * @param {Array<number>} values - The series values in source order
+   * @returns {number} The level
+   */
+  function levelOf(values) {
+    const counts = new Map();
+    for (const value of values) counts.set(value, (counts.get(value) || 0) + 1);
+    let level = values[0];
+    let most = 0;
+    for (const [value, count] of counts) {
+      if (count > most) {
+        most = count;
+        level = value;
+      }
+    }
+    return level;
+  }
+
+  /**
+   * How many separate stretches of points the test holds for.
+   * @param {Array<number>} values - The series values in source order
+   * @param {Function} onFarSide - Takes a value, true when it counts
+   * @returns {number} The number of unbroken stretches
+   */
+  function countStretches(values, onFarSide) {
+    let stretches = 0;
+    let previous = false;
+    for (const value of values) {
+      const current = onFarSide(value);
+      if (current && !previous) stretches += 1;
+      previous = current;
+    }
+    return stretches;
+  }
+
+  /**
+   * The words for a mostly level series with a large range where no single spike or dip fits. More than
+   * LEVEL_APART_MAX_POINT_SHARE of the points off the level is not "mostly level" (no clear trend); points that stand apart both
+   * ways say so; otherwise the side with fewer points is the one that stands apart, and several one-point stretches are points.
+   * @param {Array<number>} values - The series values in source order
+   * @param {number} high - The highest value
+   * @param {number} low - The lowest value
+   * @returns {string} A TRENDS member
+   */
+  function levelFallbackTrend(values, high, low) {
+    const level = levelOf(values);
+    if (values.filter((value) => value !== level).length > LEVEL_APART_MAX_POINT_SHARE * values.length) return TRENDS.NONE;
+    const margin = LEVEL_APART_MIN_SHARE * (high - low);
+    if (values.some((value) => value - level > margin) && values.some((value) => level - value > margin)) return TRENDS.LEVEL_APART;
+
+    const midpoint = (high + low) / 2;
+    const above = (value) => value > midpoint;
+    const below = (value) => value < midpoint;
+    const raised = values.filter(above).length <= values.filter(below).length;
+    const farSide = raised ? above : below;
+    const stretches = countStretches(values, farSide);
+    if (stretches === 1) return raised ? TRENDS.LEVEL_RAISED : TRENDS.LEVEL_LOWERED;
+    // Every stretch one point long: a run of values it is not.
+    const oneEach = values.filter(farSide).length === stretches;
+    if (oneEach) return raised ? TRENDS.LEVEL_RAISED_POINTS : TRENDS.LEVEL_LOWERED_POINTS;
+    return raised ? TRENDS.LEVEL_RAISED_MANY : TRENDS.LEVEL_LOWERED_MANY;
+  }
+
+  /**
+   * True when the points for which `onFarSide` holds are few and form one unbroken stretch.
+   * @param {Array<number>} values - The series values in source order
+   * @param {Function} onFarSide - Takes a value, true when it is on the far side of the series' midpoint
+   * @returns {boolean} Whether they are one short stretch
+   */
+  function isOneShortStretch(values, onFarSide) {
+    let far = 0;
+    let stretches = 0;
+    let previous = false;
+    for (const value of values) {
+      const current = onFarSide(value);
+      if (current) {
+        far += 1;
+        if (!previous) stretches += 1;
+      }
+      previous = current;
+    }
+    return far > 0 && stretches === 1 && far <= LEVEL_SPIKE_MAX_POINT_SHARE * values.length;
+  }
+  // A generally-increasing or decreasing trend needs a fitted line that agrees with the end points and rises
+  // (or falls) by at least this share of the range across the whole series.
+  const FITTED_RISE_MIN_SHARE = 0.1;
+
+  /**
+   * The least-squares line through the points, as the rise across the whole series divided by the range.
+   * @param {Array<number>} values - The series values in source order
+   * @returns {number} Signed share of the range, 0 when the range is 0
+   */
+  function fittedRiseShare(values) {
+    const count = values.length;
+    const middle = (count - 1) / 2;
+    const meanValue = values.reduce((sum, value) => sum + value, 0) / count;
+    let covariance = 0;
+    let spread = 0;
+    for (let i = 0; i < count; i += 1) {
+      covariance += (i - middle) * (values[i] - meanValue);
+      spread += (i - middle) * (i - middle);
+    }
+    const range = Math.max(...values) - Math.min(...values);
+    if (!(range > 0) || !(spread > 0)) return 0;
+    return ((covariance / spread) * (count - 1)) / range;
+  }
+
+  /**
+   * Chart.js's `analyzeTrend`, quoted, with three additions. More than 70% of
+   * steps in one direction gives "consistently". Otherwise the sign of the last
+   * value minus the first decides, but only when a fitted line agrees with it.
+   * One or two steps read as a plain rise or fall, and a mostly flat series
+   * that ends far from its start is level apart from one large change.
    * @param {Array<number>} values - The series values in source order
    * @returns {string} One of the TRENDS vocabulary
    */
@@ -647,32 +1113,78 @@
     let positive = 0;
     let negative = 0;
     let unchanged = 0;
+    let biggestRise = 0;
+    let biggestFall = 0;
     for (let i = 1; i < values.length; i += 1) {
       const difference = values[i] - values[i - 1];
-      if (difference > 0) positive += 1;
-      else if (difference < 0) negative += 1;
-      else unchanged += 1;
+      if (difference > 0) {
+        positive += 1;
+        biggestRise = Math.max(biggestRise, difference);
+      } else if (difference < 0) {
+        negative += 1;
+        biggestFall = Math.max(biggestFall, -difference);
+      } else unchanged += 1;
     }
 
-    const steps = values.length - 1;
-    if (positive > TREND_DOMINANCE * steps) return TRENDS.UP;
-    if (negative > TREND_DOMINANCE * steps) return TRENDS.DOWN;
-    if (unchanged > TREND_DOMINANCE * steps) return TRENDS.STABLE;
-
+    // "Consistently" is only said when the series also ends on the side that
+    // most of its steps point to. Nine small falls and one huge rise end higher,
+    // so they are not a consistent fall.
     const overall = values[values.length - 1] - values[0];
-    if (overall > 0) return TRENDS.UP_NOISY;
-    if (overall < 0) return TRENDS.DOWN_NOISY;
+    const steps = values.length - 1;
+    // One or two steps are a rise or a fall, not a consistent trend.
+    if (steps < TREND_MIN_STEPS) {
+      if (positive === steps && overall > 0) return TRENDS.RISES;
+      if (negative === steps && overall < 0) return TRENDS.FALLS;
+    }
+    const high = Math.max(...values);
+    const low = Math.min(...values);
+    const reach = CONSISTENT_END_SHARE * (high - low);
+    const first = values[0];
+    const last = values[values.length - 1];
+    const stepLimit = CONSISTENT_STEP_AGAINST_SHARE * (high - low);
+    if (positive > TREND_DOMINANCE * steps && overall > 0 && high - last <= reach && first - low <= reach && biggestFall <= stepLimit) return TRENDS.UP;
+    if (negative > TREND_DOMINANCE * steps && overall < 0 && last - low <= reach && high - first <= reach && biggestRise <= stepLimit) return TRENDS.DOWN;
+    if (unchanged > TREND_DOMINANCE * steps) {
+      // Mostly flat steps, but the series ends far from where it began, so it is not "stable".
+      const range = Math.max(...values) - Math.min(...values);
+      if (range > 0 && Math.abs(overall) > STABLE_NET_RANGE_SHARE * range) {
+        return overall > 0 ? TRENDS.LEVEL_RISE : TRENDS.LEVEL_FALL;
+      }
+      const scale = Math.max(...values.map((value) => Math.abs(value)));
+      if (range > LEVEL_SPIKE_MIN_SHARE * scale) {
+        const ends = [values[0], values[values.length - 1]];
+        const midpoint = (high + low) / 2;
+        if (Math.max(...values) - Math.max(...ends) > LEVEL_SPIKE_STICK_OUT * range && isOneShortStretch(values, (value) => value > midpoint)) return TRENDS.LEVEL_SPIKE;
+        if (Math.min(...ends) - Math.min(...values) > LEVEL_SPIKE_STICK_OUT * range && isOneShortStretch(values, (value) => value < midpoint)) return TRENDS.LEVEL_DIP;
+        // A large range that no spike or dip explains is not "stable".
+        return levelFallbackTrend(values, high, low);
+      }
+      return TRENDS.STABLE;
+    }
+
+    // A direction needs the fitted line to agree with the end points and to move by a real share of the range.
+    if (overall !== 0) {
+      const fitted = fittedRiseShare(values);
+      if (Math.sign(fitted) !== Math.sign(overall) || Math.abs(fitted) < FITTED_RISE_MIN_SHARE) return TRENDS.NONE;
+    }
+
+    if (overall > 0) return negative === 0 ? TRENDS.UP_STEPPED : TRENDS.UP_NOISY;
+    if (overall < 0) return positive === 0 ? TRENDS.DOWN_STEPPED : TRENDS.DOWN_NOISY;
     return TRENDS.NONE;
   }
 
   /**
    * Interior local maxima and minima: a point strictly greater (or smaller)
    * than both neighbours. The first and last points are never counted, having
-   * only one neighbour each.
-   * @param {Array<number>} values - The series values in source order
+   * only one neighbour each. A run of equal values counts as one point.
+   * @param {Array<number>} allValues - The series values in source order
    * @returns {Object} `{ peaks, troughs }`
    */
-  function countPeaksAndTroughs(values) {
+  function countPeaksAndTroughs(allValues) {
+    // A run of equal values is one point: a flat top is one peak, not none.
+    const values = allValues.filter(
+      (value, i) => i === 0 || value !== allValues[i - 1]
+    );
     let peaks = 0;
     let troughs = 0;
     for (let i = 1; i < values.length - 1; i += 1) {
@@ -680,6 +1192,121 @@
       if (values[i] < values[i - 1] && values[i] < values[i + 1]) troughs += 1;
     }
     return { peaks: peaks, troughs: troughs };
+  }
+
+  /**
+   * The words that say the highest value sits on an end point, which the peak count leaves out (an end point has one neighbour).
+   * Without them "peaks at 100 during L4, L7 and L13" is followed by "two peaks".
+   * @param {Array<number>} values - The series values in source order
+   * @returns {string} "" or ", and it starts at its highest value" and so on
+   */
+  function highestAtEndsClause(values) {
+    const highest = Math.max(...values);
+    const parts = [];
+    if (values[0] === highest) parts.push("starts");
+    if (values[values.length - 1] === highest) parts.push("ends");
+    return parts.length ? `, and it ${parts.join(" and ")} at its highest value` : "";
+  }
+
+  // How far a step may go against its leg and still count as one rise or one
+  // fall, as a share of the gap between the highest and the lowest value.
+  const TURN_TOLERANCE = 0.1;
+
+  // The two shapes of a series that turns once.
+  const TURN_SHAPES = Object.freeze({
+    PEAK: "peak",
+    LOW: "low",
+  });
+
+  // The words for a series that turns once. The trend bullet leaves out the
+  // label, because the next bullet already names the highest or lowest point.
+  // The short sentence of a one-series chart names it, because nothing else
+  // does.
+  const TURN_CLAUSE = Object.freeze({
+    [TURN_SHAPES.PEAK]: Object.freeze({
+      plain: " rises, then falls",
+      labelledBefore: " rises to a peak at ",
+      labelledAfter: ", then falls",
+    }),
+    [TURN_SHAPES.LOW]: Object.freeze({
+      plain: " falls, then rises",
+      labelledBefore: " falls to a low at ",
+      labelledAfter: ", then rises",
+    }),
+  });
+
+  /**
+   * Whether a series turns once. It must reach its highest value (or its
+   * lowest) somewhere inside the series, and a flat top is allowed. Each leg
+   * must be longer than the tolerance. Inside a leg, a step against the leg's
+   * direction may not be longer than the tolerance. A series with two humps,
+   * or a turn at either end, is not a single turn.
+   * @param {Array<number>} values - The series values in source order
+   * @returns {string|null} A TURN_SHAPES value, or null
+   */
+  function turnShape(values) {
+    const count = values.length;
+    if (count < 3) return null;
+    const range = Math.max(...values) - Math.min(...values);
+    if (!(range > 0)) return null;
+    const tolerance = TURN_TOLERANCE * range;
+
+    // Tests for a peak. A low is the same test on the negated values.
+    const turnsOnce = (sign) => {
+      const signed = values.map((value) => value * sign);
+      const top = Math.max(...signed);
+      const first = signed.indexOf(top);
+      const last = signed.lastIndexOf(top);
+      if (first === 0 || last === count - 1) return false;
+      for (let i = first; i <= last; i += 1) {
+        if (signed[i] !== top) return false;
+      }
+      if (top - signed[0] <= tolerance) return false;
+      if (top - signed[count - 1] <= tolerance) return false;
+      for (let i = 1; i <= first; i += 1) {
+        const stepBack = signed[i - 1] - signed[i];
+        if (stepBack > tolerance) return false;
+      }
+      for (let i = last + 1; i < count; i += 1) {
+        const stepBack = signed[i] - signed[i - 1];
+        if (stepBack > tolerance) return false;
+      }
+      return true;
+    };
+
+    if (turnsOnce(1)) return TURN_SHAPES.PEAK;
+    if (turnsOnce(-1)) return TURN_SHAPES.LOW;
+    return null;
+  }
+
+  /**
+   * The runs that say a series turns once, or null when it does not.
+   * @param {Object} chart - The adapter's chart
+   * @param {Array<number>} values - The series values in source order
+   * @param {boolean} withLabel - True to name the highest or lowest point
+   * @returns {Array<Object>|null} Runs that start with a space
+   */
+  function turnClauseRuns(chart, values, withLabel) {
+    const { text } = modelCore();
+    const shape = turnShape(values);
+    if (!shape) return null;
+    const clause = TURN_CLAUSE[shape];
+    if (!withLabel) return [text(clause.plain)];
+    const stats = computeStatistics(values);
+    const indices =
+      shape === TURN_SHAPES.PEAK ? stats.maxIndices : stats.minIndices;
+    const at = pointReferencesRuns(chart, indices, REFERENCE_STYLE.STANDALONE);
+    return [text(clause.labelledBefore), ...at, text(clause.labelledAfter)];
+  }
+
+  // The trend classes whose wording a single turn replaces. "Consistently" and
+  // "stable" make a claim about most steps, and they stay as they are.
+  function turnReplacesTrend(trend) {
+    return (
+      trend === TRENDS.UP_NOISY ||
+      trend === TRENDS.DOWN_NOISY ||
+      trend === TRENDS.NONE
+    );
   }
 
   /**
@@ -757,6 +1384,8 @@
     return {
       kind: series.kind,
       name: series.name || null,
+      unlabelled: series.unlabelled === true,
+      overallPosition: allSeries.indexOf(series) + 1,
       position: index + 1,
       kindCount: sameKind.length,
       isAmongSeveral: sameKind.length > 1,
@@ -810,10 +1439,58 @@
   function seriesColumnHeader(series, allSeries) {
     const { text, author } = modelCore();
     const identity = seriesIdentity(series, allSeries);
-    if (identity.name) return [author(identity.name)];
+    if (identity.name) {
+      const sameName = allSeries.filter((one) => seriesNameKey(one) === seriesNameKey(series));
+      if (sameName.length > 1) return [author(identity.name), text(` (series ${sameName.indexOf(series) + 1})`)];
+      return [author(identity.name)];
+    }
 
     const base = `${capitalise(identity.kind)} series`;
     return [text(identity.isAmongSeveral ? `${base} ${identity.position}` : base)];
+  }
+
+  // Characters that draw as nothing: white space, Unicode format characters (zero-width space, joiner and the like), the combining
+  // grapheme joiner, the Hangul fillers, the braille blank U+2800 and the variation selectors. One class serves every name and every
+  // label, so nothing is blank in one place and visible in another.
+  const INVISIBLE_CHARS = String.raw`\s\p{Cf}\p{Default_Ignorable_Code_Point}\u2800\u001D\u007F`;
+  // Characters in the invisible set that Chromium nonetheless draws as ink: U+180F (Mongolian free variation
+  // selector four) and the 37 that leave a mark when drawn alone (the Arabic and Syriac number signs, the Ogham space mark, the
+  // interlinear annotation anchors, the Kaithi number signs, the Egyptian and shorthand format controls). They are excluded where the
+  // class is used, so a name made of one is a name. The 28 members that only advance the line stay in the set.
+  const DRAWN_MARKS = String.raw`[\u180F\u{600}-\u{605}\u{6DD}\u{70F}\u{890}-\u{891}\u{8E2}\u{1680}\u{FFF9}-\u{FFFB}\u{110BD}\u{110CD}\u{13430}-\u{1343F}\u{1BCA0}-\u{1BCA3}]`;
+  const INVISIBLE_ONE = `(?:(?!${DRAWN_MARKS})[${INVISIBLE_CHARS}])`;
+
+  // A label is blank when it holds only invisible characters.
+  const BLANK_LABEL = new RegExp(`^${INVISIBLE_ONE}*$`, "u");
+  // A series name compared by the repeat key (see repeatKey): what looks and sounds the same is one name.
+  function seriesNameKey(series) {
+    return typeof series.name === "string" ? repeatKey(series.name) : "";
+  }
+
+  // Two invisible characters that change what a name draws, so the repeat key keeps them where they do: a zero-width joiner between two
+  // pictographs (a family of three is not three people side by side) and the tag characters after a pictograph (the flags of England,
+  // Scotland and Wales are tags after a black flag). One at the edge of a name, or beside a letter, is junk and is removed.
+  const KEY_PICTOGRAPH = String.raw`\p{Extended_Pictographic}`;
+  const KEY_TAGS = String.raw`[\u{E0020}-\u{E007F}]`;
+  const KEY_KEPT = String.raw`(?:(?<=${KEY_PICTOGRAPH}️?)‍(?=${KEY_PICTOGRAPH})|(?<=${KEY_PICTOGRAPH}${KEY_TAGS}*)${KEY_TAGS})`;
+  // The repeat key removes every invisible character, at the ends and inside, before the name is composed (NFC), except white space
+  // (a gap a reader sees) and the characters kept above. U+FEFF is white space to JavaScript and draws as nothing, so it goes too.
+  const KEY_INVISIBLE = new RegExp(`\\uFEFF|(?!\\s)(?!${KEY_KEPT})${INVISIBLE_ONE}`, "gu");
+  // White space the picture does not draw as ink (U+1680, the Ogham space mark, is drawn and so stays a character).
+  const KEY_SPACE = String.raw`(?:(?!${DRAWN_MARKS})\s)+`;
+  const KEY_SPACE_EDGES = new RegExp(`^${KEY_SPACE}|${KEY_SPACE}$`, "gu");
+  const KEY_SPACE_RUN = new RegExp(KEY_SPACE, "gu");
+
+  /**
+   * The key two names repeat on, so that names which look and sound the same are a repeat: the invisible characters are removed (bar the
+   * kept ones above), the name is composed one way (NFC), white space at its ends is dropped, and every run of white space inside it
+   * (no-break, thin, em or ideographic space, tab, line break, two spaces) reads as one space, so "New York" and "New  York" are one
+   * name and "New York" and "NewYork" stay two. Case and lookalike letters are kept, so "North" and "NORTH" stay two names.
+   * @param {string} name - A segment, axis or series name
+   * @returns {string} The key
+   */
+  function repeatKey(name) {
+    return String(name).replace(KEY_INVISIBLE, "").normalize("NFC").replace(KEY_SPACE_EDGES, "").replace(KEY_SPACE_RUN, " ");
   }
 
   /**
@@ -822,6 +1499,9 @@
    *
    * Compared on the AUTHOR'S OWN text, before escaping, so two labels that
    * differ only in characters an HTML sink would encode are still two labels.
+   * Labels compare on `repeatKey`, as series names do ("Autumn " repeats
+   * "Autumn", "New York" with a no-break space repeats "New York"), case is
+   * not ignored, and a blank label is never a repeat.
    *
    * @param {Object} chart - The adapter's chart
    * @param {number} index - 0-based point index
@@ -831,9 +1511,10 @@
     const categories = declaredCategories(chart);
     const label = categories[index];
     if (typeof label !== "string") return false;
+    const key = repeatKey(label);
     let seen = 0;
     for (const one of categories) {
-      if (one === label) seen += 1;
+      if (typeof one === "string" && !BLANK_LABEL.test(one) && repeatKey(one) === key) seen += 1;
       if (seen > 1) return true;
     }
     return false;
@@ -872,6 +1553,15 @@
     const identity = seriesIdentity(series, allSeries);
 
     if (identity.name) {
+      // Two series with one name are told apart by their order.
+      const sameName = allSeries.filter((one) => seriesNameKey(one) === seriesNameKey(series));
+      if (sameName.length > 1 && new Set(sameName.map((one) => one.kind)).size > 1) {
+        const ordinal = identity.isAmongSeveral ? `${ordinalWord(identity.position)} ` : "";
+        return [text(`the ${ordinal}"`), author(identity.name), text(`" ${series.kind} series`)];
+      }
+      if (sameName.length > 1) {
+        return [text(`the ${ordinalWord(sameName.indexOf(series) + 1)} "`), author(identity.name), text('" series')];
+      }
       return [text('the "'), author(identity.name), text('" series')];
     }
     if (!identity.isAmongSeveral) {
@@ -901,6 +1591,10 @@
   function pointReferencePartRuns(chart, index) {
     const { text, author } = modelCore();
     const label = declaredCategories(chart)[index];
+    if (typeof label === "string" && BLANK_LABEL.test(label)) {
+      // A blank label has no name to speak, so the describer names the position.
+      return { kind: "label", runs: [text(`unlabelled category ${index + 1}`)], disambiguator: null };
+    }
     if (typeof label === "string") {
       return {
         kind: "label",
@@ -988,10 +1682,38 @@
    */
   function pointReferencesRuns(chart, indices, style) {
     const { text } = modelCore();
+    const runs = pointReferencesCore(chart, indices, style);
+    if (!indices.some((i) => isUndrawnIndex(chart, i))) return runs;
+    // A position past the last label is in the code and not in the picture: say so, in the shape each context takes.
+    return [...runs, text(style === REFERENCE_STYLE.PARENTHETICAL ? `, ${UNDRAWN_NOTE}` : ` (${UNDRAWN_NOTE})`)];
+  }
+
+  /**
+   * True when a value sits past the last declared label: Mermaid draws nothing there.
+   * @param {Object} chart - The adapter's chart
+   * @param {number} index - 0-based position
+   * @returns {boolean} Whether the position is past the labels
+   */
+  function isUndrawnIndex(chart, index) {
+    return hasDeclaredCategories(chart) && index >= declaredCategories(chart).length;
+  }
+
+  function pointReferencesCore(chart, indices, style) {
+    const { text } = modelCore();
     if (indices.length === 1) {
       return referenceRuns(pointReferencePartRuns(chart, indices[0]), style);
     }
     if (indices.length >= TIED_POSITION_COLLAPSE_AT) {
+      // On a labelled axis the collapsed set is categories, not points.
+      if (hasDeclaredCategories(chart)) {
+        const declared = declaredCategories(chart).length;
+        const inside = indices.filter((i) => i < declared).length;
+        const past = indices.length - inside;
+        const insideText = `${countWord(inside)} of the ${axisNoun(chart).plural}`;
+        if (past === 0) return [text(insideText)];
+        const pastText = `${countWord(past)} ${past === 1 ? "position" : "positions"} past the labels`;
+        return [text(inside === 0 ? pastText : `${insideText} and ${pastText}`)];
+      }
       return [text(`${countWord(indices.length)} points`)];
     }
 
@@ -1071,8 +1793,8 @@
    * The singular is lower-cased because the label-type nouns are stored with a
    * capital letter for their use as table headers. THIS DOES NOT TOUCH AUTHOR
    * TEXT. Every noun that reaches this function is the describer's own. An
-   * author's x-axis title never becomes one. The title wins outright and sends
-   * the detector back to Category and categories.
+   * author's x-axis title never becomes one. A title that does not name the
+   * detected label type sends the detector back to Category and categories.
    *
    * @param {Object} noun - An axisNoun result, `{ singular, plural }`
    * @param {number} count - How many positions are being counted
@@ -1182,9 +1904,15 @@
 
   /**
    * The noun a band axis's positions take in prose. An author x-axis title
-   * always wins, and where one exists the detector is not consulted at all.
-   * The title names the axis, and the describer's own neutral noun counts the
-   * positions.
+   * always wins, so the title is never changed. The describer's own neutral
+   * noun counts the positions, with one exception: when the title contains a
+   * word that starts with the detected noun ("Month", "Monthly figures",
+   * "Academic year"), the title and the labels agree, and the detected noun
+   * counts them ("six months"). A title that names something else, such as
+   * "Team member" over April, May and June, keeps the neutral noun.
+   *
+   * The pattern is built from the describer's own noun and never from author
+   * text.
    * @param {Object} chart - The adapter's chart
    * @returns {Object} `{ singular, plural, detected }`
    */
@@ -1196,14 +1924,19 @@
         detected: false,
       };
     }
-    if (chart.xAxis.title) {
+    const found = detectLabelNoun(chart.xAxis.categories || []);
+    const title = chart.xAxis.title;
+    const titleNamesLabels =
+      found.detected &&
+      new RegExp("\\b" + found.singular.toLowerCase(), "i").test(title || "");
+    if (title && !titleNamesLabels) {
       return {
         singular: FALLBACK_NOUN.singular,
         plural: FALLBACK_NOUN.plural,
         detected: false,
       };
     }
-    return detectLabelNoun(chart.xAxis.categories || []);
+    return found;
   }
 
   /**
@@ -1267,7 +2000,7 @@
       // whether they differ from the declaration. Series that agree with each
       // other are comparable, and the mismatch sentence in the construction
       // paragraph supplies the denominator.
-      const lengths = series.map((one) => one.values.length);
+      const lengths = series.map((one) => valueCount(one));
       if (new Set(lengths).size > 1) {
         // The SHORT tier takes the fixed sentence and drops the list of series,
         // because that list has no length limit. It grows with the number of
@@ -1286,7 +2019,7 @@
         }
         const clauses = series.map((one) => [
           ...seriesLabelRuns(one, series),
-          text(` has ${countWord(one.values.length)}`),
+          text(` has ${countWord(valueCount(one))}`),
         ]);
         return [
           text("The chart's series have different numbers of values: "),
@@ -1295,26 +2028,39 @@
         ];
       }
 
-      let highest = series[0];
-      let highestMean = computeStatistics(series[0].values).mean;
-      for (const one of series.slice(1)) {
-        const mean = computeStatistics(one.values).mean;
-        if (mean > highestMean) {
-          highestMean = mean;
-          highest = one;
-        }
+      // Means count as equal when they differ by no more than a relative gap of 1e-14, so that sums which differ
+      // only by floating-point noise are equal and means that differ at the thirteenth figure are not.
+      const means = series.map((one) => computeStatistics(one.values).mean);
+      const highestMean = Math.max(...means);
+      const highestAt = means.indexOf(highestMean);
+      const bounds = series.map((one) => floatNoiseBound(one.values));
+      const sameMean = (i) => Math.abs(means[i] - highestMean) <= bounds[i] + bounds[highestAt];
+      const leaders = series.filter((one, i) => sameMean(i));
+      // A mean that is not a number (outside the stated input) names the first series, as before.
+      if (leaders.length === 0) leaders.push(series[0]);
+      if (leaders.length === series.length) {
+        return [text("The series have the same average.")];
+      }
+      if (leaders.length > 1) {
+        return [
+          ...capitaliseRuns(
+            joinRuns(leaders.map((one) => seriesLabelRuns(one, series)))
+          ),
+          text(" show the highest overall values."),
+        ];
       }
       return [
-        ...capitaliseRuns(seriesLabelRuns(highest, series)),
+        ...capitaliseRuns(seriesLabelRuns(leaders[0], series)),
         text(" shows the highest overall values."),
       ];
     }
 
     const only = series[0];
     const stats = computeStatistics(only.values);
+    const ends = formatRangeEndsForTier(tier, stats.min, stats.max);
     const rangeSentence = [
       text(
-        `Values range from ${formatAuthorValueForTier(tier, stats.min)} to ${formatAuthorValueForTier(tier, stats.max)} with an average of ${formatDerivedValue(stats.mean)}.`
+        `Values range from ${ends.min} to ${ends.max} with an average of ${formatMean(stats.mean, stats.min, stats.max)}.`
       ),
     ];
 
@@ -1329,35 +2075,53 @@
     if (isRangeAxis) return rangeSentence;
     if (!Number.isFinite(stats.mean) || stats.mean === 0) return rangeSentence;
 
-    const maxRatio = stats.max / stats.mean;
+    const maxRatio = highPointRatio(stats);
     const minRatio = stats.min / stats.mean;
 
     if (only.kind === SERIES_KINDS.LINE) {
       const trend = analyseTrend(only.values);
-      if (trend === TRENDS.UP || trend === TRENDS.DOWN) {
+      if (
+        trend === TRENDS.UP ||
+        trend === TRENDS.DOWN ||
+        trend === TRENDS.RISES ||
+        trend === TRENDS.FALLS
+      ) {
         return [
           ...capitaliseRuns(seriesLabelRuns(only, series)),
           text(
-            ` shows a ${trend} trend, ranging from ${formatAuthorValueForTier(tier, stats.min)} to ${formatAuthorValueForTier(tier, stats.max)}.`
+            ` ${TREND_CLAUSE[trend]}, ranging from ${ends.min} to ${ends.max}.`
           ),
         ];
       }
       if (maxRatio > HIGH_POINT_RATIO) {
         return [
           ...capitaliseRuns(seriesLabelRuns(only, series)),
-          text(` peaks significantly at ${formatAuthorValueForTier(tier, stats.max)} during `),
+          text(` peaks at ${formatAuthorValueForTier(tier, stats.max)} during `),
           ...pointReferencesRuns(chart, stats.maxIndices, REFERENCE_STYLE.STANDALONE),
-          text("."),
+          text(", well above its average."),
+        ];
+      }
+      const turnRuns = turnReplacesTrend(trend)
+        ? turnClauseRuns(chart, only.values, true)
+        : null;
+      if (turnRuns) {
+        return [
+          ...capitaliseRuns(seriesLabelRuns(only, series)),
+          ...turnRuns,
+          text(", with values between " + ends.min + " and " + ends.max + "."),
         ];
       }
       // `is ${trend}` CANNOT RECEIVE THE UNKNOWN SENTINEL. analyseTrend returns
       // UNKNOWN only below two values, and a series of nought or one value never
       // reaches this line. One value is degenerate and returned above, and an
       // empty series is caught by the zero-mean guard.
+      // The unclear trend is a verb in TREND_CLAUSE ("fluctuates with no clear trend"), so it takes no "is":
+      // one form of the phrase, as in the zigzag sentence.
+      const trendPhrase = trend === TRENDS.NONE ? TREND_CLAUSE[trend] : `is ${trend}`;
       return [
         ...capitaliseRuns(seriesLabelRuns(only, series)),
         text(
-          ` is ${trend}, with values between ${formatAuthorValueForTier(tier, stats.min)} and ${formatAuthorValueForTier(tier, stats.max)}.`
+          ` ${trendPhrase}, with values between ${ends.min} and ${ends.max}.`
         ),
       ];
     }
@@ -1381,10 +2145,21 @@
       return [
         text(`The lowest value, ${formatAuthorValueForTier(tier, stats.min)} at `),
         ...pointReferencesRuns(chart, stats.minIndices, REFERENCE_STYLE.STANDALONE),
-        text(`, is ${Math.round((1 - minRatio) * 100)}% below the average.`),
+        text(`, is ${stats.min > 0 && Math.round((1 - minRatio) * 100) >= 100 ? "more than 99" : Math.round((1 - minRatio) * 100)}% below the average.`),
       ];
     }
     return rangeSentence;
+  }
+
+  /**
+   * The ratio of the highest value to the average, which the takeaway compares with HIGH_POINT_RATIO.
+   * @param {Object} stats - Statistics from computeStatistics
+   * @returns {number} The ratio
+   */
+  function highPointRatio(stats) {
+    const largest = Math.max(Math.abs(stats.max), Math.abs(stats.min));
+    if (stats.min < 0 && stats.mean < MIXED_SIGN_MEAN_MIN_SHARE * largest) return 0;
+    return stats.max / stats.mean;
   }
 
   /**
@@ -1833,9 +2608,17 @@
       }
     }
 
-    if (xClause && yClause) return [...xClause, text(", and "), ...yClause, text(".")];
+    // Say so when a value lies outside the declared y-axis range.
+    const low = chart.yAxis ? Math.min(chart.yAxis.min, chart.yAxis.max) : NaN;
+    const high = chart.yAxis ? Math.max(chart.yAxis.min, chart.yAxis.max) : NaN;
+    const outside =
+      yClause && hasBounds(chart.yAxis) &&
+      chart.series.some((one) => one.values.some((value) => typeof value === "number" && (value < low || value > high)))
+        ? [text(" Some values lie outside the y-axis range.")]
+        : [];
+    if (xClause && yClause) return [...xClause, text(", and "), ...yClause, text("."), ...outside];
     if (xClause) return [...xClause, text(".")];
-    if (yClause) return [...capitaliseRuns(yClause), text(".")];
+    if (yClause) return [...capitaliseRuns(yClause), text("."), ...outside];
     return null;
   }
 
@@ -1853,9 +2636,9 @@
    * @param {Object} chart - The adapter's chart
    * @returns {Object} One list block (model list), never empty
    */
-  function buildInsightsModel(chart) {
+  function buildInsightsModel(chart, wholeChart = chart) {
     const { list, item, strong } = modelCore();
-    const items = [item([strong(buildTakeawayRuns(chart, TIERS.DETAILED))])];
+    const items = [item([strong(buildTakeawayRuns(chart, TIERS.DETAILED))]), ...undrawnValueItems(wholeChart)];
     const isRangeAxis = !chart.xAxis || chart.xAxis.kind === AXIS_KINDS.RANGE;
 
     if (chart.series.length === 1) {
@@ -1886,6 +2669,23 @@
   }
 
   /**
+   * The end of a "Highest value" or "Lowest value" bullet: where the value is.
+   * The positions of a tie sit in the sentence, not inside brackets, as the
+   * line series already does, but only when a tied label is itself repeated:
+   * that is the one case with brackets inside brackets.
+   * @param {Object} chart - The adapter's chart
+   * @param {Array<number>} indices - The 0-based points holding the value
+   * @returns {Array<Object>} Runs that finish the bullet, full stop included
+   */
+  function valueAtRuns(chart, indices) {
+    const { text } = modelCore();
+    if (indices.length > 1 && indices.some((i) => isDuplicatedLabel(chart, i))) {
+      return [text(", at "), ...pointReferencesRuns(chart, indices, REFERENCE_STYLE.STANDALONE), text(".")];
+    }
+    return [text(" ("), ...pointReferencesRuns(chart, indices, REFERENCE_STYLE.PARENTHETICAL), text(").")];
+  }
+
+  /**
    * A bar series' insights.
    * @param {Object} chart - The adapter's chart
    * @param {Object} series - The bar series
@@ -1911,26 +2711,24 @@
       if (!isDegenerateSeries(stats)) {
         items.push(
           item([
-            text(`Highest value: ${formatAuthorValue(stats.max)} (`),
-            ...pointReferencesRuns(chart, stats.maxIndices, REFERENCE_STYLE.PARENTHETICAL),
-            text(")."),
+            text(`Highest value: ${formatAuthorValue(stats.max)}`),
+            ...valueAtRuns(chart, stats.maxIndices),
           ])
         );
         items.push(
           item([
-            text(`Lowest value: ${formatAuthorValue(stats.min)} (`),
-            ...pointReferencesRuns(chart, stats.minIndices, REFERENCE_STYLE.PARENTHETICAL),
-            text(")."),
+            text(`Lowest value: ${formatAuthorValue(stats.min)}`),
+            ...valueAtRuns(chart, stats.minIndices),
           ])
         );
       }
-      items.push(item([text(`Average value: ${formatDerivedValue(stats.mean)}.`)]));
+      items.push(item([text(`Average value: ${formatMean(stats.mean, stats.min, stats.max)}.`)]));
 
       if (stats.count >= STATISTICS_MIN_POINTS) {
         items.push(
-          item([text(`Standard deviation: ${formatDerivedValue(stats.standardDeviation)}.`)])
+          item([text(`Standard deviation: ${formatSpread(stats)}.`)])
         );
-        items.push(item([text(`Median value: ${formatDerivedValue(stats.median)}.`)]));
+        items.push(item([text(`Median value: ${formatMean(stats.median, stats.min, stats.max)}.`)]));
         items.push(item([text(buildDistributionSentence(stats))]));
       }
       return items;
@@ -1941,18 +2739,16 @@
       item([
         text("Highest value in "),
         ...label,
-        text(`: ${formatAuthorValue(stats.max)} (`),
-        ...pointReferencesRuns(chart, stats.maxIndices, REFERENCE_STYLE.PARENTHETICAL),
-        text(")."),
+        text(`: ${formatAuthorValue(stats.max)}`),
+        ...valueAtRuns(chart, stats.maxIndices),
       ])
     );
     items.push(
       item([
         text("Lowest value in "),
         ...label,
-        text(`: ${formatAuthorValue(stats.min)} (`),
-        ...pointReferencesRuns(chart, stats.minIndices, REFERENCE_STYLE.PARENTHETICAL),
-        text(")."),
+        text(`: ${formatAuthorValue(stats.min)}`),
+        ...valueAtRuns(chart, stats.minIndices),
       ])
     );
     return items;
@@ -2013,7 +2809,18 @@
     if (!isRangeAxis) {
       const trend = analyseTrend(series.values);
       const clause = TREND_CLAUSE[trend];
-      if (clause) items.push(item([...capitaliseRuns(label), text(` ${clause}.`)]));
+      const turn = turnReplacesTrend(trend)
+        ? turnClauseRuns(chart, series.values, false)
+        : null;
+      // The takeaway (the first bullet) already says a consistent trend, so it is not repeated.
+      const takeawayStatesTrend =
+        isOnlySeries &&
+        Number.isFinite(stats.mean) &&
+        stats.mean !== 0 &&
+        !isDegenerateSeries(stats) &&
+        (trend === TRENDS.UP || trend === TRENDS.DOWN || trend === TRENDS.RISES || trend === TRENDS.FALLS || !(highPointRatio(stats) > HIGH_POINT_RATIO));
+      if (turn && !takeawayStatesTrend) items.push(item([...capitaliseRuns(label), ...turn, text(".")]));
+      else if (clause && !turn && !takeawayStatesTrend) items.push(item([...capitaliseRuns(label), text(` ${clause}.`)]));
     }
 
     // This is the line-chart side of dropping the extremes on a flat series. The
@@ -2072,11 +2879,13 @@
     if (stats.count <= LINE_ADVANCED_MIN_POINTS) return items;
 
     const shape = countPeaksAndTroughs(series.values);
-    if (shape.peaks > 1 && shape.troughs > 1) {
+    const lineTrend = analyseTrend(series.values);
+    const saysConsistent = lineTrend === TRENDS.UP || lineTrend === TRENDS.DOWN;
+    if (shape.peaks > 1 && shape.troughs > 1 && !saysConsistent) {
       items.push(
         item([
           text(
-            `The data shows a cyclic pattern with ${countWord(shape.peaks)} peaks and ${countWord(shape.troughs)} troughs.`
+            `The data rises and falls repeatedly, with ${countWord(shape.peaks)} peaks and ${countWord(shape.troughs)} troughs${highestAtEndsClause(series.values)}.`
           ),
         ])
       );
@@ -2087,6 +2896,12 @@
     if (first !== 0) {
       const percentChange = ((last - first) / Math.abs(first)) * 100;
       if (Math.abs(percentChange) > OVERALL_CHANGE_MIN_PERCENT) {
+        // A start that is near zero, or on the other side of zero from the end, makes the percentage a function of the start.
+        const scale = Math.max(...series.values.map((value) => Math.abs(value)));
+        if (first < 0 || first * last < 0 || Math.abs(first) < NEAR_ZERO_START_SHARE * scale) {
+          items.push(item([text(`Overall, the values go from ${formatAuthorValue(first)} at the start to ${formatAuthorValue(last)} at the end.`)]));
+          return items;
+        }
         items.push(
           item([
             text(
@@ -2173,7 +2988,9 @@
       // repeats were numbered, the first would look like the only one.
       const rowLabel = isBandAxis
         ? typeof categories[i] === "string"
-          ? isDuplicatedLabel(chart, i)
+          ? BLANK_LABEL.test(categories[i])
+            ? [text(`Unlabelled category ${i + 1}`)]
+            : isDuplicatedLabel(chart, i)
             ? [
                 author(categories[i]),
                 text(` (${POSITION_NOUN.position.singular.toLowerCase()} ${i + 1})`),
@@ -2187,12 +3004,81 @@
         // tell an empty cell from a recorded zero.
         // A cell value is the describer's own formatting, never escaped
         // (formatAuthorValue is String(value)).
-        return [text(value === undefined ? NO_VALUE_TEXT : formatAuthorValue(value))];
+        if (value === undefined) return [text(NO_VALUE_TEXT)];
+        return [text(isUndrawnIndex(chart, i) ? `${formatAuthorValue(value)} (${UNDRAWN_NOTE})` : formatAuthorValue(value))];
       });
       tableRows.push({ header: rowLabel, cells });
     }
 
     return table({ caption, columns: [xHeader, ...valueHeaders], rows: tableRows });
+  }
+
+  /**
+   * The chart cut back to what the picture draws: a series with more values than the x-axis has labels keeps the first ones,
+   * and remembers how many it held.
+   * @param {Object} chart - The adapter's chart
+   * @returns {Object} The chart, or a copy with the undrawn values left off
+   */
+  function drawnOnly(chart) {
+    if (!hasDeclaredCategories(chart)) return chart;
+    const declared = declaredCategories(chart).length;
+    if (!chart.series.some((one) => one.values.length > declared)) return chart;
+    return {
+      ...chart,
+      series: chart.series.map((one) =>
+        one.values.length > declared ? { ...one, values: one.values.slice(0, declared), totalValues: one.values.length } : one
+      ),
+    };
+  }
+
+  /**
+   * How many values a series holds in the code, drawn or not.
+   * @param {Object} series - One adapter series
+   * @returns {number} The count
+   */
+  function valueCount(series) {
+    return series.totalValues === undefined ? series.values.length : series.totalValues;
+  }
+  /**
+   * One insight per series that holds values past the last label: it names them, with the disclosure.
+   * @param {Object} chart - The adapter's chart, whole
+   * @returns {Array<Object>} List items
+   */
+  function undrawnValueItems(chart) {
+    if (!hasDeclaredCategories(chart)) return [];
+    const { text, item } = modelCore();
+    const declared = declaredCategories(chart).length;
+    return chart.series
+      .filter((one) => one.values.length > declared)
+      .map((one) => {
+        const past = one.values.slice(declared);
+        const count = countWord(past.length);
+        const named =
+          past.length <= UNDRAWN_LIST_MAX
+            ? `${count} ${past.length === 1 ? "value" : "values"} past the last label: ${past.map(formatAuthorValue).join(", ").replace(/, ([^,]*)$/, " and $1")}`
+            : `${count} values past the last label`;
+        const label = seriesLabelRuns(one, chart.series);
+        return item([...capitaliseRuns(label), text(` also holds ${named} (${UNDRAWN_NOTE}).`)]);
+      });
+  }
+
+  /**
+   * The chart with every blank title and series name taken out, so that no sentence quotes an empty name. A blank
+   * title or axis title reads as no title. A blank series name is marked, and is spoken as "unlabelled series N".
+   * @param {Object} chart - The adapter's chart
+   * @returns {Object} A copy with blank text removed
+   */
+  function withoutBlankText(chart) {
+    const clean = (value) => (typeof value === "string" && BLANK_LABEL.test(value) ? null : value);
+    return {
+      ...chart,
+      title: clean(chart.title),
+      xAxis: chart.xAxis ? { ...chart.xAxis, title: clean(chart.xAxis.title) } : chart.xAxis,
+      yAxis: chart.yAxis ? { ...chart.yAxis, title: clean(chart.yAxis.title) } : chart.yAxis,
+      series: (chart.series || []).map((one) =>
+        typeof one.name === "string" && BLANK_LABEL.test(one.name) ? { ...one, name: null, unlabelled: true } : one
+      ),
+    };
   }
 
   /**
@@ -2207,20 +3093,32 @@
    *   `drawnSeriesName`
    * @returns {Object} A DescriptionModel (see model.js)
    */
-  function buildXychartModel(chart, options) {
+  function buildXychartModel(givenChart, options) {
     const { text, section, description } = modelCore();
+    const chart = withoutBlankText(givenChart);
+    // The figures (range, average, trend, highest and lowest) cover the drawn values only.
+    const figures = drawnOnly(chart);
 
+    // The short tier says so when the picture leaves values out, because its figures cover the drawn ones only.
+    const undrawnTotal = figures.series.reduce((sum, one) => sum + valueCount(one) - one.values.length, 0);
+    const undrawnShort =
+      undrawnTotal === 1
+        ? [text(" One further value is written in the code and not drawn.")]
+        : undrawnTotal > 1
+          ? [text(` ${capitalise(countWord(undrawnTotal))} further values are written in the code and not drawn.`)]
+          : [];
     const shortRuns = [
       ...buildShortOpeningRuns(chart, options),
+      ...undrawnShort,
       text(" "),
-      ...buildTakeawayRuns(chart, TIERS.SHORT),
+      ...buildTakeawayRuns(figures, TIERS.SHORT),
     ];
 
     const sections = [
       section(buildConstructionBlocks(chart, options), {
         heading: [text("Chart Construction")],
       }),
-      section([buildInsightsModel(chart)], { heading: [text("Key Insights")] }),
+      section([buildInsightsModel(figures, chart)], { heading: [text("Key Insights")] }),
       section([buildTableModel(chart)], { heading: [text("Data Table")] }),
     ];
 

@@ -6,10 +6,10 @@
  * This file needs no other file, so it loads first. It exports itself as
  * window.ChartDescribeText. In Node it also sets module.exports.
  *
- * The golden tests in test/ reach these four functions through every
- * description they check, so a change to a common case shows up there. No
- * test calls a function on its own, so an edge case can change unseen. Add a
- * test when you change one.
+ * test/text.test.mjs pins the exact behaviour of each function, edge cases
+ * included. The golden tests reach the functions through every description
+ * they check. So change a function only on purpose, and change its test with
+ * it.
  */
 (function (root) {
   // Logging configuration (inside module scope)

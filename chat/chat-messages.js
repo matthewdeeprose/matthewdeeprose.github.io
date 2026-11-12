@@ -818,6 +818,26 @@
           }
         });
       }
+      // The bridge wired each code-block copy button inside its hidden temporary
+      // container, but the HTML string it hands back carries the buttons without
+      // their click listeners, so every copy button here was dead. init() alone
+      // skips a block that already holds a button, so remove the inert ones first
+      // and let init() add working ones (one per block, whatever the render count).
+      if (
+        window.MarkdownCodeCopy &&
+        typeof window.MarkdownCodeCopy.init === "function"
+      ) {
+        try {
+          bubble
+            .querySelectorAll(".code-copy-button")
+            .forEach(function (button) {
+              button.remove();
+            });
+          window.MarkdownCodeCopy.init(bubble);
+        } catch (e) {
+          logWarn("code copy re-wire failed:", (e && e.message) || e);
+        }
+      }
       enhanceMathA11y(bubble);
     } catch (err) {
       logWarn(

@@ -2316,6 +2316,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
                 -->
                 <input type="text"
                        id="${FIELD_IDS.caption.input}"
+                       autocomplete="off"
                        aria-describedby="${FIELD_IDS.caption.help} ${FIELD_IDS.caption.count} ${FIELD_IDS.caption.provenance}" />
                 <p id="${FIELD_IDS.caption.help}" class="field-help">${FIELD_HELP_TEXT.caption}</p>
                 <small id="${FIELD_IDS.caption.count}" class="field-count">${formatCharacterCount(0)}</small>

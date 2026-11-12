@@ -4333,6 +4333,14 @@ a:hover {
   background-color: transparent;
   white-space: nowrap;
 }
+/* js/tool-registry.js ends a flagged tool's name with a no-break space so a
+ * screen reader's browse mode reads "Name Beta" rather than "NameBeta". That
+ * character is about 0.35rem wide (measured 5.6px at 16px, 8 November 2026),
+ * so pull the badge back by the same amount to keep the look unchanged. The
+ * Quick Start badge has no such character and is not adjusted. */
+#toolSelection .tool-option-wrapper .tool-flag {
+  margin-inline-start: -0.35rem;
+}
 /* Stacked layout: full width buttons */
 @media (max-width: 500px) {
   #toolSelection {
@@ -4523,4 +4531,105 @@ fieldset.boiler {
 .universal-confirm-no,
 .modal-confirm-no {
   background: transparent;
+}
+
+/* RA-99: Read Aloud controls bar (tts/tts-controls-bar.js). Built only while a surface reads aloud or is
+   paused; colours are in light.css and dark.css. The script publishes its live height and where the
+   page's own content ends as --tts-controls-bar-height and --tts-controls-bar-doc-end. */
+.tts-controls-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9990;
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-top: 2px solid currentcolor;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.tts-controls-bar-label {
+  margin-right: 0.25rem;
+}
+
+.tts-controls-bar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.tts-controls-bar-btn[hidden] {
+  display: none;
+}
+
+.tts-controls-bar-btn [data-icon] svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+/* Top and Bottom ride above the bar (they sit in #panel). */
+body.tts-controls-bar-on #panel {
+  bottom: calc(40px + var(--tts-controls-bar-height, 0px));
+}
+
+/* Focused controls scroll clear of the bar as well as Top and Bottom (SC 2.4.11). */
+html.tts-controls-bar-on {
+  scroll-padding-bottom: calc(8.5rem + var(--tts-controls-bar-height, 0px));
+}
+
+/* tools.html's body is fixed at 800px and the page overflows it, so body padding adds no scroll length
+   (RA-95). An absolutely placed spacer at the document's measured end does. */
+body.tts-controls-bar-on::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: var(--tts-controls-bar-doc-end, 0px);
+  width: 1px;
+  height: var(--tts-controls-bar-height, 0px);
+  pointer-events: none;
+}
+
+@media screen and (max-width: 800px) {
+  body.tts-controls-bar-on #panel {
+    bottom: calc(0.5rem + var(--tts-controls-bar-height, 0px));
+  }
+  html.tts-controls-bar-on {
+    scroll-padding-bottom: calc(5.25rem + var(--tts-controls-bar-height, 0px));
+  }
+}
+
+/* Short screens: Pause and Stop only, in one row. The group keeps its name from its aria-label. */
+@media (max-height: 400px) {
+  .tts-controls-bar-label,
+  .tts-controls-bar-show {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .tts-controls-bar {
+    border-top-color: CanvasText;
+  }
+}
+
+/* Register 66 (RA-105, RA-106): a visible focus ring in Windows contrast themes. Contrast themes drop
+   box-shadow, and `button:hover, button:focus-visible { outline: none !important }` above removes the
+   outline, so light-theme buttons showed no focus at all. :is() takes its most specific argument (0-2-0),
+   which beats that rule (0-1-1). Forced colours only: nothing changes outside a contrast theme. */
+@media (forced-colors: active) {
+  :is(button, [role="button"], a, summary, input, select, textarea):focus-visible {
+    outline: 0.2rem solid Highlight !important;
+    outline-offset: 0.15rem !important;
+  }
 }

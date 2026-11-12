@@ -157,7 +157,9 @@
 /* ===== SORT BUTTON STYLING ===== */
 .mdSortableTable-sort-button {
   background: none;
-  border: none;
+  /* MRC-19: `border: none` leaves the width at `medium` (hidden), and the global
+     button:hover transition then animates it to 0 and shifts the header row. `0` rests at width 0. */
+  border: 0;
   color: inherit;
   font: inherit;
   cursor: pointer;
@@ -175,6 +177,9 @@
 .mdSortableTable-sort-button:hover,
 .mdSortableTable-sort-button:focus-visible {
   outline-offset: 10px;
+  /* MRC-19: beats main.css `button:hover, button:focus-visible { transition: 0.3s linear !important }`,
+     so the 10px ring appears at once instead of sweeping out from the button. */
+  transition: background-color 0.2s ease !important;
 }
 
 /* Sort icon styling */

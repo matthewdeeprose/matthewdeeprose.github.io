@@ -77,8 +77,8 @@
     /** Top-p for Pass 2 */
     TOP_P: 0.9,
 
-    /** Timeout for Pass 2 API call (same as Pass 1) */
-    TIMEOUT_MS: 300000, // 5 minutes
+    /** Timeout for Pass 2 API call (same as Pass 1: M-10g raised the correction to 600000; M-10j matches it) */
+    TIMEOUT_MS: 600000, // 10 minutes
 
     /**
      * Parcel 38: the embed retry layer's attempt ceiling, named once so the
@@ -919,6 +919,11 @@
     // The EA-2b sibling, exposed on the same terms: the suite asserts which of
     // the two boundaries an escaping refusal came from, by identity.
     PROVIDER_REFUSAL_TAG,
+    // M-10j: the verification pass's request limit, read-only, so a seam row
+    // can assert it equals the correction's 600000 ms.
+    get TIMEOUT_MS() {
+      return MULTIPASS_CONFIG.TIMEOUT_MS;
+    },
     lastRun: null,
   };
 

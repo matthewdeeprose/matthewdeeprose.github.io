@@ -193,8 +193,8 @@
   const PROVIDER_NAME_SUFFIX = /\s*\(Foundry\)$/;
 
   const ESTIMATE_PREFIX = "Estimated cost:";
-  const NOT_MEASURED_TEXT = "not measured for this model";
-  const PICTURE_COST_DECIMALS = 4;
+  const ESTIMATE_LABEL = "Estimated cost";
+  const COST_NOT_FULLY_MEASURED_WORDS = "not fully measured";
   const TOTAL_COST_DECIMALS = 2;
 
   const RUN_TITLE = "Run the ticked steps";
@@ -825,29 +825,23 @@
     const ticked = steps || tickedSteps();
     if (ticked.length === 0) return `${ESTIMATE_PREFIX} no steps are ticked.`;
 
+    // 133a: one short sentence that fits one line. The per-step parts are in the
+    // model lines and the run confirm, and a long sentence wrapped into two
+    // lines for the reader (OS-2 Key 2).
     let total = 0;
-    let measured = 0;
-    const parts = ticked.map((step) => {
+    let unmeasured = 0;
+    ticked.forEach((step) => {
       const figure = MEASURED_COST_USD[step.key][resolvedModelId(step)];
       if (typeof figure !== "number") {
-        return `${step.short} ${NOT_MEASURED_TEXT}`;
+        unmeasured += 1;
+        return;
       }
-      if (step.key === "pictures") {
-        const count = uncoveredPictures().length;
-        total += figure * count;
-        measured += 1;
-        return `${step.short} ${count} at ${usd(figure, PICTURE_COST_DECIMALS)}`;
-      }
-      total += figure;
-      measured += 1;
-      return `${step.short} ${usd(figure, TOTAL_COST_DECIMALS)}`;
+      total += step.key === "pictures" ? figure * uncoveredPictures().length : figure;
     });
 
-    if (measured === 0) {
-      return `${ESTIMATE_PREFIX} ${NOT_MEASURED_TEXT.replace("this model", "these models")} (${parts.join(", ")}).`;
-    }
-    const scope = measured < ticked.length ? " for the measured steps" : "";
-    return `${ESTIMATE_PREFIX} about ${usd(total, TOTAL_COST_DECIMALS)}${scope} (${parts.join(", ")}).`;
+    const stepsWords = countWords(ticked.length, "step", "steps", { words: true });
+    if (unmeasured > 0) return `${ESTIMATE_LABEL} ${COST_NOT_FULLY_MEASURED_WORDS} for ${stepsWords}.`;
+    return `${ESTIMATE_LABEL} about ${usd(total, TOTAL_COST_DECIMALS)} for ${stepsWords}.`;
   }
 
   /**

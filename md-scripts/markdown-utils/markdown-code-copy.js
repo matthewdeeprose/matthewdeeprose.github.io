@@ -76,7 +76,18 @@ const MarkdownCodeCopy = (function () {
     failText: "Failed to copy",
     successDuration: 2000, // Time in ms to show success message
     buttonClass: "code-copy-button",
+    labelClass: "code-copy-button-label",
   };
+
+  /**
+   * Visible label markup, hidden from assistive technology so that the
+   * Copy/Copied text swap is not spoken (the button's aria-label is the name).
+   * @param {string} text - Visible label text
+   * @returns {string} Span markup
+   */
+  function getLabelMarkup(text) {
+    return `<span class="${config.labelClass}" aria-hidden="true">${text}</span>`;
+  }
 
   /**
    * Initialize copy buttons on all code blocks
@@ -160,7 +171,9 @@ const MarkdownCodeCopy = (function () {
     // Create copy button
     const copyButton = document.createElement("button");
     copyButton.className = config.buttonClass;
-    copyButton.innerHTML = `${getCopyButtonIcon()} ${config.buttonText}`;
+    copyButton.innerHTML = `${getCopyButtonIcon()} ${getLabelMarkup(
+      config.buttonText
+    )}`;
     copyButton.setAttribute("aria-label", "Copy code to clipboard");
     copyButton.setAttribute("type", "button");
 
@@ -281,23 +294,39 @@ const MarkdownCodeCopy = (function () {
    * @param {boolean} success - Whether copy was successful
    */
   function updateButtonStatus(button, success) {
-    const originalContent = button.innerHTML;
+    const statusText = success ? config.successText : config.failText;
+    const label = button.querySelector(`.${config.labelClass}`);
+
+    if (label) {
+      // Swap only the aria-hidden label span. The button keeps its constant
+      // aria-label, so a screen reader hears the announcer sentence once and
+      // not the visible text change as well.
+      // Restore the configured text, not what was read, so a second press
+      // inside the delay cannot leave "Copied" behind.
+      label.textContent = statusText;
+      clearTimeout(label._resetTimer);
+      label._resetTimer = setTimeout(() => {
+        label.textContent = config.buttonText;
+        logDebug("Reset button label to original state");
+      }, config.successDuration);
+    } else {
+      // A button made without the label span (an older build, or another
+      // module's button): keep the original whole-content swap.
+      const originalContent = button.innerHTML;
+      button.innerHTML = `${getCopyButtonIcon()} ${statusText}`;
+      setTimeout(() => {
+        button.innerHTML = originalContent;
+        logDebug("Reset button to original state");
+      }, config.successDuration);
+    }
 
     if (success) {
-      button.innerHTML = `${getCopyButtonIcon()} ${config.successText}`;
       announceToScreenReader("Code snippet copied to clipboard");
       logDebug("Copy operation successful, updated button status");
     } else {
-      button.innerHTML = `${getCopyButtonIcon()} ${config.failText}`;
       announceToScreenReader("Failed to copy code snippet");
       logWarn("Copy operation failed, updated button status");
     }
-
-    // Reset button after a delay
-    setTimeout(() => {
-      button.innerHTML = originalContent;
-      logDebug("Reset button to original state");
-    }, config.successDuration);
   }
 
   /**

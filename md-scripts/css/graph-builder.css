@@ -1391,6 +1391,11 @@ fieldset.gb-image-field textarea {
 }
 /* Mobile table responsive design */
 @media (max-width: 768px) {
+  /* MRC-33: as MRC-23 at 480px, sit below the page header (bottom 102px at 481 to 768px, plus 8px).
+     !important because the loader pages set top inline (universal-notifications.js). */
+  .gb-toast-container {
+    top: 110px !important;
+  }
   .gb-preview-table-container {
     border: none;
     max-height: none;
@@ -1465,6 +1470,11 @@ fieldset.gb-image-field textarea {
   }
 }
 @media (max-width: 480px) {
+  /* MRC-23: sit below the page header (bottom 102px at these widths, plus 8px) so the toast no longer hides it or the theme button.
+     !important because the loader pages set top inline (universal-notifications.js). */
+  .gb-toast-container {
+    top: 110px !important;
+  }
   .gb-step-label {
     font-size: 0.8rem;
   }

@@ -3,7 +3,82 @@
  * Provides theme switching and custom theme support for Mermaid diagrams
  * with focus on digital accessibility and meeting WCAG 2.2 AA standards
  */
+
+/**
+ * The ONE reader of a diagram SVG's type (item 126, single-image change).
+ *
+ * Mermaid writes the type as aria-roledescription ("flowchart-v2", "sequence",
+ * "xychart" ...). A diagram that is one image stop has that attribute removed
+ * (it is spoken as an extra word), so the choke point in MermaidControls
+ * stamps Mermaid's own value onto data-mermaid-type first. Every reader of the
+ * type goes through here: the attribute first, then the stamp. Resolved off
+ * window at call time by mermaid-controls.js and mermaid-export-utils.js
+ * (this file loads first, but never capture the handle at module scope).
+ */
+window.MermaidDiagramType = (function () {
+  const ROLEDESCRIPTION_ATTRIBUTE = "aria-roledescription";
+  const STAMP_ATTRIBUTE = "data-mermaid-type";
+
+  /**
+   * @param {Element|null} svg - A diagram SVG (anything else reads as "")
+   * @returns {string} The type, or "" when neither source holds one
+   */
+  function read(svg) {
+    if (!svg || typeof svg.getAttribute !== "function") return "";
+    return (
+      svg.getAttribute(ROLEDESCRIPTION_ATTRIBUTE) ||
+      svg.getAttribute(STAMP_ATTRIBUTE) ||
+      ""
+    );
+  }
+
+  /**
+   * Copy Mermaid's own aria-roledescription onto the stamp. Taken from THIS
+   * SVG's attribute on every call it is present, never carried from an old
+   * SVG. When the attribute is already gone the existing stamp is left alone.
+   *
+   * @param {Element|null} svg
+   * @returns {string} The type now held by the SVG ("" when none)
+   */
+  function stamp(svg) {
+    if (!svg || typeof svg.getAttribute !== "function") return "";
+    const own = svg.getAttribute(ROLEDESCRIPTION_ATTRIBUTE);
+    if (own) svg.setAttribute(STAMP_ATTRIBUTE, own);
+    return read(svg);
+  }
+
+  /**
+   * A selector that finds an SVG by type through either source.
+   *
+   * @param {string} [value] - The type; omit to match any SVG that has one
+   * @param {string} [operator] - "=" (default), "^=" or "*=" for a partial match
+   * @returns {string}
+   */
+  function selector(value, operator) {
+    const op = operator || "=";
+    const part = (attribute) =>
+      value === undefined
+        ? `svg[${attribute}]`
+        : `svg[${attribute}${op}"${value}"]`;
+    return `${part(ROLEDESCRIPTION_ATTRIBUTE)}, ${part(STAMP_ATTRIBUTE)}`;
+  }
+
+  return {
+    read,
+    stamp,
+    selector,
+    ROLEDESCRIPTION_ATTRIBUTE,
+    STAMP_ATTRIBUTE,
+  };
+})();
+
 window.MermaidThemes = (function () {
+  // The type of a diagram SVG, and a selector for it, both through the one
+  // reader above (the attribute first, then data-mermaid-type).
+  const readDiagramType = (svg) => window.MermaidDiagramType.read(svg);
+  const diagramTypeSelector = (value, operator) =>
+    window.MermaidDiagramType.selector(value, operator);
+
   // Logging configuration
   const LOG_LEVELS = {
     ERROR: 0,
@@ -885,10 +960,10 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      root.getAttribute("aria-roledescription") === GANTT_ROLEDESCRIPTION
+      readDiagramType(root) === GANTT_ROLEDESCRIPTION
         ? root
         : root.querySelector(
-            `svg[aria-roledescription="${GANTT_ROLEDESCRIPTION}"]`
+            diagramTypeSelector(GANTT_ROLEDESCRIPTION)
           );
 
     if (!svg) {
@@ -1495,10 +1570,10 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      root.getAttribute("aria-roledescription") === SEQUENCE_ROLEDESCRIPTION
+      readDiagramType(root) === SEQUENCE_ROLEDESCRIPTION
         ? root
         : root.querySelector(
-            `svg[aria-roledescription="${SEQUENCE_ROLEDESCRIPTION}"]`
+            diagramTypeSelector(SEQUENCE_ROLEDESCRIPTION)
           );
 
     if (!svg) {
@@ -2065,10 +2140,10 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      root.getAttribute("aria-roledescription") === BLOCK_ROLEDESCRIPTION
+      readDiagramType(root) === BLOCK_ROLEDESCRIPTION
         ? root
         : root.querySelector(
-            `svg[aria-roledescription="${BLOCK_ROLEDESCRIPTION}"]`
+            diagramTypeSelector(BLOCK_ROLEDESCRIPTION)
           );
 
     if (!svg) {
@@ -2456,10 +2531,10 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      root.getAttribute("aria-roledescription") === C4_ROLEDESCRIPTION
+      readDiagramType(root) === C4_ROLEDESCRIPTION
         ? root
         : root.querySelector(
-            `svg[aria-roledescription="${C4_ROLEDESCRIPTION}"]`
+            diagramTypeSelector(C4_ROLEDESCRIPTION)
           );
 
     if (!svg) {
@@ -3137,10 +3212,10 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      root.getAttribute("aria-roledescription") === KANBAN_ROLEDESCRIPTION
+      readDiagramType(root) === KANBAN_ROLEDESCRIPTION
         ? root
         : root.querySelector(
-            `svg[aria-roledescription="${KANBAN_ROLEDESCRIPTION}"]`
+            diagramTypeSelector(KANBAN_ROLEDESCRIPTION)
           );
 
     if (!svg) {
@@ -3985,9 +4060,9 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      root.getAttribute("aria-roledescription") === RADAR_ROLEDESCRIPTION
+      readDiagramType(root) === RADAR_ROLEDESCRIPTION
         ? root
-        : root.querySelector(`svg[aria-roledescription="${RADAR_ROLEDESCRIPTION}"]`);
+        : root.querySelector(diagramTypeSelector(RADAR_ROLEDESCRIPTION));
 
     if (!svg) {
       logDebug("No radar SVG in this container - radar encoding skipped");
@@ -4560,10 +4635,10 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      root.getAttribute("aria-roledescription") === REQUIREMENT_ROLEDESCRIPTION
+      readDiagramType(root) === REQUIREMENT_ROLEDESCRIPTION
         ? root
         : root.querySelector(
-            `svg[aria-roledescription="${REQUIREMENT_ROLEDESCRIPTION}"]`
+            diagramTypeSelector(REQUIREMENT_ROLEDESCRIPTION)
           );
 
     if (!svg) {
@@ -5105,10 +5180,10 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      root.getAttribute("aria-roledescription") === PACKET_ROLEDESCRIPTION
+      readDiagramType(root) === PACKET_ROLEDESCRIPTION
         ? root
         : root.querySelector(
-            `svg[aria-roledescription="${PACKET_ROLEDESCRIPTION}"]`
+            diagramTypeSelector(PACKET_ROLEDESCRIPTION)
           );
 
     if (!svg) {
@@ -5466,11 +5541,9 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      FLOWCHART_ROLEDESCRIPTION_PATTERN.test(
-        root.getAttribute("aria-roledescription") || ""
-      )
+      FLOWCHART_ROLEDESCRIPTION_PATTERN.test(readDiagramType(root))
         ? root
-        : root.querySelector('svg[aria-roledescription^="flowchart"]');
+        : root.querySelector(diagramTypeSelector("flowchart", "^="));
 
     if (!svg) {
       logDebug(
@@ -6252,11 +6325,9 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      CLASS_ROLEDESCRIPTION_PATTERN.test(
-        root.getAttribute("aria-roledescription") || ""
-      )
+      CLASS_ROLEDESCRIPTION_PATTERN.test(readDiagramType(root))
         ? root
-        : root.querySelector('svg[aria-roledescription^="classDiagram"]');
+        : root.querySelector(diagramTypeSelector("classDiagram", "^="));
 
     if (!svg) {
       logDebug(
@@ -7042,11 +7113,9 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      ER_ROLEDESCRIPTION_PATTERN.test(
-        root.getAttribute("aria-roledescription") || ""
-      )
+      ER_ROLEDESCRIPTION_PATTERN.test(readDiagramType(root))
         ? root
-        : root.querySelector('svg[aria-roledescription="er"]');
+        : root.querySelector(diagramTypeSelector("er"));
 
     if (!svg) {
       logDebug("No er SVG in this container - er encoding skipped");
@@ -7774,10 +7843,10 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      root.getAttribute("aria-roledescription") === TREEMAP_ROLEDESCRIPTION
+      readDiagramType(root) === TREEMAP_ROLEDESCRIPTION
         ? root
         : root.querySelector(
-            `svg[aria-roledescription="${TREEMAP_ROLEDESCRIPTION}"]`
+            diagramTypeSelector(TREEMAP_ROLEDESCRIPTION)
           );
 
     if (!svg) {
@@ -8251,9 +8320,9 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      root.getAttribute("aria-roledescription") === VENN_ROLEDESCRIPTION
+      readDiagramType(root) === VENN_ROLEDESCRIPTION
         ? root
-        : root.querySelector(`svg[aria-roledescription="${VENN_ROLEDESCRIPTION}"]`);
+        : root.querySelector(diagramTypeSelector(VENN_ROLEDESCRIPTION));
 
     if (!svg) {
       logDebug("No venn SVG in this container - venn encoding skipped");
@@ -8817,9 +8886,9 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      root.getAttribute("aria-roledescription") === TREEVIEW_ROLEDESCRIPTION
+      readDiagramType(root) === TREEVIEW_ROLEDESCRIPTION
         ? root
-        : root.querySelector(`svg[aria-roledescription="${TREEVIEW_ROLEDESCRIPTION}"]`);
+        : root.querySelector(diagramTypeSelector(TREEVIEW_ROLEDESCRIPTION));
 
     if (!svg) {
       logDebug("No treeView SVG in this container - treeView encoding skipped");
@@ -9305,9 +9374,9 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      root.getAttribute("aria-roledescription") === ISHIKAWA_ROLEDESCRIPTION
+      readDiagramType(root) === ISHIKAWA_ROLEDESCRIPTION
         ? root
-        : root.querySelector(`svg[aria-roledescription="${ISHIKAWA_ROLEDESCRIPTION}"]`);
+        : root.querySelector(diagramTypeSelector(ISHIKAWA_ROLEDESCRIPTION));
 
     if (!svg) {
       logDebug("No ishikawa SVG in this container - ishikawa encoding skipped");
@@ -9846,9 +9915,9 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      root.getAttribute("aria-roledescription") === WARDLEY_ROLEDESCRIPTION
+      readDiagramType(root) === WARDLEY_ROLEDESCRIPTION
         ? root
-        : root.querySelector(`svg[aria-roledescription="${WARDLEY_ROLEDESCRIPTION}"]`);
+        : root.querySelector(diagramTypeSelector(WARDLEY_ROLEDESCRIPTION));
 
     if (!svg) {
       logDebug("No wardley SVG in this container - wardley encoding skipped");
@@ -10589,9 +10658,9 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      root.getAttribute("aria-roledescription") === CYNEFIN_ROLEDESCRIPTION
+      readDiagramType(root) === CYNEFIN_ROLEDESCRIPTION
         ? root
-        : root.querySelector(`svg[aria-roledescription="${CYNEFIN_ROLEDESCRIPTION}"]`);
+        : root.querySelector(diagramTypeSelector(CYNEFIN_ROLEDESCRIPTION));
 
     if (!svg) {
       logDebug("No cynefin SVG in this container - cynefin encoding skipped");
@@ -11473,9 +11542,9 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      root.getAttribute("aria-roledescription") === MINDMAP_ROLEDESCRIPTION
+      readDiagramType(root) === MINDMAP_ROLEDESCRIPTION
         ? root
-        : root.querySelector(`svg[aria-roledescription="${MINDMAP_ROLEDESCRIPTION}"]`);
+        : root.querySelector(diagramTypeSelector(MINDMAP_ROLEDESCRIPTION));
 
     if (!svg) {
       logDebug("No mindmap SVG in this container - mindmap encoding skipped");
@@ -12190,9 +12259,9 @@ window.MermaidThemes = (function () {
     if (!root) return null;
 
     const svg =
-      root.tagName === "svg" && root.hasAttribute("aria-roledescription")
+      root.tagName === "svg" && readDiagramType(root)
         ? root
-        : root.querySelector("svg[aria-roledescription]");
+        : root.querySelector(diagramTypeSelector());
 
     if (!svg) {
       logDebug("No diagram SVG in this container - page ink encoding skipped");
@@ -12216,7 +12285,7 @@ window.MermaidThemes = (function () {
     const inkOn = (grounds) => pickInkAgainst(BLOCK_OUTLINE_INKS, grounds).ink;
     const mark = (element, kind) =>
       element.setAttribute(PAGE_INK_ATTRIBUTE, kind);
-    const applied = { type: svg.getAttribute("aria-roledescription"), hostGround };
+    const applied = { type: readDiagramType(svg), hostGround };
 
     // --- the inherited ink: one write on the root ---------------------------
     applied.rootInk = inkOn([hostGround]);
@@ -12463,10 +12532,10 @@ window.MermaidThemes = (function () {
 
     const svg =
       root.tagName === "svg" &&
-      root.getAttribute("aria-roledescription") === XYCHART_ROLEDESCRIPTION
+      readDiagramType(root) === XYCHART_ROLEDESCRIPTION
         ? root
         : root.querySelector(
-            `svg[aria-roledescription="${XYCHART_ROLEDESCRIPTION}"]`
+            diagramTypeSelector(XYCHART_ROLEDESCRIPTION)
           );
 
     if (!svg) {
@@ -13144,13 +13213,13 @@ window.MermaidThemes = (function () {
     const rows = [];
     document.querySelectorAll(".mermaid-container").forEach((container, index) => {
       const svg = [...container.querySelectorAll("svg")].find((candidate) =>
-        candidate.getAttribute("aria-roledescription")
+        readDiagramType(candidate)
       );
       const found = svg ? categorySvgOf(svg) : null;
       const select = container.querySelector(".mermaid-theme-select");
       rows.push({
         diagram: index,
-        drawnAs: svg ? svg.getAttribute("aria-roledescription") : "(no diagram svg)",
+        drawnAs: svg ? readDiagramType(svg) : "(no diagram svg)",
         takesPatterns: !!found,
         patternsAvailable: container.getAttribute(PATTERNS_AVAILABLE_ATTRIBUTE),
         theme: select ? select.value : "(none)",
@@ -13174,6 +13243,11 @@ window.MermaidThemes = (function () {
   const CATEGORY_PRIOR_ATTRIBUTE = "data-category-options-prior";
   const CATEGORY_DEFS_ATTRIBUTE = "data-category-patterns";
   const CATEGORY_LABEL_RECT_ATTRIBUTE = "data-category-label-bg";
+  /**
+   * SVGs the category pass found with no layout box (a diagram painted while its
+   * panel is display:none), each waiting for its first box (LF4, 11 November 2026).
+   */
+  const categoryAwaitingLayout = new WeakSet();
   /** Label background padding in px, across and down, for SVG and HTML labels alike. */
   const CATEGORY_PAD_X = 4;
   const CATEGORY_PAD_Y = 2;
@@ -13262,7 +13336,7 @@ window.MermaidThemes = (function () {
     // node-undefined`); the group around them does, and its first section is
     // numbered -1.
     timeline: {
-      detect: (svg) => svg.getAttribute("aria-roledescription") === "timeline",
+      detect: (svg) => readDiagramType(svg) === "timeline",
       shapes: (svg) =>
         [...svg.querySelectorAll("path.node-bkg")].map((element) => ({
           element,
@@ -13274,7 +13348,7 @@ window.MermaidThemes = (function () {
     // pattern; the actor circles are a second category channel, named in the
     // legend, and are not patterned.
     journey: {
-      detect: (svg) => svg.getAttribute("aria-roledescription") === "journey",
+      detect: (svg) => readDiagramType(svg) === "journey",
       shapes: (svg) =>
         [...svg.querySelectorAll("rect.journey-section, rect.task")].map((element) => ({
           element,
@@ -13668,6 +13742,23 @@ window.MermaidThemes = (function () {
     }
 
     // --- 2. the labels on those shapes -------------------------------------
+    // LF4 (11 November 2026): a label is placed from its measured box, and an SVG with no
+    // layout box (painted while its panel is display:none: session restore, a render made
+    // while another mode is showing) measures every label as 0 x 0, so none is drawn while
+    // the Labels box still reads ticked. Nothing re-ran the pass when the panel was shown.
+    // Wait for the first box and run the whole pass again; it is idempotent, and it reads
+    // the box's state afresh, so the picture and the box agree.
+    if (svg.getClientRects().length === 0 && typeof ResizeObserver === "function" && !categoryAwaitingLayout.has(svg)) {
+      categoryAwaitingLayout.add(svg);
+      const waiter = new ResizeObserver(() => {
+        const box = svg.getBoundingClientRect();
+        if (box.width <= 0 || box.height <= 0) return;
+        waiter.disconnect();
+        categoryAwaitingLayout.delete(svg);
+        if (svg.isConnected) applyCategoryOptions(root);
+      });
+      waiter.observe(svg);
+    }
     const pointInShape = (shape, x, y) => {
       const element = shape.element;
       if (typeof element.isPointInFill === "function" && element.getScreenCTM) {
@@ -15293,6 +15384,10 @@ window.MermaidThemes = (function () {
 
   const VEIL_CLASS = "mermaid-theme-veil";
 
+  /** The box holding a diagram's SVG, and the opacity that hides it while it is stale. */
+  const DIAGRAM_BOX_SELECTOR = ".mermaid";
+  const STALE_BOX_OPACITY = "0";
+
   /** Plain static text. Never read to screen-reader users: the veil is aria-hidden. */
   const VEIL_TEXT = Object.freeze({
     [SITE_MODE.LIGHT]: "Updating for light theme",
@@ -15359,6 +15454,15 @@ window.MermaidThemes = (function () {
     container.setAttribute(STALE_ATTRIBUTE, "");
     container.setAttribute("aria-busy", "true");
 
+    // Hidden from sight, never from the accessibility tree (opacity keeps the
+    // old SVG exposed; visibility, display or aria-hidden would drop it). It is
+    // set INLINE, not by a stylesheet rule: render-guard's X1 holds that no page
+    // stylesheet sets a paint property the static export does not inline, and
+    // this one is state no export should ever see. prepareStaticExport strips it
+    // from its clone if an export is ever taken while a diagram is stale.
+    const box = container.querySelector(`:scope > ${DIAGRAM_BOX_SELECTOR}`);
+    if (box) box.style.setProperty("opacity", STALE_BOX_OPACITY);
+
     let veil = container.querySelector(`:scope > .${VEIL_CLASS}`);
     if (!veil) {
       veil = document.createElement("div");
@@ -15374,6 +15478,13 @@ window.MermaidThemes = (function () {
     container.removeAttribute("aria-busy");
     const veil = container.querySelector(`:scope > .${VEIL_CLASS}`);
     if (veil) veil.remove();
+
+    // Put the diagram box back exactly as a never-flipped page has it: the
+    // property gone, and no empty style attribute left behind.
+    const box = container.querySelector(`:scope > ${DIAGRAM_BOX_SELECTOR}`);
+    if (!box) return;
+    box.style.removeProperty("opacity");
+    if (!(box.getAttribute("style") || "").trim()) box.removeAttribute("style");
   }
 
   /** Record what was painted and take the veil down. */

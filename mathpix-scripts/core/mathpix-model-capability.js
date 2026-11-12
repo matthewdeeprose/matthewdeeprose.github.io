@@ -694,6 +694,35 @@ const MathPixModelCapability = (function () {
   }
 
   // ===========================================================================
+  // REASONING MANDATORY (parcel M-10bl)
+  // ===========================================================================
+
+  /**
+   * Does this model always reason, so that it cannot be sent the off switch?
+   *
+   * M-10bl (11 November 2026), for M-10bh Debt 1: `anthropic/claude-fable-5.1`,
+   * the correction default, refuses reasoning off with HTTP 400 (measured at
+   * M-10bi, `120beec`), so the correction's reasoning box must say so instead
+   * of offering a choice that fails. This is the single reader of the two
+   * mandatory lists; outputBudgetFor uses it for its OpenRouter branch.
+   *
+   * Exact membership of REASONING_MANDATORY_IDS or
+   * REASONING_MANDATORY_MEASURED_IDS and nothing else: no prefix derivation, no
+   * selector, no fall-through, the same discipline as reasoningOffAccepted.
+   *
+   * @param {string} modelId - the resolved model id.
+   * @returns {boolean} true only for an exact listed id; false for undefined,
+   *   null, a non-string, "", every Foundry id and every unlisted id.
+   */
+  function reasoningMandatory(modelId) {
+    if (typeof modelId !== "string" || !modelId) return false;
+    return (
+      REASONING_MANDATORY_IDS.includes(modelId) ||
+      REASONING_MANDATORY_MEASURED_IDS.includes(modelId)
+    );
+  }
+
+  // ===========================================================================
   // OUTPUT BUDGET (parcel MA-12a)
   // ===========================================================================
 
@@ -712,12 +741,7 @@ const MathPixModelCapability = (function () {
    */
   function outputBudgetFor(modelId, providerId) {
     if (providerId === PROVIDER_ID_FOUNDRY) return OUTPUT_BUDGET_REASONING;
-    if (
-      providerId === PROVIDER_ID_OPENROUTER &&
-      typeof modelId === "string" &&
-      (REASONING_MANDATORY_IDS.includes(modelId) ||
-        REASONING_MANDATORY_MEASURED_IDS.includes(modelId))
-    ) {
+    if (providerId === PROVIDER_ID_OPENROUTER && reasoningMandatory(modelId)) {
       return OUTPUT_BUDGET_REASONING;
     }
     return OUTPUT_BUDGET_DEFAULT;
@@ -760,6 +784,7 @@ const MathPixModelCapability = (function () {
     isModelProviderAvailable,
     reasoningOffAccepted,
     _reasoningOffAcceptedIds,
+    reasoningMandatory,
     outputBudgetFor,
     _reasoningMandatoryIds,
     _reasoningMandatoryMeasuredIds,

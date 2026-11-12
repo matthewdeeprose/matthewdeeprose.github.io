@@ -1,0 +1,15 @@
+# BR-3a vendored braille files. sha256, bytes, file. Decompressed lines are the stable comparison; the .gz bytes depend on the
+# gzip implementation and level, and are the exact files BR-1 built (.claude/measurements/br-1-wasm-feasibility/build-checksums.txt).
+# Gzipped (as committed)
+f33f9cce4798e1ad587748de78da3d147a8abbcf7b954a1fab38c5fe728fcbea  791690  mathcat_bg.wasm.gz
+5d12ec321a7251703826a8e1ab4647453cc2eb42ceb6f60e5f30a4c375a59a4c  2833  mathcat.js.gz
+7e573d86537b8a91201141512f4a06dc4111aee7eac6e00896deb6d6873c2714  408974  liblouis-build.js.gz
+da9f953d09f6877cec20b87764f222e52e4d3a2646bfaaf0bf5ba9a67150f53b  55606  ueb-tables.json.gz
+# Decompressed (what the engine sees after DecompressionStream)
+d0b31e3e851615d10a31a45c91ee1a4684ad8b7d83ab11b84188994e993ed5d4  1963169  mathcat_bg.wasm
+51b6671cdd7e768eac4e76f1c66b6f29444533a13202601d6a997849e04b6f0e  11219  mathcat.js
+c62ea59ef3f7fedb172f4fd2504ec8902be29c74c9ba112c007c1b2600c038e6  2028340  liblouis-build.js
+602d06ed24812f686d54430948163d6feedfddd23b5e918ea1594449dda4a66f  265878  ueb-tables.json
+# Licence texts (plain files)
+f8f65c73234f59213ab269286902dea96b3ff5dceaa2e977c882c6da469508d1  1065  LICENSE-MathCAT-MIT.txt
+dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551  26530  COPYING.LESSER

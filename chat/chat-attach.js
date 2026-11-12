@@ -1042,6 +1042,18 @@ window.ChatAttach = (function () {
     const ctl = typeof window.getMathPixController === "function" ? window.getMathPixController() : null;
     if (!ctl) return false; // MathPix never loaded: nothing to lose
     if (mathPixHoldsSessionOrDrawing(ctl)) return true;
+    return mathPixHoldsAFile(ctl);
+  }
+
+  // True only when MathPix holds a restored Resume session or a drawing and NOTHING that a new file
+  // would replace. Both survive the guard's Yes (measured by P19), so the question says so (parcel P20).
+  function mathPixHoldsOnlySessionOrDrawing() {
+    const ctl = typeof window.getMathPixController === "function" ? window.getMathPixController() : null;
+    return !!ctl && mathPixHoldsSessionOrDrawing(ctl) && !mathPixHoldsAFile(ctl);
+  }
+
+  // A file, a file's box, or results: everything mathPixHoldsFile checks except a session or drawing.
+  function mathPixHoldsAFile(ctl) {
     const files = ctl.fileHandler;
     const pdf = ctl.pdfHandler;
     if (files && (files.currentUploadedFile || files.currentFile)) return true;
@@ -1069,9 +1081,13 @@ window.ChatAttach = (function () {
   // Asks before replacing a file MathPix already holds. Cancel (or no confirm dialogue) keeps it.
   async function confirmReplaceInMathPix(btn, name) {
     if (typeof window.safeConfirm !== "function") return false;
-    const text = (btn.dataset.confirmReplace || "").replace("{name}", name);
+    // Two sets of words, both in tools.html: one for a held file, one for a session or drawing only.
+    const keepOnly = mathPixHoldsOnlySessionOrDrawing();
+    const message = keepOnly ? btn.dataset.confirmKeep : btn.dataset.confirmReplace;
+    const title = keepOnly ? btn.dataset.confirmKeepTitle : btn.dataset.confirmTitle;
+    const text = (message || "").replace("{name}", name);
     if (!text) return false;
-    return (await window.safeConfirm(text, btn.dataset.confirmTitle || "Replace the file?", {
+    return (await window.safeConfirm(text, title || "Replace the file?", {
       returnFocusTo: btn.id,
     })) === true;
   }

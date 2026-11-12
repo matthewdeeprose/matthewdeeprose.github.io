@@ -3264,8 +3264,9 @@ const buildFoundryModels = () => [
   //
   // VISION and PDF are PER-ENTRY facts on this surface, each recorded in its
   // own entry against the measurement that established it — they are not a
-  // property of the surface and must not be summarised here. TOOL_CALLING
-  // remains untested across every member and is omitted everywhere.
+  // property of the surface and must not be summarised here. TOOL CALLING is
+  // marked on all eight: TC-8a measured the wire, TC-8b built the adapter and
+  // TC-8c ran the real runner and core live on each before `toolCalls: true`.
   //
   // SAMPLING SPLIT (must stay in sync with SAMPLING_PARAMS_ALLOWED in
   // providers/azure-openai-responses.js): only gpt-5.3-codex accepts
@@ -3281,6 +3282,7 @@ const buildFoundryModels = () => [
   createFoundryModel({
     apiSurface: "responses",
     deploymentName: "gpt-5-pro",
+    toolCalls: true,
     displayName: "GPT-5 Pro",
     description:
       "OpenAI's GPT-5 Pro frontier reasoning model, routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) — it is Responses-API-only and 400s on chat/completions. Rejects temperature/top_p (reasoning model). Vision-enabled: image input is wired through the azure-responses adapter's input_image translation and verified end-to-end by a live Foundry call (Task 5b). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
@@ -3338,6 +3340,7 @@ const buildFoundryModels = () => [
   createFoundryModel({
     apiSurface: "responses",
     deploymentName: "gpt-5-codex",
+    toolCalls: true,
     displayName: "GPT-5 Codex",
     description:
       "OpenAI's GPT-5 Codex agentic-coding model, routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) — it is Responses-API-only and 400s on chat/completions. Rejects temperature/top_p (reasoning model); emits a reasoning item (surfaced as nothing, D3). Reads images and PDFs via the Responses surface (image input plus server-side PDF extraction). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
@@ -3386,6 +3389,7 @@ const buildFoundryModels = () => [
   createFoundryModel({
     apiSurface: "responses",
     deploymentName: "gpt-5.1-codex",
+    toolCalls: true,
     displayName: "GPT-5.1 Codex",
     description:
       "OpenAI's GPT-5.1 Codex agentic-coding model, routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) — it is Responses-API-only and 400s on chat/completions. Rejects temperature/top_p (reasoning model); emits a reasoning item (surfaced as nothing, D3). Reads images and PDFs via the Responses surface (image input plus server-side PDF extraction). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
@@ -3434,6 +3438,7 @@ const buildFoundryModels = () => [
   createFoundryModel({
     apiSurface: "responses",
     deploymentName: "gpt-5.1-codex-mini",
+    toolCalls: true,
     displayName: "GPT-5.1 Codex Mini",
     description:
       "OpenAI's GPT-5.1 Codex Mini agentic-coding model, routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) — it is Responses-API-only and 400s on chat/completions. Rejects temperature/top_p (reasoning model); emits a reasoning item (surfaced as nothing, D3). Smaller, lower-latency Codex variant. Reads images and PDFs via the Responses surface (image input plus server-side PDF extraction). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
@@ -3482,6 +3487,7 @@ const buildFoundryModels = () => [
   createFoundryModel({
     apiSurface: "responses",
     deploymentName: "gpt-5.2-codex",
+    toolCalls: true,
     displayName: "GPT-5.2 Codex",
     description:
       "OpenAI's GPT-5.2 Codex agentic-coding model, routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) — it is Responses-API-only and 400s on chat/completions. Rejects temperature/top_p (reasoning model); emits a reasoning item (surfaced as nothing, D3). Reads images and PDFs via the Responses surface (image input plus server-side PDF extraction). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
@@ -3534,6 +3540,7 @@ const buildFoundryModels = () => [
   createFoundryModel({
     apiSurface: "responses",
     deploymentName: "gpt-5.3-codex",
+    toolCalls: true,
     displayName: "GPT-5.3 Codex",
     description:
       "OpenAI's GPT-5.3 Codex agentic-coding model, routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) — it is Responses-API-only and 400s on chat/completions. UNLIKE the other Responses Codex models, it ACCEPTS temperature/top_p and emits NO reasoning item (phase:\"final_answer\" only), so it is registered without the reasoning capability. Reads images and PDFs via the Responses surface (image input plus server-side PDF extraction). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
@@ -3592,6 +3599,7 @@ const buildFoundryModels = () => [
   createFoundryModel({
     apiSurface: "responses",
     deploymentName: "gpt-5.4-pro",
+    toolCalls: true,
     displayName: "GPT-5.4 Pro",
     description:
       "Pro-tier reasoning model on the Responses surface. Reads images and PDFs. Routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) through the azure-responses adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images. PDF RESOLVED 30 August 2026 — accepted-reads, 6/6 sentinel characters on an image-only fixture, 363 input and 2935 output tokens. The two earlier attempts were TRANSPORT TIMEOUTS, not refusals: re-running at a 600s ceiling returned a clean 200 well inside the standing token budget, so latency was the whole cause. Attribution is unattributed — this surface preprocesses the attachment, so the read cannot be assigned to the model rather than the platform. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
@@ -3666,6 +3674,7 @@ const buildFoundryModels = () => [
   createFoundryModel({
     apiSurface: "responses",
     deploymentName: "gpt-5.1-codex-max",
+    toolCalls: true,
     displayName: "GPT-5.1 Codex Max",
     description:
       "Large Codex-family coding model on the Responses surface. Reads images, but transcribes bitmap text unreliably. Routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) through the azure-responses adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads PDF attachments; image reading was UNVERIFIED because the probe's token budget bound before an answer was emitted. RESOLVED 30 August 2026 at a 64000 budget — accepted-partial, unanimous across three sampled runs, transcribing the six-character fixture as TOILET, TOLLEUM and TOLTEEU (2/6, 4/6, 3/6). It engages with image content; it does not transcribe reliably. The earlier binding is now explained rather than inferred: one run spent 19,176 output tokens, above the standing 16000 cap, so that cap was the cause. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",

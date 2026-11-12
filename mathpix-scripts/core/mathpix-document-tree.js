@@ -12,8 +12,10 @@
  * _stripFigureAltOptions and the same one-line captionsetup removal.
  *
  * Node types (and no others in this version):
- *   block:  heading, paragraph, list, table, figure, code, blockquote, unknown
- *   inline: text, math, link
+ *   block:  heading (level, rank), paragraph, list, table, figure, code, blockquote, unknown
+ *   inline: text, math, link, sub, sup (BR-3b: sub and sup are kept, not flattened)
+ * A figure keeps its four registry strings (caption, alt, longDescription, textInImage) and, beside each, an inline list
+ * parsed with the same maths handling as body text (captionInlines, altInlines, longDescriptionInlines, textInImageInlines).
  * Content the walker does not recognise is kept as an `unknown` block, never dropped.
  *
  * @module MathPixDocumentTree
@@ -67,7 +69,7 @@
   });
 
   /** Inline node types. */
-  const INLINE_TYPES = Object.freeze({ TEXT: "text", MATH: "math", LINK: "link" });
+  const INLINE_TYPES = Object.freeze({ TEXT: "text", MATH: "math", LINK: "link", SUB: "sub", SUP: "sup" });
 
   const EMPHASIS = Object.freeze({ STRONG: "strong", EM: "em" });
 
@@ -153,6 +155,9 @@
     if (tag === "a") {
       return [{ type: INLINE_TYPES.LINK, href: child.getAttribute("href") || "", inlines: tidyInlines(inlinesOf(child, emphasis, ctx)) }];
     }
+    if (tag === "sub" || tag === "sup") {
+      return [{ type: tag === "sub" ? INLINE_TYPES.SUB : INLINE_TYPES.SUP, inlines: tidyInlines(inlinesOf(child, emphasis, ctx)) }];
+    }
     if (STRONG_TAGS.includes(tag)) {
       return inlinesOf(child, emphasis.includes(EMPHASIS.STRONG) ? emphasis : [...emphasis, EMPHASIS.STRONG], ctx);
     }
@@ -175,23 +180,83 @@
   // BLOCKS
   // ============================================================================
 
+  /**
+   * True when the session holds no image file for the entry: the registry says "missing", or it holds neither a blob
+   * nor a data URI (a "cdn-linked" entry the ZIP carried no file for). Measured on kinetic-mathpix.zip (BR-2): both
+   * entries are "cdn-linked" with no bytes, so the status alone would report them as present.
+   */
+  function fileIsMissing(entry) {
+    if (entry.status === REGISTRY_STATUS_MISSING) return true;
+    return !entry.blob && !entry.dataUri;
+  }
+
+  /**
+   * One registry text field (an MMD string) as a flat inline list, with the same maths handling as body text.
+   * The string goes through the same render and walk as the body; paragraphs are joined by a line-break text inline,
+   * and a block that is not a paragraph or heading contributes its inlines too (lists, quotes), never silently dropped.
+   * An empty string gives an empty list; a render failure gives an empty list and a warning.
+   */
+  function parseFieldInlines(text, ctx) {
+    if (typeof text !== "string" || text.trim() === "") return [];
+    let blocks;
+    try {
+      const html = window.markdownToHTML(text.replace(CAPTIONSETUP_PATTERN, ""), JSON.parse(JSON.stringify(ctx.renderOptions)));
+      const doc = new DOMParser().parseFromString(`<!doctype html><html><body>${html}</body></html>`, "text/html");
+      window.MathPixMMDPreview.promoteParagraphs(doc.body);
+      blocks = walkChildren(doc.body, ctx);
+    } catch (e) {
+      ctx.warnings.push("a figure text field could not be read as inline content");
+      logDebug("field parse failed", String((e && e.message) || e).slice(0, 200));
+      return [];
+    }
+    const out = [];
+    const take = (list) => {
+      for (const b of list) {
+        if (b.inlines) {
+          if (out.length) out.push(textInline(LINE_BREAK_TEXT, []));
+          out.push(...b.inlines);
+        } else if (b.type === NODE_TYPES.LIST) {
+          b.items.forEach(take);
+        } else if (b.type === NODE_TYPES.BLOCKQUOTE) {
+          take(b.blocks);
+        } else if (b.type === NODE_TYPES.UNKNOWN && b.text) {
+          if (out.length) out.push(textInline(LINE_BREAK_TEXT, []));
+          out.push(textInline(b.text, []));
+        }
+      }
+    };
+    take(blocks);
+    return out;
+  }
+
   function figureNode(img, ctx) {
     const src = img.getAttribute("src") || "";
     const entry = ctx.index.get(src) || null;
     if (!entry) {
       ctx.warnings.push(`figure with no registry match: ${src.substring(0, WARNING_URL_CHARS)}`);
-      return { type: NODE_TYPES.FIGURE, id: null, url: src, caption: null, alt: null, longDescription: null, textInImage: null, decorative: null, fileMissing: null };
+      return {
+        type: NODE_TYPES.FIGURE, id: null, url: src, caption: null, alt: null, longDescription: null, textInImage: null,
+        captionInlines: [], altInlines: [], longDescriptionInlines: [], textInImageInlines: [], decorative: null, fileMissing: null,
+      };
     }
+    const caption = typeof entry.title === "string" ? entry.title : "";
+    const alt = typeof entry.altText === "string" ? entry.altText : "";
+    const longDescription = typeof entry.longDescription === "string" ? entry.longDescription : "";
+    const textInImage = typeof entry.textInImage === "string" ? entry.textInImage : "";
     return {
       type: NODE_TYPES.FIGURE,
       id: entry.id,
       url: entry.originalUrl || src,
-      caption: typeof entry.title === "string" ? entry.title : "",
-      alt: typeof entry.altText === "string" ? entry.altText : "",
-      longDescription: typeof entry.longDescription === "string" ? entry.longDescription : "",
-      textInImage: typeof entry.textInImage === "string" ? entry.textInImage : "",
+      caption,
+      alt,
+      longDescription,
+      textInImage,
+      captionInlines: parseFieldInlines(caption, ctx),
+      altInlines: parseFieldInlines(alt, ctx),
+      longDescriptionInlines: parseFieldInlines(longDescription, ctx),
+      textInImageInlines: parseFieldInlines(textInImage, ctx),
       decorative: entry.decorative === true,
-      fileMissing: entry.status === REGISTRY_STATUS_MISSING,
+      fileMissing: fileIsMissing(entry),
     };
   }
 
@@ -322,11 +387,31 @@
     return counts;
   }
 
+  /** Every heading in the tree, in order, including those inside lists and quotes. */
+  function collectHeadings(blocks, out) {
+    for (const b of blocks) {
+      if (b.type === NODE_TYPES.HEADING) out.push(b);
+      if (b.type === NODE_TYPES.LIST) b.items.forEach((item) => collectHeadings(item, out));
+      if (b.type === NODE_TYPES.BLOCKQUOTE) collectHeadings(b.blocks, out);
+    }
+    return out;
+  }
+
+  /**
+   * Give each heading a rank: its position among the DISTINCT heading levels present, 1 for the highest (smallest
+   * level number). A document that uses only h3 and h5 has ranks 1 and 2. The level is kept beside it.
+   */
+  function assignHeadingRanks(blocks) {
+    const headings = collectHeadings(blocks, []);
+    const levels = [...new Set(headings.map((h) => h.level))].sort((a, b) => a - b);
+    for (const h of headings) h.rank = levels.indexOf(h.level) + 1;
+  }
+
   function countMath(blocks) {
     let total = 0;
     const inInlines = (inlines) => inlines.forEach((n) => {
       if (n.type === INLINE_TYPES.MATH) total += 1;
-      if (n.type === INLINE_TYPES.LINK) inInlines(n.inlines);
+      if (n.inlines) inInlines(n.inlines);
     });
     const inBlocks = (list) => list.forEach((b) => {
       if (b.inlines) inInlines(b.inlines);
@@ -376,9 +461,12 @@
     const doc = new DOMParser().parseFromString(`<!doctype html><html><body>${html}</body></html>`, "text/html");
     window.MathPixMMDPreview.promoteParagraphs(doc.body);
 
-    const ctx = { index: buildIndex(entriesFrom(registry, restorer), restorer), warnings, flattened: new Set() };
+    const ctx = {
+      index: buildIndex(entriesFrom(registry, restorer), restorer), warnings, flattened: new Set(), renderOptions: options,
+    };
     const blocks = walkChildren(doc.body, ctx);
     ctx.flattened.forEach((tag) => warnings.push(`inline element ${tag} was flattened to its text`));
+    assignHeadingRanks(blocks);
 
     const blockCounts = countTypes(blocks, {});
     const tree = {

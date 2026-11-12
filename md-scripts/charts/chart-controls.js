@@ -2592,6 +2592,33 @@ window.ChartControls = (function () {
     }
   }
 
+  const STATUS_LABEL_CLASS = "code-copy-button-label";
+  const STATUS_RESET_MS = 2000;
+
+  /**
+   * Wrap the button's visible text in an aria-hidden span, once.
+   * @param {HTMLElement} button - The button element
+   * @returns {HTMLElement|null} The label span, or null when the button has no text
+   */
+  function ensureStatusLabel(button) {
+    const existing = button.querySelector(`.${STATUS_LABEL_CLASS}`);
+    if (existing) return existing;
+
+    const textNodes = Array.from(button.childNodes).filter(
+      (node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim()
+    );
+    const textNode = textNodes[textNodes.length - 1];
+    if (!textNode) return null;
+
+    const label = document.createElement("span");
+    label.className = STATUS_LABEL_CLASS;
+    label.setAttribute("aria-hidden", "true");
+    label.dataset.copyText = textNode.textContent.trim().replace(/\s+/g, " ");
+    label.textContent = label.dataset.copyText;
+    textNode.replaceWith(" ", label);
+    return label;
+  }
+
   /**
    * Update button status after copy operation
    * @param {HTMLElement} button - The button element
@@ -2599,10 +2626,25 @@ window.ChartControls = (function () {
    * @param {string} message - Optional custom message
    */
   function updateButtonStatus(button, success, message) {
-    const originalContent = button.innerHTML;
-
     // Determine message
     const statusMessage = message || (success ? "Copied!" : "Copy failed");
+
+    // MRC-66: swap only an aria-hidden label span, so the status is not
+    // spoken from the button's content (its constant aria-label is the name)
+    const label = ensureStatusLabel(button);
+    if (label) {
+      label.textContent = statusMessage;
+
+      // Restore the configured text, not what was read, so a second press
+      // inside the delay cannot leave the status behind.
+      clearTimeout(label._resetTimer);
+      label._resetTimer = setTimeout(() => {
+        label.textContent = label.dataset.copyText;
+      }, STATUS_RESET_MS);
+      return;
+    }
+
+    const originalContent = button.innerHTML;
 
     // Extract icon if present
     const icon = button.querySelector("svg")
@@ -3246,6 +3288,56 @@ document.addEventListener("DOMContentLoaded", function () {
       "info",
       "Setting up mutation observer for dynamic charts"
     );
+    // Add a scroll event listener to ensure charts are adjusted when scrolling.
+    // Added ONCE here. It used to be created and added inside the mutation
+    // callback below, so every DOM change added another listener that was never
+    // removed (about 5 to 9 per full-screen cycle, measured 10 November 2026).
+    const scrollHandler = window.ChartControls.debounce(() => {
+      // Store a reference to the config object to use in this scope
+      const chartConfig = window.ChartControls.config;
+
+      const visibleCharts = Array.from(
+        document.querySelectorAll(".chart-container")
+      ).filter((container) => {
+        // Skip containers in fullscreen mode
+        if (container.getAttribute("data-in-fullscreen") === "true") {
+          window.ChartControls.debugLog(
+            "scroll",
+            "debug",
+            `Skipping fullscreen container: ${container.id}`
+          );
+          return false;
+        }
+
+        const rect = container.getBoundingClientRect();
+        return (
+          rect.top >= -100 &&
+          rect.left >= 0 &&
+          rect.bottom <=
+            (window.innerHeight || document.documentElement.clientHeight) +
+              300 &&
+          rect.right <=
+            (window.innerWidth || document.documentElement.clientWidth)
+        );
+      });
+
+      if (visibleCharts.length > 0) {
+        window.ChartControls.debugLog(
+          "scroll",
+          "debug",
+          `Adjusting ${visibleCharts.length} visible charts`
+        );
+        visibleCharts.forEach((chart) => {
+          // Use chartConfig instead of config here
+          if (chart.querySelector(`.${chartConfig.controlsContainerClass}`)) {
+            window.ChartControls.adjustContainerPadding(chart);
+          }
+        });
+      }
+    }, 250); // Increase debounce time to reduce frequency of adjustments
+
+    window.addEventListener("scroll", scrollHandler);
+
     const observer = new MutationObserver(function (mutations) {
       let newChartsFound = false;
 
@@ -3286,54 +3378,6 @@ document.addEventListener("DOMContentLoaded", function () {
           });
         }
       });
-
-      // Add a scroll event listener to ensure charts are adjusted when scrolling
-      // This should be inside a function like setupScrollObserver or similar
-      const scrollHandler = window.ChartControls.debounce(() => {
-        // Store a reference to the config object to use in this scope
-        const chartConfig = window.ChartControls.config;
-
-        const visibleCharts = Array.from(
-          document.querySelectorAll(".chart-container")
-        ).filter((container) => {
-          // Skip containers in fullscreen mode
-          if (container.getAttribute("data-in-fullscreen") === "true") {
-            window.ChartControls.debugLog(
-              "scroll",
-              "debug",
-              `Skipping fullscreen container: ${container.id}`
-            );
-            return false;
-          }
-
-          const rect = container.getBoundingClientRect();
-          return (
-            rect.top >= -100 &&
-            rect.left >= 0 &&
-            rect.bottom <=
-              (window.innerHeight || document.documentElement.clientHeight) +
-                300 &&
-            rect.right <=
-              (window.innerWidth || document.documentElement.clientWidth)
-          );
-        });
-
-        if (visibleCharts.length > 0) {
-          window.ChartControls.debugLog(
-            "scroll",
-            "debug",
-            `Adjusting ${visibleCharts.length} visible charts`
-          );
-          visibleCharts.forEach((chart) => {
-            // Use chartConfig instead of config here
-            if (chart.querySelector(`.${chartConfig.controlsContainerClass}`)) {
-              window.ChartControls.adjustContainerPadding(chart);
-            }
-          });
-        }
-      }, 250); // Increase debounce time to reduce frequency of adjustments
-
-      window.addEventListener("scroll", scrollHandler);
 
       // Only initialise if new charts without controls were found
       if (newChartsFound) {

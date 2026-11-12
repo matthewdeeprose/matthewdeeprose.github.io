@@ -69,6 +69,124 @@ function getIcon(name) {
   return library.getIcon(name, { className: `icon-${name}` });
 }
 
+// =============================================================================
+// CODE-BLOCK COPY BUTTON STATUS (MRC-49)
+// =============================================================================
+
+// The cloned copy buttons keep the hidden label span MarkdownCodeCopy builds,
+// and only that span is swapped, so the Copy/Copied change is not spoken. The
+// button's constant aria-label is its name and the shared announcer says the
+// result once.
+const COPY_LABEL_CLASS = "code-copy-button-label";
+const COPY_TEXT = "Copy";
+const COPIED_TEXT = "Copied";
+const COPY_FAILED_TEXT = "Failed to copy";
+const COPY_RESET_MS = 2000;
+const COPY_ANNOUNCE_SUCCESS = "Code snippet copied to clipboard";
+const COPY_ANNOUNCE_FAILURE = "Failed to copy code snippet";
+
+/**
+ * Show a status word on a cloned copy button, then restore the configured text.
+ * A button without the label span keeps the old whole-content swap.
+ * @param {HTMLElement} button - Copy button element
+ * @param {string} statusText - Visible status word
+ */
+function showCopyButtonStatus(button, statusText) {
+  const label = button.querySelector(`.${COPY_LABEL_CLASS}`);
+
+  if (label) {
+    label.textContent = statusText;
+
+    // Restore the configured text, not what was read, so a second press
+    // inside the delay cannot leave the status behind.
+    clearTimeout(label._resetTimer);
+    label._resetTimer = setTimeout(() => {
+      label.textContent = COPY_TEXT;
+    }, COPY_RESET_MS);
+    return;
+  }
+
+  const originalContent = button.innerHTML;
+  const icon = button.querySelector("svg");
+  button.innerHTML = `${icon ? icon.outerHTML : ""} ${statusText}`;
+  setTimeout(() => {
+    button.innerHTML = originalContent;
+  }, COPY_RESET_MS);
+}
+
+/**
+ * Announce a copy result once through the shared announcer, resolved at call time.
+ * @param {boolean} succeeded - Whether the copy worked
+ */
+function announceCopyResult(succeeded) {
+  window.accessibilityHelpers?.announce(
+    succeeded ? COPY_ANNOUNCE_SUCCESS : COPY_ANNOUNCE_FAILURE,
+    "polite",
+  );
+}
+
+// =============================================================================
+// CHEMISTRY DESCRIPTION COPY BUTTON STATUS (MRC-66)
+// =============================================================================
+
+// The button's text sits in an aria-hidden span (built on the first press from
+// the markup's own text), and only that span and the icon are swapped. The
+// constant aria-label is the button's name, and _announceChemistry says the
+// result once, so the "Copied!" swap is not spoken a second time.
+const CHEM_COPIED_TEXT = "Copied!";
+const CHEM_COPY_RESET_MS = 2000;
+
+/**
+ * Wrap the button's visible text in an aria-hidden span, once.
+ * @param {HTMLElement} button - Copy button element
+ * @returns {HTMLElement|null} The label span, or null when the button has no text
+ */
+function ensureCopyLabel(button) {
+  const existing = button.querySelector(`.${COPY_LABEL_CLASS}`);
+  if (existing) return existing;
+
+  const textNodes = Array.from(button.childNodes).filter(
+    (node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim(),
+  );
+  const textNode = textNodes[textNodes.length - 1];
+  if (!textNode) return null;
+
+  const label = document.createElement("span");
+  label.className = COPY_LABEL_CLASS;
+  label.setAttribute("aria-hidden", "true");
+  label.dataset.copyText = textNode.textContent.trim().replace(/\s+/g, " ");
+  label.textContent = label.dataset.copyText;
+  textNode.replaceWith(" ", label);
+  return label;
+}
+
+/**
+ * Show "Copied!" and the check icon on a chemistry copy button, then restore both.
+ * @param {HTMLElement} button - Copy button element
+ */
+function showChemistryCopied(button) {
+  const label = ensureCopyLabel(button);
+  if (!label) return;
+
+  const iconEl = button.querySelector("[data-icon]");
+  if (iconEl && iconEl._copyOriginalHtml === undefined) {
+    iconEl._copyOriginalHtml = iconEl.innerHTML;
+  }
+
+  label.textContent = CHEM_COPIED_TEXT;
+  if (iconEl && typeof window.getIcon === "function") {
+    iconEl.innerHTML = window.getIcon("check");
+  }
+
+  // Restore the configured text, not what was read, so a second press
+  // inside the delay cannot leave "Copied!" behind.
+  clearTimeout(label._resetTimer);
+  label._resetTimer = setTimeout(() => {
+    label.textContent = label.dataset.copyText;
+    if (iconEl) iconEl.innerHTML = iconEl._copyOriginalHtml;
+  }, CHEM_COPY_RESET_MS);
+}
+
 /**
  * MathPix Result Renderer Module
  * Handles all result display, format switching, and MathJax integration
@@ -762,24 +880,15 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
           // Attach click handler to copy the dollar format
           dollarCopyBtn.addEventListener("click", async () => {
-            const originalContent = dollarCopyBtn.innerHTML;
             try {
               await navigator.clipboard.writeText(transformed.dollarFormat);
               // Match MarkdownCodeCopy behavior
-              dollarCopyBtn.innerHTML = `${
-                dollarCopyBtn.querySelector("svg").outerHTML
-              } Copied`;
-              setTimeout(() => {
-                dollarCopyBtn.innerHTML = originalContent;
-              }, 2000);
+              showCopyButtonStatus(dollarCopyBtn, COPIED_TEXT);
+              announceCopyResult(true);
               logDebug("Dollar format copied to clipboard");
             } catch (error) {
-              dollarCopyBtn.innerHTML = `${
-                dollarCopyBtn.querySelector("svg").outerHTML
-              } Failed to copy`;
-              setTimeout(() => {
-                dollarCopyBtn.innerHTML = originalContent;
-              }, 2000);
+              showCopyButtonStatus(dollarCopyBtn, COPY_FAILED_TEXT);
+              announceCopyResult(false);
               logError("Failed to copy dollar format", error);
             }
           });
@@ -827,26 +936,17 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
           // Attach click handler to copy the double dollar format
           doubleCopyBtn.addEventListener("click", async () => {
-            const originalContent = doubleCopyBtn.innerHTML;
             try {
               await navigator.clipboard.writeText(
                 transformed.doubleDollarFormat,
               );
               // Match MarkdownCodeCopy behavior
-              doubleCopyBtn.innerHTML = `${
-                doubleCopyBtn.querySelector("svg").outerHTML
-              } Copied`;
-              setTimeout(() => {
-                doubleCopyBtn.innerHTML = originalContent;
-              }, 2000);
+              showCopyButtonStatus(doubleCopyBtn, COPIED_TEXT);
+              announceCopyResult(true);
               logDebug("Double dollar format copied to clipboard");
             } catch (error) {
-              doubleCopyBtn.innerHTML = `${
-                doubleCopyBtn.querySelector("svg").outerHTML
-              } Failed to copy`;
-              setTimeout(() => {
-                doubleCopyBtn.innerHTML = originalContent;
-              }, 2000);
+              showCopyButtonStatus(doubleCopyBtn, COPY_FAILED_TEXT);
+              announceCopyResult(false);
               logError("Failed to copy double dollar format", error);
             }
           });
@@ -3380,16 +3480,9 @@ class MathPixResultRenderer extends MathPixBaseModule {
         if (!descText?.textContent) return;
         try {
           await navigator.clipboard.writeText(descText.textContent);
-          // Brief "Copied!" feedback
-          const originalHTML = copyDesc.innerHTML;
-          const checkHtml = typeof window.getIcon === "function"
-            ? window.getIcon("check")
-            : '<span aria-hidden="true" data-icon="check"></span>';
-          copyDesc.innerHTML = checkHtml + " Copied!";
+          // Brief "Copied!" feedback: visible only, the announcement is below
+          showChemistryCopied(copyDesc);
           self._announceChemistry("Description copied to clipboard");
-          setTimeout(() => {
-            copyDesc.innerHTML = originalHTML;
-          }, 2000);
         } catch (err) {
           logWarn("Clipboard write failed", { error: err.message });
           self._announceChemistry(

@@ -6,7 +6,7 @@
 // goes wherever the caller puts it (Read Aloud keeps it in data-read-aloud-speech, never aria-label).
 //
 //   MathsSpeechRules.forSpeech(math, domain)    -> { mathml, labels }
-//   MathsSpeechRules.restoreLabels(speech, labels) -> speech
+//   MathsSpeechRules.restoreLabels(speech, labels, domain) -> speech  (the bracket and equivalence words too, ClearSpeak only)
 //
 // Only ClearSpeak is repaired. Any other domain (MathSpeak) is passed through exactly as written.
 
@@ -41,8 +41,41 @@ window.MathsSpeechRules = (function () {
     const NOT_SIGN = "¬";
     const NOT_WORD = "not";
     const SLANTED_COMPARISONS = Object.freeze({ "⩽": "≤", "⩾": "≥" });
-    const LONG_IMPLICATION = "⟹";
-    const IMPLICATION = "⇒";
+    // A student's feedback (RA-94, register 63). ClearSpeak reads the implication arrows "right double arrow" and the like, the
+    // equivalence sign "is identical to" and a typed ampersand "ampersand", and speaks round brackets "open paren" / "close
+    // paren". A mathematician says "implies", "is implied by", "if and only if", "is equivalent to", "and" and "open bracket".
+    // The arrows (the long and the short form of each) and the ampersand are put right on the MathML copy; the equivalence
+    // sign and the bracket words are put right in the speech afterwards (see restoreLabels), as a rewrite of the signs in
+    // the MathML would change how SRE groups what is around them.
+    const ARROW_WORDS = Object.freeze({
+        "⟹": "implies", "⇒": "implies",
+        "⟸": "is implied by", "⇐": "is implied by",
+        "⟺": "if and only if", "⇔": "if and only if",
+    });
+    // The ampersand a person types (\&) is an identifier in MathJax's MathML; an operator is accepted too. One inside a typed
+    // note (\text{R\&D}) is a <mtext> and is not touched.
+    const AMPERSAND_SIGN = "&";
+    // RA-120 (register 63, F5): the "and" a typed ampersand or a logical-and sign (U+2227, \land and \wedge) makes is said with a
+    // pause either side, "R, and, S". It goes in as a letters-only placeholder word (SRE would speak the commas of a note as the
+    // word "comma", measured RA-120) and restoreLabels swaps it for the spoken words, taking the space before it so the comma
+    // sits on the word it follows. The word "and" is never rewritten, so "if and only if" and a typed note are left as they were.
+    const LOGICAL_AND_SIGN = "∧";
+    const AND_SIGNS = Object.freeze([AMPERSAND_SIGN, LOGICAL_AND_SIGN]);
+    const AND_PAUSE_SPOKEN = ", and,";
+    const AND_PAUSE_TOKEN = "andpause";
+    // SRE's ClearSpeak words after the maths is spoken, and what is said instead. A round bracket's word becomes "bracket"
+    // (the British word); SRE already says "open bracket" for a square one, so that becomes "open square bracket" and the two
+    // stay apart. One pass over the string, so a word that has just been put in is never changed again.
+    const SPEECH_WORDS = Object.freeze({
+        "open paren": "open bracket",
+        "close paren": "close bracket",
+        "open bracket": "open square bracket",
+        "close bracket": "close square bracket",
+        "is identical to": "is equivalent to",
+        "is not identical to": "is not equivalent to",
+    });
+    const SPEECH_WORDS_PATTERN = /\b(?:open paren|close paren|open bracket|close bracket|is identical to|is not identical to)\b/g;
+    const CLEARSPEAK_DOMAIN = "clearspeak";
     // A typed note inside a formula (\text{...}): SRE reads the word "Tr" as the function trace, and speaks the full stop of an
     // abbreviation and of the end of the note. "Tr" becomes the two letters; a full stop after a letter that comes before a
     // space, a bracket or the end, and a full stop that ends the note, are dropped. A decimal point and a stop inside an
@@ -273,12 +306,29 @@ window.MathsSpeechRules = (function () {
             });
     }
 
-    // The long implication arrow is read "long right double arrow" and the short one "right double arrow". The long
-    // one takes the short one, so a reader hears one word for both.
-    function speakLongImplication(root) {
-        Array.from(root.querySelectorAll("mo"))
-            .filter((mo) => mo.textContent.trim() === LONG_IMPLICATION)
-            .forEach((mo) => { mo.textContent = IMPLICATION; });
+    // Each implication arrow (long and short) is read "right double arrow" and so on. In an operator it becomes the word a
+    // mathematician says: "implies", "is implied by" or "if and only if". An arrow typed inside a note (\text{so ⇒}) is
+    // text, not an operator, and is left as it was. This replaces the older helper that only turned the long arrow into the
+    // short one (RA-65).
+    function speakImplicationArrows(root) {
+        Array.from(root.querySelectorAll("mo")).forEach((mo) => {
+            const word = ARROW_WORDS[mo.textContent.trim()];
+            if (word) mo.replaceWith(mathElement("mtext", word));
+        });
+    }
+
+    // A typed ampersand (\&) is read "ampersand"; a logical-and sign (∧) is read "and". Both become the spoken ", and," (RA-120):
+    // the sign is an identifier or an operator, one inside a typed note is left alone. Each is replaced by its own placeholder
+    // word, and the labels it adds say what restoreLabels puts in its place. `labels` is the array forSpeech is building.
+    function speakAndSigns(root, labels) {
+        Array.from(root.querySelectorAll("mi, mo"))
+            .filter((el) => AND_SIGNS.includes(el.textContent.trim()))
+            .forEach((el) => {
+                const letters = labels.filter((l) => l.attachLeft).length.toString(26).replace(/[0-9a-p]/g, (d) => String.fromCharCode(97 + parseInt(d, 26)));
+                const token = AND_PAUSE_TOKEN + letters;
+                labels.push({ token, spoken: AND_PAUSE_SPOKEN, attachLeft: true });
+                el.replaceWith(mathElement("mtext", token));
+            });
     }
 
     // Is this an upright element symbol: <mi mathvariant="normal"> holding a capital letter and at most one small one,
@@ -318,8 +368,9 @@ window.MathsSpeechRules = (function () {
     // logical-not sign ("normal not sign", and a "times" before a bracket), the slanted
     // less-or-equal and greater-or-equal signs ("slanted equals"), a typed note's "Tr"
     // ("trace") and its full stops, the empty first cell of an aligned line ("blank"),
-    // and the long implication arrow ("long right double arrow"), and a chemical formula's stray "of" (H_2O is "H sub 2 of
-    // O"). If anything goes wrong the
+    // the implication arrows ("right double arrow": they say "implies", "is implied by" and "if and only if"), a typed
+    // ampersand and a logical-and sign (said "and" with a pause either side, "R, and, S", RA-120), and a chemical formula's stray "of" (H_2O is "H sub 2 of
+    // O"). The bracket and equivalence words are put right in the speech, by restoreLabels. If anything goes wrong the
     // original MathML is used, so speech is never lost to this. Returns the MathML
     // and the equation labels that were added to it (see restoreLabels).
     function forSpeech(math, domain) {
@@ -337,7 +388,8 @@ window.MathsSpeechRules = (function () {
             speakTraceInNotes(copy);
             speakNoteFullStops(copy);
             dropEmptyAlignedCells(copy);
-            speakLongImplication(copy);
+            speakImplicationArrows(copy);
+            speakAndSigns(copy, labels);
             speakChemicalJuxtaposition(copy);
             return { mathml: copy.outerHTML, labels };
         } catch (e) {
@@ -348,11 +400,18 @@ window.MathsSpeechRules = (function () {
     // SRE would read a label's own text its own way ("Equation cap P", and a ":" as the
     // word "colon"), so a label goes into the MathML as a plain placeholder word and the
     // real "Equation P:" replaces that word in the speech afterwards.
-    function restoreLabels(speech, labels) {
-        labels.forEach(({ token, spoken }) => {
-            speech = speech.replace(token, () => spoken);
+    //
+    // It also puts SRE's ClearSpeak words right in the speech (RA-94): round brackets, square brackets and the equivalence
+    // sign (SPEECH_WORDS). That happens only when the caller names the domain and it is ClearSpeak, so a caller that passes
+    // none, and every MathSpeak reading, gets the speech back with the labels restored and nothing else changed.
+    function restoreLabels(speech, labels, domain) {
+        labels.forEach(({ token, spoken, attachLeft }) => {
+            // An "attachLeft" label (the pause round "and", RA-120) also takes the space before its placeholder, so its comma
+            // sits on the word before it. The token is letters only, so it is safe inside a pattern.
+            speech = attachLeft ? speech.replace(new RegExp("\\s*" + token), () => spoken) : speech.replace(token, () => spoken);
         });
-        return speech;
+        if (domain !== CLEARSPEAK_DOMAIN) return speech;
+        return speech.replace(SPEECH_WORDS_PATTERN, (word) => SPEECH_WORDS[word]);
     }
 
     return Object.freeze({ forSpeech, restoreLabels });
