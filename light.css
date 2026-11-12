@@ -7446,3 +7446,81 @@ button#toggle-highlighting-btn:not([disabled]):not(
   background: #f0f2e8;
   color: #00131d;
 }
+
+
+/* markdown */
+
+/* ==========================================================================
+   Markdown editor colours: light theme
+   ========================================================================== */
+
+/* Tabs */
+.tabs-tab-button:hover,
+.tabs-tab-button:focus {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.tabs-tab-button.active {
+  background-color: rgba(0, 0, 0, 0.1);
+  border-bottom: 2px solid #005c84;
+}
+
+.tabs-tab-button:focus-visible {
+  outline: 3px solid #005c84;
+}
+
+/* Status messages */
+.status-message.success {
+  background-color: #c1d100;
+  border: 2px solid #00131d;
+  color: #00131d;
+}
+
+.status-message.error {
+  background-color: #d5007f;
+  border: 2px solid #00131d;
+  color: #00131d;
+}
+
+/* Loading indicator */
+.loading::after {
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #005c84;
+}
+
+/* Alerts */
+.info,
+.warning,
+.danger {
+  border: 2px solid #00131d;
+  border-left: 10px solid #00131d;
+  color: #00131d;
+}
+
+.info {
+  background-color: #b3dbd2;
+}
+
+.warning {
+  background-color: #fcbc00;
+}
+
+.danger {
+  background-color: #ef7d00;
+}
+
+/* Keyboard shortcuts help */
+.keyboard-shortcuts {
+  box-shadow: 0 2px 10px rgb(0, 0, 0);
+  background: #fffdf9;
+}
+
+/* Error boundary */
+.error-boundary {
+  border: 1px solid #d5007f;
+  background-color: #fff;
+}
+
+.error-boundary pre {
+  background-color: #f8f9fa;
+}

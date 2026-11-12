@@ -183,6 +183,19 @@ export class MarkdownItBridge extends ContentProcessorBase {
     let lastArgs = null;
     let leadingProcessed = false;
     let activePromise = null; // Track active processing promise
+    let pendingCallers = []; // Trailing-path callers waiting on the current burst's pass (MRC-78)
+
+    // A call that a later call replaces still has a promise its caller is waiting on. Every trailing-path
+    // caller joins pendingCallers, and whichever timer runs the burst's pass settles all of them with that
+    // pass's result. The list is taken when the pass starts, so a later caller joins the next burst.
+    const settlePendingWith = (passPromise) => {
+      const callers = pendingCallers;
+      pendingCallers = [];
+      passPromise.then(
+        (result) => callers.forEach((caller) => caller.resolve(result)),
+        (error) => callers.forEach((caller) => caller.reject(error))
+      );
+    };
 
     return (content, options = {}) => {
       const currentTime = Date.now();
@@ -235,6 +248,8 @@ export class MarkdownItBridge extends ContentProcessorBase {
 
       // ✅ Trailing edge: Process after delay
       const trailingPromise = new Promise((resolve, reject) => {
+        pendingCallers.push({ resolve, reject });
+
         timeoutId = setTimeout(() => {
           // Null the id once the timer has fired, otherwise the maximum-wait guard below
           // stays true for the instance's life and every burst gets a stale second pass.
@@ -253,7 +268,7 @@ export class MarkdownItBridge extends ContentProcessorBase {
             this.lastProcessedHash = null;
           });
 
-          activePromise.then(resolve).catch(reject);
+          settlePendingWith(activePromise);
         }, PROCESSING_CONFIG.DEBOUNCE_DELAY);
 
         // ✅ Maximum wait safeguard
@@ -275,7 +290,7 @@ export class MarkdownItBridge extends ContentProcessorBase {
               this.lastProcessedHash = null;
             });
 
-            activePromise.then(resolve).catch(reject);
+            settlePendingWith(activePromise);
           }
         }, PROCESSING_CONFIG.MAX_DEBOUNCE_WAIT);
       });

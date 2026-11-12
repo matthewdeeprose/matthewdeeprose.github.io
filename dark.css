@@ -8040,3 +8040,92 @@ pre.language-json {
   background: #161415;
   color: #e1e8ec;
 }
+
+
+/* markdown */
+/* ==========================================================================
+   Markdown editor colours: dark theme
+   ========================================================================== */
+
+/* Tabs */
+.tabs-tab-button {
+  background-color: #2c3e50;
+  color: #e1e8ec;
+}
+
+.tabs-tab-button:hover,
+.tabs-tab-button:focus {
+  background-color: #34495e;
+}
+
+.tabs-tab-button.active {
+  background-color: #1a2533;
+  border-bottom: 2px solid #90caf9;
+}
+
+.tabs-tab-button:focus-visible {
+  outline: 3px solid #90caf9;
+}
+
+.tabs-tabs-container {
+  background-color: #1a2533;
+}
+
+/* Status messages: bright fills keep dark text; light borders define the edge */
+.status-message.success {
+  background-color: #c1d100;
+  border: 2px solid #e1e8ec;
+  color: #00131d;
+}
+
+.status-message.error {
+  background-color: #d5007f;
+  border: 2px solid #e1e8ec;
+  color: #00131d;
+}
+
+/* Loading indicator */
+.loading::after {
+  border: 2px solid #34495e;
+  border-top: 2px solid #90caf9;
+}
+
+/* Alerts */
+.info,
+.warning,
+.danger {
+  border: 2px solid #74C9E5;
+  border-left: 10px solid #74C9E5;
+  color: currentcolor;
+}
+
+.info {
+  background-color: #07131c;
+}
+
+.warning {
+  background-color: #fcbc00;
+}
+
+.danger {
+  background-color: #ef7d00;
+}
+
+/* Keyboard shortcuts help */
+.keyboard-shortcuts {
+  box-shadow: 0 2px 10px rgb(0, 0, 0);
+  background: #2c3e50;
+  color: #e1e8ec;
+}
+
+/* Error boundary */
+.error-boundary {
+  border: 1px solid #d5007f;
+  background-color: #1a2533;
+  color: #e1e8ec;
+}
+
+.error-boundary pre {
+  background-color: #2c3e50;
+  color: #e1e8ec;
+}

@@ -1,4 +1,53 @@
-/* Add to markdown-editor.css */
+/* ==========================================================================
+   Colours
+   ========================================================================== */
+
+/* Header anchors */
+.header-anchor:focus {
+  outline: 2px solid currentColor;
+}
+
+/* Tabs */
+.tabs-tabs-wrapper {
+  border: 1px solid currentColor;
+}
+
+.tabs-tabs-header {
+  border-bottom: 1px solid currentColor;
+}
+
+.tabs-tab-button {
+  background: none;
+  border: none;
+  border-right: 1px solid currentColor;
+}
+
+.keyboard-shortcuts kbd {
+  border: 1px solid currentcolor;
+  color: currentcolor;
+}
+
+/* Output area */
+.output {
+  border: 1px solid currentcolor;
+}
+
+/* Table of contents */
+.toc {
+  border: 1px solid currentcolor;
+}
+
+@media print {
+  .output {
+    border: none;
+    background: none;
+  }
+}
+
+/* ==========================================================================
+   Layout and typography
+   ========================================================================== */
+
 h1,
 h2,
 h3,
@@ -14,7 +63,7 @@ h6 {
   display: none;
 }
 
-/* Style the anchor link */
+/* Header anchor link */
 .header-anchor {
   display: inline-flex;
   align-items: center;
@@ -26,7 +75,6 @@ h6 {
   transition: opacity 0.2s;
 }
 
-/* Improve visibility on hover/focus */
 h1:hover .header-anchor,
 h2:hover .header-anchor,
 h3:hover .header-anchor,
@@ -37,101 +85,35 @@ h6:hover .header-anchor,
   opacity: 1;
 }
 
-/* Focus styles for keyboard navigation */
 .header-anchor:focus {
-  outline: 2px solid currentColor;
   outline-offset: 2px;
 }
-/* Tab styles */
 
-/* Add these to your existing tab styles in markdown-editor.css */
-
-/* Light mode specific styles */
-@media (prefers-color-scheme: light) {
-  .tabs-tab-button {
-    background-color: #f5f5f5;
-  }
-
-  .tabs-tab-button.active {
-    background-color: #fff;
-    border-bottom: 2px solid #005c84;
-  }
-
-  .tabs-tab-button:hover,
-  .tabs-tab-button:focus {
-    background-color: #e0e0e0;
-  }
-}
-
-/* Dark mode specific styles */
-@media (prefers-color-scheme: dark) {
-  .tabs-tab-button {
-    background-color: #2c3e50;
-    color: #e1e8ec;
-  }
-
-  .tabs-tab-button.active {
-    background-color: #1a2533;
-    border-bottom: 2px solid #90caf9;
-  }
-
-  .tabs-tab-button:hover,
-  .tabs-tab-button:focus {
-    background-color: #34495e;
-  }
-
-  .tabs-tabs-wrapper {
-    border-color: #758d9a;
-  }
-
-  .tabs-tabs-container {
-    background-color: #1a2533;
-  }
-}
-
-/* Focus styles for better accessibility */
-.tabs-tab-button:focus-visible {
-  outline: 3px solid #005c84;
-  outline-offset: -1px;
-  z-index: 1;
-}
-
-@media (prefers-color-scheme: dark) {
-  .tabs-tab-button:focus-visible {
-    outline-color: #90caf9;
-  }
-}
-
+/* Tabs */
 .tabs-tabs-wrapper {
   margin: 1.5em 0;
-  border: 1px solid currentColor;
   border-radius: 4px;
   overflow: hidden;
 }
 
 .tabs-tabs-header {
   display: flex;
-  border-bottom: 1px solid currentColor;
 }
 
 .tabs-tab-button {
   padding: 0.5em 1em;
-  background: none;
-  border: none;
-  border-right: 1px solid currentColor;
   font-family: inherit;
   font-size: 1em;
   cursor: pointer;
 }
 
-.tabs-tab-button:hover,
-.tabs-tab-button:focus {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
 .tabs-tab-button.active {
   font-weight: bold;
-  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.tabs-tab-button:focus-visible {
+  outline-offset: -1px;
+  z-index: 1;
 }
 
 .tabs-tabs-container {
@@ -144,73 +126,6 @@ h6:hover .header-anchor,
 
 .tabs-tab-content.active {
   display: block;
-}
-
-.status-message.success {
-  background-color: #c1d100;
-  border: 2px solid #00131d;
-  color: #00131d;
-}
-
-.status-message.error {
-  background-color: #d5007f;
-  border: 2px solid #00131d;
-  color: #00131d;
-}
-
-.loading::after {
-  border: 2px solid #f3f3f3;
-  border-top: 2px solid var(--primary-color);
-}
-
-.info {
-  background-color: #b3dbd2;
-  border-left: 10px solid #00131d;
-  border-top: 2px solid #00131d;
-  border-right: 2px solid #00131d;
-  border-bottom: 2px solid #00131d;
-  color: #00131d;
-}
-
-.warning {
-  background-color: #fcbc00;
-  border-left: 10px solid #00131d;
-  border-top: 2px solid #00131d;
-  border-right: 2px solid #00131d;
-  border-bottom: 2px solid #00131d;
-  color: #00131d;
-}
-
-.danger {
-  background-color: #ef7d00;
-  border-left: 10px solid #00131d;
-  border-top: 2px solid #00131d;
-  border-right: 2px solid #00131d;
-  border-bottom: 2px solid #00131d;
-  color: #00131d;
-}
-
-.keyboard-shortcuts kbd {
-  border: 1px solid currentcolor;
-  color: currentcolor;
-}
-
-/* Keyboard shortcuts help */
-.keyboard-shortcuts {
-  box-shadow: 0 2px 10px rgb(0, 0, 0);
-  background: #fffdf9;
-}
-
-.keybMDshortcutsLI {
-  line-height: 35px;
-}
-
-.error-boundary pre {
-  background-color: #f8f9fa;
-}
-
-.error-boundary pre {
-  background-color: #f8f9fa;
 }
 
 /* Editor section */
@@ -252,7 +167,6 @@ textarea {
 .output {
   padding: 20px;
   border-radius: 4px;
-  border: 1px solid currentcolor;
   min-height: 100px;
 }
 
@@ -285,7 +199,7 @@ textarea {
   }
 }
 
-/* Component styles */
+/* Task lists */
 .task-list-item {
   list-style-type: none;
 }
@@ -296,7 +210,7 @@ textarea {
   pointer-events: none;
 }
 
-/* Alert styles */
+/* Alerts */
 .info,
 .warning,
 .danger {
@@ -310,7 +224,6 @@ textarea {
   padding: 1em;
   margin: 1em 0;
   border-radius: 0.3em;
-  border: 1px solid currentcolor;
 }
 
 .toc ul {
@@ -323,7 +236,7 @@ textarea {
   position: relative;
 }
 
-/* Figure styling */
+/* Figures */
 figure {
   margin: 1.5em 0;
   text-align: left;
@@ -333,38 +246,11 @@ figcaption {
   margin-top: 0.5em;
 }
 
-/* Print styles */
-@media print {
-  body {
-    max-width: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .editor-section,
-  .controls-section,
-  button {
-    display: none;
-  }
-
-  .output {
-    border: none;
-    padding: 0;
-    background: none;
-  }
-}
-
 /* Error boundary */
 .error-boundary {
   padding: 1rem;
   margin: 1rem 0;
-  border: 1px solid var(--error-color);
   border-radius: 4px;
-}
-
-/* Error boundary */
-.error-boundary {
-  background-color: #fff;
 }
 
 .error-boundary pre {
@@ -395,9 +281,33 @@ figcaption {
   font-size: 0.9em;
 }
 
+.keybMDshortcutsLI {
+  line-height: 35px;
+}
+
+/* Currency */
 span.currency {
   display: inline;
   white-space: nowrap;
+}
+
+/* Print */
+@media print {
+  body {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .editor-section,
+  .controls-section,
+  button {
+    display: none;
+  }
+
+  .output {
+    padding: 0;
+  }
 }
 
 /* Hide the SCORM / standalone HTML export control in Markdown Editor mode
