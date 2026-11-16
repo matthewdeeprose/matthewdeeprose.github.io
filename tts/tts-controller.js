@@ -87,6 +87,10 @@ const TTSController = (function () {
   // Silence gap (seconds) inserted between neural chunks in WAV export.
   var NEURAL_CHUNK_GAP_SEC = 0.3;
 
+  // RA-125: the private-use mark TTSSemantic leaves after each "Part x. " (the same constant is in tts-semantic.js); the chunker
+  // cuts at it and removes it.
+  var PART_SPLIT_MARK = '';
+
   var DEFAULTS = {
     ENGINE: 'webspeech',
     RATE: 1.0,
@@ -596,9 +600,24 @@ const TTSController = (function () {
     var chunks = [];
     var currentChunk = '';
 
-    for (var i = 0; i < sections.length; i++) {
-      var sectionText = (sections[i].text || '').trim();
-      if (!sectionText) continue;
+    // RA-125 (register 63, O16 = version 5): TTSSemantic leaves PART_SPLIT_MARK after each "Part x. ". A section is cut there into
+    // pieces; the piece that ends in a label closes its chunk, so "Part a." is the end of one utterance and the question starts
+    // the next (the voice's own start-up is the pause). The mark is removed here and never reaches a chunk. A section with no mark
+    // is one piece and chunks exactly as before.
+    var pieces = [];
+    for (var s = 0; s < sections.length; s++) {
+      var parts = (sections[s].text || '').split(PART_SPLIT_MARK);
+      for (var k = 0; k < parts.length; k++) {
+        pieces.push({ text: parts[k].trim(), closesChunk: k < parts.length - 1 });
+      }
+    }
+
+    for (var i = 0; i < pieces.length; i++) {
+      var sectionText = pieces[i].text;
+      if (!sectionText) {
+        if (pieces[i].closesChunk && currentChunk) { chunks.push(currentChunk); currentChunk = ''; }
+        continue;
+      }
 
       if (sectionText.length <= maxLength) {
         // Section fits within a single chunk
@@ -624,6 +643,12 @@ const TTSController = (function () {
         if (subChunks.length > 0) {
           currentChunk = subChunks[subChunks.length - 1];
         }
+      }
+
+      // A piece that ends in a label ends its chunk.
+      if (pieces[i].closesChunk && currentChunk) {
+        chunks.push(currentChunk);
+        currentChunk = '';
       }
     }
 

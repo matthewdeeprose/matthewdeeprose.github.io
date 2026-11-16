@@ -1392,9 +1392,11 @@ fieldset.gb-image-field textarea {
 /* Mobile table responsive design */
 @media (max-width: 768px) {
   /* MRC-33: as MRC-23 at 480px, sit below the page header (bottom 102px at 481 to 768px, plus 8px).
-     !important because the loader pages set top inline (universal-notifications.js). */
+     !important because the loader pages set top inline (universal-notifications.js).
+     MRC-87: capped at a quarter of the screen height, because on a short screen the fixed 110px
+     landed the toast on the Markdown Editor's Clear button (MRC-86). */
   .gb-toast-container {
-    top: 110px !important;
+    top: min(110px, 25vh) !important;
   }
   .gb-preview-table-container {
     border: none;
@@ -1471,9 +1473,11 @@ fieldset.gb-image-field textarea {
 }
 @media (max-width: 480px) {
   /* MRC-23: sit below the page header (bottom 102px at these widths, plus 8px) so the toast no longer hides it or the theme button.
-     !important because the loader pages set top inline (universal-notifications.js). */
+     !important because the loader pages set top inline (universal-notifications.js).
+     MRC-87: capped at a quarter of the screen height, because on a short screen the fixed 110px
+     landed the toast on the Markdown Editor's Clear button (MRC-86). */
   .gb-toast-container {
-    top: 110px !important;
+    top: min(110px, 25vh) !important;
   }
   .gb-step-label {
     font-size: 0.8rem;

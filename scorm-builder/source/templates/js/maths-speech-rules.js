@@ -93,6 +93,9 @@ window.MathsSpeechRules = (function () {
     const SCRIPT_ELEMENTS = Object.freeze(["msub", "msup", "msubsup"]);
     const UPRIGHT_VARIANT = "normal";
     const ELEMENT_SYMBOL = /^[A-Z][a-z]?$/;
+    // RA-135 (register 71, ruling R30 = F2b). SRE says "normal" before every single upright letter ("normal H sub 2 normal O",
+    // "normal d x", "normal e to the x-th power"), which tells a listener nothing. A single character is counted by code point.
+    const SINGLE_CHARACTER = 1;
 
     function mathElement(name, text) {
         const el = document.createElementNS(MATHML_NS, name);
@@ -357,6 +360,19 @@ window.MathsSpeechRules = (function () {
         });
     }
 
+    // RA-135 (register 71, ruling R30 = F2b): drop the upright marker from every <mi> holding ONE character, so SRE stops saying
+    // "normal" before an upright H, d, e, Γ or unit letter. A run of upright letters (NaCl, max) never said it, a bold letter's
+    // variant is "bold" and is left alone, and the page's MathML is never touched (this runs on forSpeech's copy). It MUST run
+    // after speakChemicalJuxtaposition: that rule finds element symbols by this very marker, and with the marker gone first the
+    // stray "of" comes back ("H sub 2 of O"; RA-133 measured it). That is why this is called last in forSpeech.
+    function dropUprightMarkerOnSingleCharacters(root) {
+        root.querySelectorAll("mi").forEach((mi) => {
+            if (mi.getAttribute("mathvariant") !== UPRIGHT_VARIANT) return;
+            if (Array.from(mi.textContent.trim()).length !== SINGLE_CHARACTER) return;
+            mi.removeAttribute("mathvariant");
+        });
+    }
+
     // The MathML handed to the Speech Rule Engine. MathSpeak is passed through as
     // MathJax wrote it. ClearSpeak first has twelve things put right on a COPY (the
     // page's own MathML is never touched), because its defaults lose content a
@@ -369,8 +385,8 @@ window.MathsSpeechRules = (function () {
     // less-or-equal and greater-or-equal signs ("slanted equals"), a typed note's "Tr"
     // ("trace") and its full stops, the empty first cell of an aligned line ("blank"),
     // the implication arrows ("right double arrow": they say "implies", "is implied by" and "if and only if"), a typed
-    // ampersand and a logical-and sign (said "and" with a pause either side, "R, and, S", RA-120), and a chemical formula's stray "of" (H_2O is "H sub 2 of
-    // O"). The bracket and equivalence words are put right in the speech, by restoreLabels. If anything goes wrong the
+    // ampersand and a logical-and sign (said "and" with a pause either side, "R, and, S", RA-120), a chemical formula's stray "of" (H_2O is "H sub 2 of
+    // O"), and the word "normal" before a single upright letter (RA-135, done last). The bracket and equivalence words are put right in the speech, by restoreLabels. If anything goes wrong the
     // original MathML is used, so speech is never lost to this. Returns the MathML
     // and the equation labels that were added to it (see restoreLabels).
     function forSpeech(math, domain) {
@@ -391,6 +407,7 @@ window.MathsSpeechRules = (function () {
             speakImplicationArrows(copy);
             speakAndSigns(copy, labels);
             speakChemicalJuxtaposition(copy);
+            dropUprightMarkerOnSingleCharacters(copy); // last: the chemistry rule above needs the marker (RA-135)
             return { mathml: copy.outerHTML, labels };
         } catch (e) {
             return { mathml: math.outerHTML, labels: [] };

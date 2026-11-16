@@ -198,7 +198,7 @@ let instanceSeq = 0;
  *
  * @param {object} opts
  * @param {Element|string} opts.container - element (or selector) to append into.
- * @param {(ctx: {setStatus: (msg: string) => void}) => (string|Promise<string>)} opts.getContent
+ * @param {(ctx: {setStatus: (msg: string) => void, target: string}) => (string|Promise<string>)} opts.getContent
  *   - returns the content to export at click time. May be async: a multi-second
  *   assembly (the MathPix Resume export) is awaited, and is handed `setStatus` so it
  *   can report progress through the control's EXISTING polite `role="status"` region
@@ -335,7 +335,9 @@ export function mountExportControl(opts = {}) {
     button.disabled = true;
     setStatus(`Preparing ${EXPORT_TARGETS[target]}…`);
     try {
-      const content = await opts.getContent({ setStatus });
+      // `target` lets a getter prepare the HTML export differently from SCORM
+      // (MRC-85); a getter that ignores it is unaffected.
+      const content = await opts.getContent({ setStatus, target });
       if (typeof content !== "string" || content.trim() === "") {
         setStatus("Nothing to export yet — add some content first.");
         return;

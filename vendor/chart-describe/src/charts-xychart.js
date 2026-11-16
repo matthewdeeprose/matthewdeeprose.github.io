@@ -159,6 +159,16 @@
     LEVEL_RAISED_POINTS: "mostly level, apart from raised points",
     LEVEL_LOWERED_POINTS: "mostly level, apart from lowered points",
     LEVEL_APART: "mostly level, apart from raised and lowered stretches",
+    LEVEL_APART_POINTS: "mostly level, apart from raised and lowered points",
+    LEVEL_APART_RAISED_POINTS: "mostly level, apart from raised points and lowered stretches",
+    LEVEL_APART_LOWERED_POINTS: "mostly level, apart from raised stretches and lowered points",
+    // The two mixed forms with the count agreeing on the side that has exactly one: a raised POINT, a lowered STRETCH.
+    LEVEL_APART_ONE_POINT_ONE_STRETCH: "mostly level, apart from a raised point and a lowered stretch",
+    LEVEL_APART_ONE_POINT_STRETCHES: "mostly level, apart from a raised point and lowered stretches",
+    LEVEL_APART_POINTS_ONE_STRETCH: "mostly level, apart from raised points and a lowered stretch",
+    LEVEL_APART_ONE_STRETCH_ONE_POINT: "mostly level, apart from a raised stretch and a lowered point",
+    LEVEL_APART_ONE_STRETCH_POINTS: "mostly level, apart from a raised stretch and lowered points",
+    LEVEL_APART_STRETCHES_ONE_POINT: "mostly level, apart from raised stretches and a lowered point",
     RISES: "rising",
     FALLS: "falling",
     UNKNOWN: "unknown",
@@ -191,6 +201,15 @@
     [TRENDS.LEVEL_RAISED_POINTS]: "is mostly level, apart from raised points",
     [TRENDS.LEVEL_LOWERED_POINTS]: "is mostly level, apart from lowered points",
     [TRENDS.LEVEL_APART]: "is mostly level, apart from raised and lowered stretches",
+    [TRENDS.LEVEL_APART_POINTS]: "is mostly level, apart from raised and lowered points",
+    [TRENDS.LEVEL_APART_RAISED_POINTS]: "is mostly level, apart from raised points and lowered stretches",
+    [TRENDS.LEVEL_APART_LOWERED_POINTS]: "is mostly level, apart from raised stretches and lowered points",
+    [TRENDS.LEVEL_APART_ONE_POINT_ONE_STRETCH]: "is mostly level, apart from a raised point and a lowered stretch",
+    [TRENDS.LEVEL_APART_ONE_POINT_STRETCHES]: "is mostly level, apart from a raised point and lowered stretches",
+    [TRENDS.LEVEL_APART_POINTS_ONE_STRETCH]: "is mostly level, apart from raised points and a lowered stretch",
+    [TRENDS.LEVEL_APART_ONE_STRETCH_ONE_POINT]: "is mostly level, apart from a raised stretch and a lowered point",
+    [TRENDS.LEVEL_APART_ONE_STRETCH_POINTS]: "is mostly level, apart from a raised stretch and lowered points",
+    [TRENDS.LEVEL_APART_STRETCHES_ONE_POINT]: "is mostly level, apart from raised stretches and a lowered point",
     [TRENDS.RISES]: "rises",
     [TRENDS.FALLS]: "falls",
   });
@@ -286,6 +305,10 @@
   // author's number stays exact wherever the reader can actually read it.
   const SHORT_TIER_MAX_DECIMALS = 4;
   const SHORT_TIER_ROUNDING = 2;
+  // A rounded value under this keeps two significant figures instead of two decimals: two decimals leave it one figure or none, so
+  // 0.0050001 would read "about 0.01", twice its size.
+  const SHORT_TIER_TWO_FIGURES_BELOW = 0.1;
+  const SHORT_TIER_SMALL_FIGURES = 2;
 
   // The most decimals that a rounded value may be given back to keep it true
   // (an average inside the range, a range whose two ends differ).
@@ -298,12 +321,29 @@
   const PADDED_DIGITS_FROM = 1e21;
   // A mean that bands to 0 but is not 0 is spoken to this many significant figures.
   const SMALL_MEAN_FIGURES = 2;
+  // Below the smallest normal double a double keeps fewer than 53 bits, so a figure typed back through Number() is a different value.
+  const SMALLEST_NORMAL_DOUBLE = 2.2250738585072014e-308;
+  // Below this a double (spacing 4.9e-324) is under 200 steps from zero, so it has fewer than three reliable figures and a mean cannot be read from it.
+  const DOUBLE_TOO_COARSE_BELOW = 1e-322;
 
-  // A typed decimal (0.1) is stored to within half a unit in the last place of its own size, so a mean of n of them is wrong by at most
-  // about this x the largest absolute value, whatever n is, once the sum itself is taken without loss (compensatedSum). A mean closer to 0
-  // than that is rounding noise; two means closer to each other than that are the same average. Whole numbers are stored exactly, so for
-  // them, while the compensated sum is exact (wholeSumIsExact), the bound is 0 and a real mean is never swallowed.
+  // A series whose values are all finite is added exactly (exactSeriesSum), so its mean and its comparisons carry no float noise and no
+  // bound is needed. Only a series holding a value that is not finite (outside the stated input) is left to the compensated sum, and a
+  // typed decimal is stored to within half a unit in the last place of its own size, so a mean of n of them is wrong by at most about
+  // this x the largest absolute value. That bound is all floatNoiseBound still carries.
   const FLOAT_ERROR_PER_VALUE = Number.EPSILON;
+  // A mean is divided with this many bits of quotient, so one rounding to a double is the only rounding (see exactMean).
+  const MEAN_QUOTIENT_BITS = 64n;
+  // A double is scaled back by a power of two in steps no larger than this, because 2 ** 1024 is already Infinity.
+  const MEAN_SCALE_STEP_BITS = 1000;
+  // How a value is written by String(): optional sign, digits, optional decimals, optional exponent (1e-7, 1.5e+300).
+  const WRITTEN_NUMBER = /^(-?)(\d+)(?:\.(\d+))?(?:e([+-]?\d+))?$/;
+  const DECIMAL_BASE = 10n;
+  // Half a step, in units of the place after the one a value is written to.
+  const HALF_STEP_UNITS = 5n;
+  // A remainder of at least half the divisor rounds away from zero: twice the remainder reaches the divisor.
+  const ROUND_AWAY_FACTOR = 2n;
+  // A ratio becomes a percentage by this factor.
+  const PERCENT_FACTOR = 100n;
 
   /**
    * The sum of a list of numbers, with Neumaier's compensation: the low part that each addition
@@ -327,35 +367,178 @@
   }
 
   /**
-   * The most that the mean of these values can be wrong by, from float error alone.
+   * The most that the mean of these values can be wrong by, from float error alone. Used only for a series with a value that is not
+   * finite (outside the stated input), which exactSeriesSum cannot add; every other series is exact and needs no bound.
    * @param {Array<number>} values - The values that were averaged
    * @returns {number} The bound
    */
   function floatNoiseBound(values) {
     const largest = values.reduce((most, value) => Math.max(most, Math.abs(value)), 0);
-    if (wholeSumIsExact(values)) return 0;
     return FLOAT_ERROR_PER_VALUE * largest;
   }
 
   /**
-   * Whether compensatedSum is EXACT for these numbers: they are all whole numbers (a double holds one exactly) and the low parts that the
-   * additions drop are themselves whole numbers that stay within 2^53 - 1, so they are held and added back without a further rounding.
-   * Then the sum is the true sum rounded once, a real mean is never swallowed and a true 0 is exactly 0. The plain sum alone is exact
-   * only while every running total stays within 2^53 - 1; this also covers 1e16 + 1 + 1 - 1e16, where the running total does not.
-   * @param {Array<number>} values - The numbers that were added
-   * @returns {boolean} True when the sum is exact
+   * The exact sum of a series of finite numbers, from the digits each is written with, as a big integer count of units of 10 ** -places.
+   * A whole number is added as the exact double it is (BigInt(value), so 2 ** 100 is its true 31 digits); a decimal is added as the digits
+   * String() writes for it (0.1 is one unit at one place, never the double's 55-digit expansion), which is how the person who typed it
+   * wrote it. Every value is scaled to the finest place any of them uses and the sum is taken as a BigInt, so a decimal beside a huge
+   * whole number is not lost (1e16 + 0.5 is exactly 10000000000000000.5). A value written in exponent form (1e-7, 1.5e+300) is parsed
+   * by its mantissa and exponent, and never falls back. A series holding NaN or an infinity has no digits to add and gives null: it keeps
+   * the compensated sum and the noise bound, as before.
+   * @param {Array<number>} values - The numbers to add
+   * @returns {{units: bigint, places: number}|null} The exact sum, or null
    */
-  function wholeSumIsExact(values) {
-    if (!values.every(Number.isInteger)) return false;
-    let sum = 0;
-    let dropped = 0;
-    for (const value of values) {
-      const next = sum + value;
-      dropped += Math.abs(sum) >= Math.abs(value) ? sum - next + value : value - next + sum;
-      if (!Number.isFinite(next) || Math.abs(dropped) > Number.MAX_SAFE_INTEGER) return false;
-      sum = next;
+  function exactSeriesSum(values) {
+    if (!values.every(Number.isFinite)) return null;
+    const terms = values.map((value) => {
+      if (Number.isInteger(value)) return { units: BigInt(value), exponent: 0 };
+      const written = WRITTEN_NUMBER.exec(String(value));
+      if (written === null) throw new Error(`xychart: cannot read the digits of ${String(value)}`);
+      const [, sign, whole, fraction = "", exponent = "0"] = written;
+      const units = BigInt(whole + fraction);
+      return { units: sign === "-" ? -units : units, exponent: Number(exponent) - fraction.length };
+    });
+    const finest = terms.reduce((least, term) => Math.min(least, term.exponent), 0);
+    let total = 0n;
+    for (const term of terms) total += term.units * DECIMAL_BASE ** BigInt(term.exponent - finest);
+    return { units: total, places: -finest };
+  }
+
+  /**
+   * Whether two finite values lie closer together than one unit of a decimal place, from the digits they are written with (never the
+   * doubles' difference, which puts 0.00175 - 0.00165 a hair under 0.0001).
+   * @param {number} low - The lower value
+   * @param {number} high - The higher value
+   * @param {number} place - The decimal place (3 is thousandths)
+   * @returns {boolean} True when high - low is under 10 ** -place
+   */
+  function narrowerThanPlace(low, high, place) {
+    const width = exactSeriesSum([high, -low]);
+    return width.units * DECIMAL_BASE ** BigInt(place) < DECIMAL_BASE ** BigInt(width.places);
+  }
+
+  /**
+   * Whether the sum of one series over its count is higher than (1), equal to (0) or lower than (-1) another's. Cross-multiplied as big
+   * integers (unitsA x countB x 10 ** placesB against unitsB x countA x 10 ** placesA), never divided, so it has no cap on digits.
+   * @param {{units: bigint, places: number}} one - The exact sum of the first series
+   * @param {number} oneCount - How many values it has
+   * @param {{units: bigint, places: number}} other - The exact sum of the second
+   * @param {number} otherCount - How many values it has
+   * @returns {number} 1, 0 or -1
+   */
+  function compareExactMeans(one, oneCount, other, otherCount) {
+    const mine = one.units * BigInt(otherCount) * DECIMAL_BASE ** BigInt(other.places);
+    const theirs = other.units * BigInt(oneCount) * DECIMAL_BASE ** BigInt(one.places);
+    return mine > theirs ? 1 : mine < theirs ? -1 : 0;
+  }
+
+  /**
+   * The mean of a series as a double: the exact sum divided by the count and rounded ONCE (to nearest, ties to even), so the mean is
+   * the nearest double to the true one. The quotient is taken with 64 bits and a sticky low bit, so the one rounding is Number(bigint)'s
+   * own; the power-of-two scale back is exact (in steps, so a very small mean does not meet 2 ** 1024). A mean in the subnormal range
+   * (below about 2.2e-308) is rounded a second time by that scale, which no chart here reaches.
+   * @param {{units: bigint, places: number}} sum - The exact sum
+   * @param {number} count - How many values
+   * @returns {number} The mean
+   */
+  function exactMean(sum, count) {
+    if (sum.units === 0n) return 0;
+    const negative = sum.units < 0n;
+    const top = negative ? -sum.units : sum.units;
+    const divisor = BigInt(count) * DECIMAL_BASE ** BigInt(sum.places);
+    const have = BigInt(top.toString(2).length) - BigInt(divisor.toString(2).length);
+    const shift = have < MEAN_QUOTIENT_BITS ? MEAN_QUOTIENT_BITS - have : 0n;
+    const scaled = top << shift;
+    const sticky = scaled % divisor === 0n ? 0n : 1n;
+    let mean = Number((scaled / divisor) | sticky);
+    for (let left = Number(shift); left > 0; left -= MEAN_SCALE_STEP_BITS) {
+      mean /= 2 ** Math.min(left, MEAN_SCALE_STEP_BITS);
     }
-    return true;
+    return negative ? -mean : mean;
+  }
+
+  /**
+   * An exact value (a sum over a count) written to a number of decimals and rounded HALF AWAY FROM ZERO from its exact digits, never from
+   * a double: 0.075 and 1.005 are stored a hair under the tie and 0.545 a hair over it, so a double rounds the first two down and the third
+   * up, where the person who wrote the digits sees one tie. A remainder of half the divisor or more goes away from zero, so 0.545 is 0.55,
+   * -0.545 is -0.55 and 0.075 is 0.08. The sign of a negative value is kept when it rounds to zero (as toFixed keeps it).
+   * @param {{sum: {units: bigint, places: number}, count: number}} exact - The exact sum and how many values it covers
+   * @param {number} decimals - Decimal places
+   * @returns {string} The value in digits
+   */
+  function exactToFixed(exact, decimals) {
+    const negative = exact.sum.units < 0n;
+    const top = negative ? -exact.sum.units : exact.sum.units;
+    const divisor = BigInt(exact.count) * DECIMAL_BASE ** BigInt(exact.sum.places);
+    const scaled = top * DECIMAL_BASE ** BigInt(decimals);
+    let quotient = scaled / divisor;
+    if ((scaled % divisor) * ROUND_AWAY_FACTOR >= divisor) quotient += 1n;
+    const digits = quotient.toString().padStart(decimals + 1, "0");
+    const written = decimals === 0 ? digits : `${digits.slice(0, -decimals)}.${digits.slice(-decimals)}`;
+    return negative ? `-${written}` : written;
+  }
+
+  /**
+   * An exact value written to a number of significant figures, rounded half away from zero from its exact digits (exactToFixed says why).
+   * @param {{sum: {units: bigint, places: number}, count: number}} exact - The exact sum and how many values it covers
+   * @param {number} figures - Significant figures
+   * @returns {string} The value in digits
+   */
+  function exactToPrecision(exact, figures) {
+    const negative = exact.sum.units < 0n;
+    const top = negative ? -exact.sum.units : exact.sum.units;
+    if (top === 0n) return "0";
+    const divisor = BigInt(exact.count) * DECIMAL_BASE ** BigInt(exact.sum.places);
+    // The power of ten the value sits above: 10 ** place <= value < 10 ** (place + 1). The digit counts put it within one of the answer.
+    const atLeast = (power) => (power >= 0 ? top >= divisor * DECIMAL_BASE ** BigInt(power) : top * DECIMAL_BASE ** BigInt(-power) >= divisor);
+    let place = top.toString().length - divisor.toString().length;
+    if (!atLeast(place)) place -= 1;
+    const decimals = figures - 1 - place;
+    if (decimals >= 0) return exactToFixed(exact, decimals);
+    // Fewer figures than the whole part holds: round to a multiple of a power of ten and pad with zeros.
+    const step = divisor * DECIMAL_BASE ** BigInt(-decimals);
+    let quotient = top / step;
+    if ((top % step) * ROUND_AWAY_FACTOR >= step) quotient += 1n;
+    return `${negative ? "-" : ""}${quotient}${"0".repeat(-decimals)}`;
+  }
+
+  /**
+   * How far the highest or lowest value lies from the average, as a percentage of the average, rounded HALF AWAY FROM ZERO from the exact
+   * digits to a whole number. `Math.round` on the double ratio reads [1.9, -0.3] as 137% where the exact figure is 137.5, which rounds to 138.
+   * @param {Object} stats - Statistics from computeStatistics (a positive exact sum is needed)
+   * @param {number} value - The highest value (above the average) or the lowest (below it)
+   * @param {boolean} above - True for "above the average", false for "below"
+   * @returns {string|null} The whole percentage in digits, or null where the series has no exact digits (the double is used then)
+   */
+  function exactPercentFromAverage(stats, value, above) {
+    const mean = meanExactOf(stats);
+    const typed = typedExactOf(value);
+    if (mean === null || typed === null || mean.sum.units <= 0n) return null;
+    // mean = S / (count * 10 ** sumPlaces) and value = V / 10 ** valuePlaces, so (value - mean) / mean is (V * count * 10 ** sumPlaces
+    // - S * 10 ** valuePlaces) / (S * 10 ** valuePlaces).
+    const average = mean.sum.units * DECIMAL_BASE ** BigInt(typed.sum.places);
+    const scaledValue = typed.sum.units * BigInt(mean.count) * DECIMAL_BASE ** BigInt(mean.sum.places);
+    const gap = above ? scaledValue - average : average - scaledValue;
+    return exactToFixed({ sum: { units: gap * PERCENT_FACTOR, places: 0 }, count: average }, 0);
+  }
+
+  /**
+   * The size of the change from the first value to the last, as a percentage of the first, to one decimal and with no sign, rounded HALF
+   * AWAY FROM ZERO from the exact digits (`toFixed(1)` on the double reads some exact ties down).
+   * @param {number} first - The first value (not zero)
+   * @param {number} last - The last value
+   * @returns {string|null} The percentage in digits, or null where either value is not finite
+   */
+  function exactPercentChange(first, last) {
+    const start = typedExactOf(first);
+    const end = typedExactOf(last);
+    if (start === null || end === null) return null;
+    const places = Math.max(start.sum.places, end.sum.places);
+    const startUnits = start.sum.units * DECIMAL_BASE ** BigInt(places - start.sum.places);
+    const endUnits = end.sum.units * DECIMAL_BASE ** BigInt(places - end.sum.places);
+    const change = endUnits - startUnits;
+    const size = (change < 0n ? -change : change) * PERCENT_FACTOR;
+    return exactToFixed({ sum: { units: size, places: 0 }, count: startUnits < 0n ? -startUnits : startUnits }, 1);
   }
 
   // A bare four-digit label is called a year only inside this span. A run such
@@ -669,13 +852,59 @@
     const point = text.indexOf(".");
     if (point === -1) return text;
     if (text.length - point - 1 <= SHORT_TIER_MAX_DECIMALS) return text;
-    const rounded = value.toFixed(SHORT_TIER_ROUNDING);
-    // A value that is not zero must not round to zero: keep two significant
-    // figures instead (0.00001 is "about 0.00001", not "about 0.00").
-    if (value !== 0 && Number(rounded) === 0) {
-      return `about ${numberDigits(Number(value.toPrecision(2)))}`;
+    // A value under 0.1 keeps two significant figures instead of two decimals (0.0050001 is "about 0.005", not "about 0.01"), and so
+    // never rounds to zero (0.00001 is "0.00001", not "about 0.00"). Where those figures ARE the typed digits (0.00001 typed to five
+    // decimals) nothing was rounded, so there is no "about"; a longer typed value (0.0000123456) is still "about 0.000012".
+    if (value !== 0 && Math.abs(value) < SHORT_TIER_TWO_FIGURES_BELOW) {
+      const twoFigures = numberDigits(Number(figuresOf(value, SHORT_TIER_SMALL_FIGURES, typedExactOf(value))));
+      return Number(twoFigures) === value ? twoFigures : `about ${twoFigures}`;
     }
-    return `about ${rounded}`;
+    // The trailing zeros go ("about 4", not "about 4.00"), as they do from the widened ends, so one rounded end reads one way.
+    return `about ${dropTrailingZeros(fixedDigitsOf(value, SHORT_TIER_ROUNDING, typedExactOf(value)))}`;
+  }
+
+  /**
+   * Whether two values lie exactly half a step apart at a number of decimals, from the digits they are written with. One of them is then
+   * half a step from a figure, and rounding it half away from zero prints a step twice as wide as the data ("0.34 to about 0.340001"
+   * for 0.34 and 0.3400005), so such an end is printed as typed.
+   * @param {number} low - The lower value
+   * @param {number} high - The higher value
+   * @param {number} decimals - The decimal places the ends would be written to
+   * @returns {boolean} True when high - low is exactly 5 units of the place after `decimals`
+   */
+  function isHalfStepWide(low, high, decimals) {
+    const width = exactSeriesSum([high, -low]);
+    return width !== null && width.places === decimals + 1 && width.units === HALF_STEP_UNITS;
+  }
+
+  /**
+   * One end of a range printed as typed beside the other rounded must not read as a wider, narrower or upside-down range than the data
+   * holds ("0.0832 to about 0.083" for 0.0832 and 0.08349). The rounded end is written to at least as many decimals as the typed end
+   * carries, and to enough decimals that it lies on the far side of the typed end ("0.0832 to about 0.0835"). Ranges where both ends
+   * are typed, or both rounded, are returned as they are.
+   * @param {number} min - The lowest value
+   * @param {number} max - The highest value
+   * @param {Object} ends - `{ min, max }`, both as text
+   * @returns {Object} `{ min, max }`, both as text
+   */
+  function matchTypedEndFigures(min, max, ends) {
+    const maxIsRounded = ends.max.startsWith("about ");
+    if (ends.min.startsWith("about ") === maxIsRounded) return ends;
+    const typedText = maxIsRounded ? ends.min : ends.max;
+    const typedValue = maxIsRounded ? min : max;
+    const roundedValue = maxIsRounded ? max : min;
+    if (Math.abs(roundedValue) >= PADDED_DIGITS_FROM) return ends;
+    const decimalsOf = (written) => (written.replace(/^about /, "").split(".")[1] || "").length;
+    const first = Math.min(Math.max(decimalsOf(typedText), decimalsOf(maxIsRounded ? ends.max : ends.min)), MAX_RESTORED_DECIMALS);
+    for (let decimals = first; decimals <= MAX_RESTORED_DECIMALS; decimals += 1) {
+      const written = fixedDigitsOf(roundedValue, decimals, typedExactOf(roundedValue));
+      const farSide = maxIsRounded ? Number(written) > typedValue : Number(written) < typedValue;
+      if (!farSide) continue;
+      const spoken = dropTrailingZeros(written);
+      const rounded = Number(spoken) === roundedValue ? spoken : isHalfStepWide(Math.min(min, max), Math.max(min, max), decimals) ? numberDigits(roundedValue) : `about ${spoken}`;
+      return maxIsRounded ? { min: ends.min, max: rounded } : { min: rounded, max: ends.max };
+    }
+    return ends;
   }
 
   /**
@@ -698,24 +927,60 @@
     // round to that end's own figure ("about 1.00" beside 1.005, for 1.0049999), the ends are written to enough decimals to differ.
     const decimalsOf = (text) => Math.min((text.replace(/^about /, "").split(".")[1] || "").length, MAX_RESTORED_DECIMALS);
     const roundsToOther = (value, own, other) =>
-      own.startsWith("about ") && decimalsOf(other) > SHORT_TIER_ROUNDING && Number(value.toFixed(decimalsOf(other))) === figure(other);
+      own.startsWith("about ") && decimalsOf(other) > SHORT_TIER_ROUNDING && Number(fixedDigitsOf(value, decimalsOf(other), typedExactOf(value))) === figure(other);
+    // Two rounded ends that lie closer together than one rounding step ("about 1.00 to about 1.01" for 1.0049999 to 1.0050001) read as
+    // a range of a whole step: they are written to enough decimals to show how narrow it is.
+    // An end is rounded to the step when its figure is the value's own two-decimal rounding (read from the value, since the text may
+    // have lost its trailing zeros).
+    const roundedToStep = (value, text) =>
+      text.startsWith("about ") && figure(text) === Number(fixedDigitsOf(value, SHORT_TIER_ROUNDING, typedExactOf(value)));
+    const narrowerThanStep = roundedToStep(min, ends.min) && roundedToStep(max, ends.max) && max - min < 10 ** -SHORT_TIER_ROUNDING;
+    // An end under 0.1 is rounded to two significant figures, so its step is one unit of its last figure's place (0.001 for 0.060306).
+    // Two such ends that lie closer together than the coarser of their steps ("about 0.06 to about 0.061" for 0.060306 to 0.060533)
+    // read as a range of a whole step in the same way, and are written to enough decimals to show how narrow it is. The width is taken
+    // from the typed digits, so a pair exactly one step wide (0.00165 to 0.00175) is not narrower than its step.
+    const figuresPlace = (value, text) =>
+      text.startsWith("about ") && Math.abs(value) < SHORT_TIER_TWO_FIGURES_BELOW
+        ? (figuresOf(value, SHORT_TIER_SMALL_FIGURES, typedExactOf(value)).split(".")[1] || "").length
+        : null;
+    const minPlace = figuresPlace(min, ends.min);
+    const maxPlace = figuresPlace(max, ends.max);
+    const narrowerThanFigures = minPlace !== null && maxPlace !== null && narrowerThanPlace(min, max, Math.min(minPlace, maxPlace));
+    // A two-figure end under 0.1 beside a two-decimal end from 0.1 up has a different step on each side of 0.1, so neither test above sees
+    // it: 0.09659823 to 0.1040567267 read "about 0.097 to about 0.1", under half the width of the data. Two such ends closer together
+    // than the two-decimal step are written to enough decimals to show how narrow the range is.
+    const underTwoFigureLimit = (value) => Math.abs(value) < SHORT_TIER_TWO_FIGURES_BELOW;
+    const narrowerAcrossBands =
+      ends.min.startsWith("about ") &&
+      ends.max.startsWith("about ") &&
+      underTwoFigureLimit(min) !== underTwoFigureLimit(max) &&
+      narrowerThanPlace(min, max, SHORT_TIER_ROUNDING);
     if (
       tier !== TIERS.SHORT ||
       min === max ||
       (ends.min !== ends.max &&
+        !narrowerThanStep &&
+        !narrowerThanFigures &&
+        !narrowerAcrossBands &&
         figure(ends.min) !== figure(ends.max) &&
         !roundsToOther(min, ends.min, ends.max) &&
         !roundsToOther(max, ends.max, ends.min))
     ) {
-      return ends;
+      return matchTypedEndFigures(min, max, ends);
     }
     for (let decimals = SHORT_TIER_ROUNDING + 1; decimals <= MAX_RESTORED_DECIMALS; decimals += 1) {
-      const lowText = dropTrailingZeros(min.toFixed(decimals));
-      const highText = dropTrailingZeros(max.toFixed(decimals));
+      const lowText = dropTrailingZeros(fixedDigitsOf(min, decimals, typedExactOf(min)));
+      const highText = dropTrailingZeros(fixedDigitsOf(max, decimals, typedExactOf(max)));
       if (lowText !== highText) {
-        // Where the two ends already read differently ("1" and "about 1.00"), an end the text reproduces exactly is not "about".
-        const spoken = (value, written) => (ends.min !== ends.max && Number(written) === value ? written : `about ${written}`);
-        return { min: spoken(min, lowText), max: spoken(max, highText) };
+        // An end the text reproduces exactly is the typed value, so it is not "about": that holds whether or not the two ends read alike
+        // before they were widened ("0.123456789012345" and "0.123456789012346" both round to the same 14 decimals).
+        const spoken = (value, written) => (Number(written) === value ? written : isHalfStepWide(min, max, decimals) ? numberDigits(value) : `about ${written}`);
+        const low = spoken(min, lowText);
+        const high = spoken(max, highText);
+        // Two "about" ends that lie closer together than one unit of THIS level read as a range one unit wide ("about 1 to about 1.001"
+        // for 1.00049 and 1.00051): go on to the next level, as the two-decimal step does above.
+        const narrowerThanLevel = low.startsWith("about ") && high.startsWith("about ") && max - min < 10 ** -decimals;
+        if (!narrowerThanLevel) return matchTypedEndFigures(min, max, { min: low, max: high });
       }
     }
     return { min: numberDigits(min), max: numberDigits(max) };
@@ -726,9 +991,11 @@
    * `formatValue` magnitude rule: two decimals below 10, one from 10 to 99,
    * none from 100, and integers verbatim. No thousands separator anywhere.
    * @param {number} value - A computed statistic
+   * @param {Object|null} exact - The exact sum and count the value is the mean of, or null: its digits are rounded from these (half away
+   *   from zero), and the magnitude band is still chosen from the double
    * @returns {string} The value as it is spoken
    */
-  function formatDerivedValue(value) {
+  function formatDerivedValue(value, exact = null) {
     if (!Number.isFinite(value)) return String(value);
     // A whole-number statistic is spoken to 15 significant figures: the 16th and 17th of a double are rounding noise, and
     // writing them out pads a number such as 3e22 as 29999999999999996000000.
@@ -736,12 +1003,8 @@
       return numberDigits(Math.abs(value) >= PADDED_DIGITS_FROM ? Number(value.toPrecision(SPOKEN_SIGNIFICANT_FIGURES)) : value);
     }
     const magnitude = Math.abs(value);
-    const banded =
-      magnitude >= 100
-        ? value.toFixed(0)
-        : magnitude >= 10
-          ? value.toFixed(1)
-          : value.toFixed(2);
+    const decimals = magnitude >= 100 ? 0 : magnitude >= 10 ? 1 : 2;
+    const banded = fixedDigitsOf(value, decimals, exact);
     const spoken = dropTrailingZeros(banded);
     return spoken === "-0" ? "0" : spoken;
   }
@@ -752,8 +1015,64 @@
    * @param {number} decimals - Decimal places
    * @returns {string} The number in digits
    */
-  function fixedDigits(value, decimals) {
-    return Math.abs(value) >= PADDED_DIGITS_FROM ? numberDigits(value) : value.toFixed(decimals);
+  function fixedDigits(value, decimals, exact = null) {
+    return Math.abs(value) >= PADDED_DIGITS_FROM ? numberDigits(value) : fixedDigitsOf(value, decimals, exact);
+  }
+
+  /**
+   * A value to a number of decimals: from its exact digits when it has them (half away from zero), else `toFixed`.
+   * @param {number} value - A number below 1e21
+   * @param {number} decimals - Decimal places
+   * @param {Object|null} exact - The exact sum and count the value is the mean of, or null
+   * @returns {string} The value in digits
+   */
+  function fixedDigitsOf(value, decimals, exact) {
+    return exact !== null && Math.abs(value) < PADDED_DIGITS_FROM ? exactToFixed(exact, decimals) : value.toFixed(decimals);
+  }
+
+  /**
+   * A value to a number of significant figures: from its exact digits when it has them (half away from zero), else `toPrecision`.
+   * @param {number} value - A number
+   * @param {number} figures - Significant figures
+   * @param {Object|null} exact - The exact sum and count the value is the mean of, or null
+   * @returns {string} The value in digits
+   */
+  function figuresOf(value, figures, exact) {
+    return exact !== null && Math.abs(value) < PADDED_DIGITS_FROM ? exactToPrecision(exact, figures) : value.toPrecision(figures);
+  }
+
+  /**
+   * A mean to a number of significant figures as it is spoken: the figures written back as a number (so a trailing zero goes), except
+   * for a mean below the smallest normal double, which is spoken from its exact digits. There the written figures do not survive
+   * `Number()` (2.5e-324 parses to 5e-324, twice the mean), so the text is used as it is.
+   * @param {number} value - The mean as a double
+   * @param {number} figures - Significant figures
+   * @param {Object|null} exact - The exact sum and count the mean was taken from, or null
+   * @returns {string} The value in digits
+   */
+  function figuresSpoken(value, figures, exact) {
+    const written = figuresOf(value, figures, exact);
+    if (exact !== null && Math.abs(value) < SMALLEST_NORMAL_DOUBLE) return dropTrailingZeros(written);
+    return numberDigits(Number(written));
+  }
+
+  /**
+   * The exact sum and count behind a series' mean, or null where the series was not added exactly.
+   * @param {Object} stats - Statistics from computeStatistics
+   * @returns {Object|null} `{ sum, count }` or null
+   */
+  function meanExactOf(stats) {
+    return stats.exactSum === null ? null : { sum: stats.exactSum, count: stats.count };
+  }
+
+  /**
+   * The exact digits of one typed value, or null for a value that is not finite.
+   * @param {number} value - A value read from the source
+   * @returns {Object|null} `{ sum, count }` or null
+   */
+  function typedExactOf(value) {
+    const sum = exactSeriesSum([value]);
+    return sum === null ? null : { sum, count: 1 };
   }
 
   /**
@@ -793,15 +1112,21 @@
    * @param {number} mean - The mean of the values
    * @param {number} min - The lowest value
    * @param {number} max - The highest value
+   * @param {Object|null} exact - The exact sum and count the mean was taken from, or null (a value that is not finite): the figures are
+   *   rounded from these, half away from zero, and the double is kept for every comparison
    * @returns {string} The mean as it is spoken
    */
-  function formatMean(mean, min, max) {
-    const banded = formatDerivedValue(mean);
+  function formatMean(mean, min, max, exact = null) {
+    const banded = formatDerivedValue(mean, exact);
     if (!Number.isFinite(mean) || !Number.isFinite(min) || !Number.isFinite(max)) {
       return banded;
     }
     // The average of values that are all the same is that value, whatever the banded text would say.
     if (min === max) return numberDigits(min);
+    // A mean below the smallest normal double is a double of one figure or none, so the range tests below (and the double itself) cannot hold it:
+    // [5e-324, 0, 0] has the mean 1.67e-324, which is the double 0, and [5e-324, 1e-323] has 7.5e-324, which is the double 1e-323. It is spoken from
+    // its exact digits, to two figures.
+    if (exact !== null && exact.sum.units !== 0n && Math.abs(mean) < DOUBLE_TOO_COARSE_BELOW) return dropTrailingZeros(figuresOf(mean, SMALL_MEAN_FIGURES, exact));
     const strictlyInside = mean > min && mean < max;
     const inside = (text) => {
       const spoken = Number(text);
@@ -811,25 +1136,25 @@
     if (inside(banded)) {
       // A mean that is not zero is never spoken as 0 (the range holds 0, so the search below would stop at it): add decimals until a figure shows.
       if (mean !== 0 && Number(banded) === 0) {
-        const small = numberDigits(Number(mean.toPrecision(SMALL_MEAN_FIGURES)));
+        const small = figuresSpoken(mean, SMALL_MEAN_FIGURES, exact);
         return inside(small) ? small : banded;
       }
       return banded;
     }
     for (let decimals = 0; decimals <= MAX_RESTORED_DECIMALS; decimals += 1) {
-      const restored = dropTrailingZeros(fixedDigits(mean, decimals));
+      const restored = dropTrailingZeros(fixedDigits(mean, decimals, exact));
       if (inside(restored)) return restored;
     }
     // No figure up to 15 decimals is strictly inside (a range narrower than 1e-15, or a mean needing more digits): use the fewest
     // significant figures that are, written as the range ends are.
     let atAnEnd = null;
     for (let decimals = 0; decimals <= MAX_RESTORED_DECIMALS; decimals += 1) {
-      const restored = dropTrailingZeros(fixedDigits(mean, decimals));
+      const restored = dropTrailingZeros(fixedDigits(mean, decimals, exact));
       if (Number(restored) >= min && Number(restored) <= max) atAnEnd = restored;
     }
     // Only when the mean really is between the ends: an all-equal series (mean = both ends, off by float noise) keeps its banded text.
     for (let figures = 1; strictlyInside && figures <= MAX_SIGNIFICANT_FIGURES; figures += 1) {
-      const spoken = numberDigits(Number(mean.toPrecision(figures)));
+      const spoken = figuresSpoken(mean, figures, exact);
       if (inside(spoken)) return spoken;
     }
     // The mean equals an end in doubles and no shorter figure fits between the ends: speak it in full rather than a rounded figure outside the range.
@@ -893,10 +1218,17 @@
   function computeStatistics(values) {
     const count = values.length;
     if (count === 0) throw new Error("xychart: a series has no values");
-    const total = compensatedSum(values);
-    const rawMean = count > 0 ? total / count : 0;
     const largest = values.reduce((most, value) => Math.max(most, Math.abs(value)), 0);
-    const mean = Math.abs(rawMean) <= floatNoiseBound(values) ? 0 : rawMean;
+    // A series of finite values is added exactly, from the digits each is written with; only one holding NaN or an infinity (outside the
+    // stated input) keeps the compensated sum and the float-noise bound.
+    const exactSum = exactSeriesSum(values);
+    let mean;
+    if (exactSum !== null) {
+      mean = exactMean(exactSum, count);
+    } else {
+      const rawMean = compensatedSum(values) / count;
+      mean = Math.abs(rawMean) <= floatNoiseBound(values) ? 0 : rawMean;
+    }
 
     let maxIndex = 0;
     let minIndex = 0;
@@ -927,16 +1259,28 @@
 
     const sorted = values.slice().sort((a, b) => a - b);
     const middle = Math.floor(count / 2);
-    const median =
-      count === 0
-        ? 0
+    // The median is one typed value or the mean of the two in the middle, so it has exact digits whenever the series does.
+    const medianExact =
+      exactSum === null
+        ? null
         : count % 2 === 1
-          ? sorted[middle]
-          : (sorted[middle - 1] + sorted[middle]) / 2;
+          ? { sum: exactSeriesSum([sorted[middle]]), count: 1 }
+          : { sum: exactSeriesSum([sorted[middle - 1], sorted[middle]]), count: 2 };
+    // The mean of the middle pair is taken as a double sum over two, except where that sum overflows (1.7e308 twice is Infinity): then
+    // it comes from the exact pair, or from the halves where the series has no exact digits. Every finite sum keeps the double path.
+    const middlePairSum = count > 0 && count % 2 === 0 ? sorted[middle - 1] + sorted[middle] : 0;
+    const evenMedian = () =>
+      Number.isFinite(middlePairSum)
+        ? middlePairSum / 2
+        : medianExact !== null
+          ? exactMean(medianExact.sum, 2)
+          : sorted[middle - 1] / 2 + sorted[middle] / 2;
+    const median = count === 0 ? 0 : count % 2 === 1 ? sorted[middle] : evenMedian();
 
     return {
       count: count,
       mean: mean,
+      exactSum: exactSum,
       max: values[maxIndex],
       min: values[minIndex],
       maxIndex: maxIndex,
@@ -945,6 +1289,7 @@
       minIndices: minIndices,
       standardDeviation: largest * Math.sqrt(scaledVariance),
       median: median,
+      medianExact: medianExact,
     };
   }
 
@@ -1039,7 +1384,34 @@
     const level = levelOf(values);
     if (values.filter((value) => value !== level).length > LEVEL_APART_MAX_POINT_SHARE * values.length) return TRENDS.NONE;
     const margin = LEVEL_APART_MIN_SHARE * (high - low);
-    if (values.some((value) => value - level > margin) && values.some((value) => level - value > margin)) return TRENDS.LEVEL_APART;
+    const farAbove = (value) => value - level > margin;
+    const farBelow = (value) => level - value > margin;
+    if (values.some(farAbove) && values.some(farBelow)) {
+      // A side whose departures are all single points says points; a side with a run says stretches. Two sides of points read
+      // "raised and lowered points"; one side of points beside a run names each side.
+      const raisedPoints = values.filter(farAbove).length === countStretches(values, farAbove);
+      const loweredPoints = values.filter(farBelow).length === countStretches(values, farBelow);
+      if (raisedPoints && loweredPoints) return TRENDS.LEVEL_APART_POINTS;
+      // Points on one side, a run on the other: the singular is used on a side that has exactly one ("a raised point and a lowered
+      // stretch"), the plural otherwise, so the wording counts what the series holds.
+      if (raisedPoints) {
+        const onePoint = values.filter(farAbove).length === 1;
+        const oneStretch = countStretches(values, farBelow) === 1;
+        if (onePoint && oneStretch) return TRENDS.LEVEL_APART_ONE_POINT_ONE_STRETCH;
+        if (onePoint) return TRENDS.LEVEL_APART_ONE_POINT_STRETCHES;
+        if (oneStretch) return TRENDS.LEVEL_APART_POINTS_ONE_STRETCH;
+        return TRENDS.LEVEL_APART_RAISED_POINTS;
+      }
+      if (loweredPoints) {
+        const onePoint = values.filter(farBelow).length === 1;
+        const oneStretch = countStretches(values, farAbove) === 1;
+        if (onePoint && oneStretch) return TRENDS.LEVEL_APART_ONE_STRETCH_ONE_POINT;
+        if (onePoint) return TRENDS.LEVEL_APART_STRETCHES_ONE_POINT;
+        if (oneStretch) return TRENDS.LEVEL_APART_ONE_STRETCH_POINTS;
+        return TRENDS.LEVEL_APART_LOWERED_POINTS;
+      }
+      return TRENDS.LEVEL_APART;
+    }
 
     const midpoint = (high + low) / 2;
     const above = (value) => value > midpoint;
@@ -2030,11 +2402,25 @@
 
       // Means count as equal when they differ by no more than a relative gap of 1e-14, so that sums which differ
       // only by floating-point noise are equal and means that differ at the thirteenth figure are not.
-      const means = series.map((one) => computeStatistics(one.values).mean);
-      const highestMean = Math.max(...means);
-      const highestAt = means.indexOf(highestMean);
+      // Two series of finite values are compared exactly (sumA x countB against sumB x countA, as big integers), never as two doubles.
+      const allStats = series.map((one) => computeStatistics(one.values));
+      const means = allStats.map((one) => one.mean);
       const bounds = series.map((one) => floatNoiseBound(one.values));
-      const sameMean = (i) => Math.abs(means[i] - highestMean) <= bounds[i] + bounds[highestAt];
+      const bothExact = (i, j) => allStats[i].exactSum !== null && allStats[j].exactSum !== null;
+      const compareExact = (i, j) =>
+        compareExactMeans(allStats[i].exactSum, allStats[i].count, allStats[j].exactSum, allStats[j].count);
+      const isHigher = (i, j) => {
+        if (!bothExact(i, j)) return means[i] > means[j];
+        return compareExact(i, j) > 0;
+      };
+      let highestAt = 0;
+      for (let i = 1; i < series.length; i += 1) {
+        if (isHigher(i, highestAt)) highestAt = i;
+      }
+      const sameMean = (i) => {
+        if (bothExact(i, highestAt)) return compareExact(i, highestAt) === 0;
+        return Math.abs(means[i] - means[highestAt]) <= bounds[i] + bounds[highestAt];
+      };
       const leaders = series.filter((one, i) => sameMean(i));
       // A mean that is not a number (outside the stated input) names the first series, as before.
       if (leaders.length === 0) leaders.push(series[0]);
@@ -2060,7 +2446,7 @@
     const ends = formatRangeEndsForTier(tier, stats.min, stats.max);
     const rangeSentence = [
       text(
-        `Values range from ${ends.min} to ${ends.max} with an average of ${formatMean(stats.mean, stats.min, stats.max)}.`
+        `Values range from ${ends.min} to ${ends.max} with an average of ${formatMean(stats.mean, stats.min, stats.max, meanExactOf(stats))}.`
       ),
     ];
 
@@ -2130,7 +2516,7 @@
       return [
         text(`The highest value, ${formatAuthorValueForTier(tier, stats.max)} at `),
         ...pointReferencesRuns(chart, stats.maxIndices, REFERENCE_STYLE.STANDALONE),
-        text(`, is ${Math.round((maxRatio - 1) * 100)}% above the average.`),
+        text(`, is ${exactPercentFromAverage(stats, stats.max, true) ?? Math.round((maxRatio - 1) * 100)}% above the average.`),
       ];
     }
     // This is the sign guard, and it is deliberately NOT mirrored above.
@@ -2142,10 +2528,11 @@
     // and it means exactly what it says. So widening this guard to both
     // branches would suppress a sentence that is doing its job.
     if (minRatio < LOW_POINT_RATIO && stats.min >= 0) {
+      const below = Number(exactPercentFromAverage(stats, stats.min, false) ?? Math.round((1 - minRatio) * 100));
       return [
         text(`The lowest value, ${formatAuthorValueForTier(tier, stats.min)} at `),
         ...pointReferencesRuns(chart, stats.minIndices, REFERENCE_STYLE.STANDALONE),
-        text(`, is ${stats.min > 0 && Math.round((1 - minRatio) * 100) >= 100 ? "more than 99" : Math.round((1 - minRatio) * 100)}% below the average.`),
+        text(`, is ${stats.min > 0 && below >= 100 ? "more than 99" : below}% below the average.`),
       ];
     }
     return rangeSentence;
@@ -2722,13 +3109,13 @@
           ])
         );
       }
-      items.push(item([text(`Average value: ${formatMean(stats.mean, stats.min, stats.max)}.`)]));
+      items.push(item([text(`Average value: ${formatMean(stats.mean, stats.min, stats.max, meanExactOf(stats))}.`)]));
 
       if (stats.count >= STATISTICS_MIN_POINTS) {
         items.push(
           item([text(`Standard deviation: ${formatSpread(stats)}.`)])
         );
-        items.push(item([text(`Median value: ${formatMean(stats.median, stats.min, stats.max)}.`)]));
+        items.push(item([text(`Median value: ${formatMean(stats.median, stats.min, stats.max, stats.medianExact)}.`)]));
         items.push(item([text(buildDistributionSentence(stats))]));
       }
       return items;
@@ -2905,7 +3292,7 @@
         items.push(
           item([
             text(
-              `Overall ${percentChange > 0 ? "increase" : "decrease"} of ${Math.abs(percentChange).toFixed(1)}% from start to end.`
+              `Overall ${percentChange > 0 ? "increase" : "decrease"} of ${exactPercentChange(first, last) ?? Math.abs(percentChange).toFixed(1)}% from start to end.`
             ),
           ])
         );

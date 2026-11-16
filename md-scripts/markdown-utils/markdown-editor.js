@@ -142,8 +142,18 @@ const MarkdownEditor = (function () {
       "../../js/scorm-export/export-control.js",
       MODULE_SCRIPT_URL
     ).href;
-    import(controlUrl)
-      .then(({ mountExportControl }) => {
+    // MRC-80: the export makes the page controls static (sortable tables, code
+    // copy buttons, tabs), because it carries none of their scripts.
+    const staticExportUrl = new URL(
+      "./markdown-static-export.js",
+      MODULE_SCRIPT_URL
+    ).href;
+    const staticExportImport = import(staticExportUrl).catch((err) => {
+      Logger.warn("Static export step failed to load; exporting without it:", err);
+      return null;
+    });
+    Promise.all([import(controlUrl), staticExportImport])
+      .then(([{ mountExportControl }, staticExport]) => {
         // Guard against a race where initialize() ran twice before the import settled.
         if (scormExportControl) return;
         scormExportControl = mountExportControl({
@@ -153,8 +163,11 @@ const MarkdownEditor = (function () {
           // painted for the other site mode (Mermaid export utils). Charts
           // become pictures (one per site mode) with a "Description"
           // disclosure holding the description and the data table, taken
-          // from the same single copy (Chart export utils).
-          getContent: () => {
+          // from the same single copy (Chart export utils). Last, the page
+          // controls become static (MRC-80), on that copy's HTML; the
+          // markdown source is passed only so a sortable table's held-back
+          // rows can be recovered.
+          getContent: async ({ target } = {}) => {
             const utils = window.MermaidExportUtils;
             if (!elements.output) return "";
             const copyStep = (root) => {
@@ -165,22 +178,44 @@ const MarkdownEditor = (function () {
               return root.innerHTML;
             };
             const chartUtils = window.ChartExportUtils;
-            if (chartUtils && typeof chartUtils.prepareChartExport === "function")
-              return chartUtils.prepareChartExport(elements.output, copyStep);
-            return copyStep(elements.output);
+            const html =
+              chartUtils && typeof chartUtils.prepareChartExport === "function"
+                ? await chartUtils.prepareChartExport(elements.output, copyStep)
+                : await copyStep(elements.output);
+            if (!staticExport) return html;
+            // MRC-85: the target and the live preview let the HTML export hand the
+            // builder each equation as its own TeX (SCORM is unchanged).
+            return staticExport.makeExportStatic(html, {
+              target,
+              liveRoot: elements.output,
+              source: {
+                markdown: elements.markdownInput
+                  ? elements.markdownInput.value
+                  : "",
+                md: initializeMarkdownIt(),
+                protectMath: protectMathBlocks,
+                restoreMath: restoreMathBlocks,
+                fixMaths: fixMathJaxAccessibility,
+              },
+            });
           },
           // The head CSS that shows the copy matching the exported page's
-          // own light/dark switch: Mermaid's, joined to the chart pictures'.
+          // own light/dark switch: Mermaid's, joined to the chart pictures',
+          // joined to the code token colours (MRC-80).
           getOptions: () => {
             const chartUtils = window.ChartExportUtils;
-            if (chartUtils && typeof chartUtils.getExportHead === "function") {
-              const head = chartUtils.getExportHead();
-              return head ? { head } : undefined;
-            }
-            return window.MermaidExportUtils &&
-              window.MermaidExportUtils.THEMED_EXPORT_HEAD
-              ? { head: window.MermaidExportUtils.THEMED_EXPORT_HEAD }
+            const themedHead =
+              chartUtils && typeof chartUtils.getExportHead === "function"
+                ? chartUtils.getExportHead()
+                : window.MermaidExportUtils &&
+                  window.MermaidExportUtils.THEMED_EXPORT_HEAD;
+            const staticHead = staticExport
+              ? staticExport.getStaticExportHead()
               : undefined;
+            const head = [themedHead, staticHead]
+              .filter(Boolean)
+              .join("\n");
+            return head ? { head } : undefined;
           },
           format: "html",
           getTitle: deriveExportTitle,

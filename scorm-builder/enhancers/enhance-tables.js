@@ -20,7 +20,7 @@
 // already processed, are returned untouched. The transform is idempotent.
 
 import { escapeXML } from "../util/escape-xml.js";
-import { convertDelimited, spanToText } from "./tex-label.js";
+import { convertDelimited, spanToText, texToText } from "./tex-label.js";
 
 // Default column count above which a table uses the horizontal-scroll fallback
 // instead of the stacked-card layout (cards get too tall with many columns).
@@ -28,6 +28,17 @@ export const DEFAULT_COLUMN_THRESHOLD = 6;
 
 // Marks the aria-hidden wrapper around a maths column header's drawn maths (RA-81). mathjax-controls.js matches it by name.
 const HEADER_MATHS_ATTR = "data-sr-header-maths";
+
+// What the Markdown Editor's table code writes into a maths header it hands the builder (RA-129): the hidden plain
+// copy of the header text, and the opening of the aria-hidden wrapper that holds the drawn maths.
+const HEADER_TEXT = /<span\b[^>]*\bdata-sr-header-text\b[^>]*>([\s\S]*?)<\/span>/i;
+const HEADER_MATHS = new RegExp(`<span\\b[^>]*\\b${HEADER_MATHS_ATTR}\\b[^>]*>`, "i");
+const MJX_CONTAINER = /<mjx-container\b[\s\S]*?<\/mjx-container>/gi;
+const MATHML = /<math\b[\s\S]*?<\/math>/i;
+// MathML elements mathmlToTex reads, and how many children the script elements must have.
+const MATHML_READABLE = new Set(["math", "mrow", "mi", "mn", "mo", "mtext", "msup", "msub", "msubsup"]);
+const MATHML_ARITY = Object.freeze({ msup: 2, msub: 2, msubsup: 3 });
+const TEX_SYNTAX = /[\\{}^_$]/;
 
 const TABLE = /<table\b[^>]*>[\s\S]*?<\/table>/gi;
 const TABLE_PARTS = /^<table\b([^>]*)>([\s\S]*)<\/table>$/i;
@@ -72,6 +83,95 @@ const MARK_CLOSE = "\u0002";
 // TeX ("$\epsilon$") must never reach it. Maths is converted only where the markup says it is
 // maths (a math span, or an explicit \( \) / \[ \] / $$ $$ pair), so "Cost ($)" is left alone.
 function labelFromHtml(html) {
+  const fromEditor = labelFromEditorHeader(html);
+  return fromEditor === null ? labelFromMarkup(html) : fromEditor;
+}
+
+// The Markdown Editor hands the builder a maths column header already built as TWO copies of the same words: a hidden
+// plain-text copy (data-sr-header-text) and the drawn maths in an aria-hidden wrapper (data-sr-header-maths), whose
+// assistive MathML repeats the text. Joining all the text gave every card cell the label "x2x2" (RA-129). Read the
+// header ONCE. Where the drawn maths is simple enough to read back from its MathML, show it as the symbols the card
+// labels use ("x²", register 57); otherwise keep the single hidden copy. Null when the cell is not in this shape.
+function labelFromEditorHeader(html) {
+  const hidden = String(html).match(HEADER_TEXT);
+  if (!hidden) return null;
+  const wrapper = String(html).match(HEADER_MATHS);
+  const drawn = wrapper ? drawnMathsToText(String(html).slice(wrapper.index + wrapper[0].length)) : null;
+  return drawn === null ? labelFromMarkup(hidden[1]) : drawn;
+}
+
+// The wrapper's content as plain text, each drawn equation (mjx-container) replaced by the symbols read from its
+// assistive MathML. Null when any equation uses markup mathmlToTex does not cover, so no equation is half-read.
+function drawnMathsToText(inner) {
+  let readable = true;
+  const withSymbols = inner.replace(MJX_CONTAINER, (container) => {
+    const mathml = container.match(MATHML);
+    const tex = mathml ? mathmlToTex(mathml[0]) : null;
+    if (tex === null) {
+      readable = false;
+      return "";
+    }
+    return MARK_OPEN + texToText(tex) + MARK_CLOSE;
+  });
+  if (!readable) return null;
+  return stripTags(withSymbols).replace(/[\u0001\u0002]/g, "");
+}
+
+// MathML to TeX for the forms the symbol tables cover: letters, numbers, operators, text, and super/subscripts.
+// Fractions, roots, matrices and the like return null, and the caller falls back to the hidden plain copy.
+function mathmlToTex(mathml) {
+  const tokens = mathml.match(/<[^>]+>|[^<]+/g) || [];
+  let pos = 0;
+  let readable = true;
+
+  function readNode() {
+    const token = tokens[pos++];
+    if (token === undefined || token.startsWith("</")) {
+      readable = false;
+      return "";
+    }
+    if (!token.startsWith("<")) {
+      const text = decodeMathmlText(token);
+      if (TEX_SYNTAX.test(text)) readable = false; // would read as TeX once converted
+      return text;
+    }
+
+    const name = (token.match(/^<([\w:-]+)/) || [])[1];
+    if (!MATHML_READABLE.has(name) || token.endsWith("/>")) readable = false;
+
+    const children = [];
+    while (pos < tokens.length && !tokens[pos].startsWith("</")) {
+      if (!tokens[pos].startsWith("<") && !tokens[pos].trim()) pos++;
+      else children.push(readNode());
+    }
+    pos++; // the closing tag
+
+    const group = (s) => `{${s}}`;
+    const need = MATHML_ARITY[name];
+    if (need !== undefined && children.length !== need) readable = false;
+    if (name === "msup") return `${group(children[0])}^${group(children[1])}`;
+    if (name === "msub") return `${group(children[0])}_${group(children[1])}`;
+    if (name === "msubsup") return `${group(children[0])}_${group(children[1])}^${group(children[2])}`;
+    return children.join("");
+  }
+
+  const tex = readNode();
+  return readable && pos === tokens.length ? tex : null;
+}
+
+// Text inside a MathML token: decode entities and drop the invisible operators MathJax adds.
+function decodeMathmlText(text) {
+  return text
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)))
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/[⁡-⁤]/g, "");
+}
+
+function labelFromMarkup(html) {
   const marked = String(html).replace(
     MATH_SPAN,
     (_, inner) => MARK_OPEN + stripTags(inner) + MARK_CLOSE

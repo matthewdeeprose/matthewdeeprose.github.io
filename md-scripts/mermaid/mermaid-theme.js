@@ -185,9 +185,12 @@ window.MermaidThemes = (function () {
     // docs/mermaid-outstanding.md is now opt-in rather than what a dark-mode
     // user is handed.
     defaultThemes: {
-      light: "accessibleLight", // Default theme for light mode
+      // wcagLight (shown as Varied Light) since 13 November 2026 (Matthew's ruling L6, "varied
+      // light default on light theme yes"); it was accessibleLight. A stored choice still wins,
+      // so only a light-mode reader with no stored theme sees the change.
+      light: "wcagLight", // Default theme for light mode
       // Varied Dark since 1 November 2026 (Matthew's ruling); the light default
-      // is unchanged, so only a dark-mode reader with no stored choice sees it.
+      // changed on 13 November 2026 (above), so a reader with no stored choice sees Varied in both.
       dark: "variedDark", // Default theme for dark mode
     },
 
@@ -13248,6 +13251,20 @@ window.MermaidThemes = (function () {
    * panel is display:none), each waiting for its first box (LF4, 11 November 2026).
    */
   const categoryAwaitingLayout = new WeakSet();
+  /**
+   * ITEM 183 BUILD 1 (16 November 2026, rulings J1 to J3): one size watch per SVG the label pass
+   * has drawn on. The pass computes its padding in client px at the moment it runs, and on a
+   * diagram whose text floor is wider than its container (journey preset, gantt preset) that is
+   * BEFORE the floor widens the svg, so the padding grows by 1 / ratio once the diagram settles
+   * (measured 11.37 px for the 4 px constant, ratio 0.352). When the svg's drawn width changes by
+   * more than CATEGORY_SCALE_TOLERANCE px after a run, the pass runs again, once per animation
+   * frame; the second run reads the settled scale, so every client-px constant is true. Full
+   * screen is left alone (the zoom changes the size on purpose); on exit one run follows if the
+   * width differs from the width at the last run. Value: { root, width, frame, observer }.
+   */
+  const categoryScaleWatch = new WeakMap();
+  /** Client px the svg's drawn width may move before the label pass runs again (ruling J2). */
+  const CATEGORY_SCALE_TOLERANCE = 1;
   /** Label background padding in px, across and down, for SVG and HTML labels alike. */
   const CATEGORY_PAD_X = 4;
   const CATEGORY_PAD_Y = 2;
@@ -13305,6 +13322,76 @@ window.MermaidThemes = (function () {
    *   pie       slice order (path.pieCircle, then the legend swatches, which
    *             the renderer lists in the same order)
    */
+  /** Pixels of tolerance when deciding that a gantt task name lies wholly inside its bar (L3). */
+  const GANTT_INSIDE_BAR_SLACK = 0.5;
+  /** Pixels a gantt label backing must stay clear of either end of the bar holding its name (F2, 13 November 2026). */
+  const GANTT_BACKING_END_CLEARANCE = 2;
+  /** Client px of rounding allowed when a trimmed padding comes out at exactly none (G3, 13 November 2026). */
+  const GANTT_BACKING_TIE_TOLERANCE = 0.01;
+
+  /**
+   * ITEM 183 BUILD 3 (16 November 2026, rulings L1 to L4; it amends build 2's K1 to K7): a journey
+   * TASK's label backing keeps a ring of its task's own colour on every side where the words leave
+   * room, and is painted BENEATH the task's actor dots, so it never hides one. All values are client
+   * px at the settled scale (build 1 makes the pass run there), read in ONE client space.
+   *   L1  the backing is inserted before the task's first actor dot (see `journeyFirstDot`), so every
+   *       dot paints over it. Build 2's K2 trim, which cleared the dots by padding, is withdrawn.
+   *   L2  the backing, stroke included, stays JOURNEY_BACKING_RING inside the task box's stroked edge
+   *       on each side where the words leave room; on a side with less, that side's padding is 0.
+   *   L3  K3 is withdrawn: no journey task loses its backing (without it three names fell below
+   *       4.5:1 in Plain Dark at build 2). K4 is then met by construction.
+   */
+  const JOURNEY_BACKING_RING = 2;
+  /** The renderer's own class on an actor dot: `actor-0`, `actor-1`, and so on. */
+  const JOURNEY_ACTOR_DOT_CLASS = /(?:^|\s)actor-\d+(?:\s|$)/;
+  /** What ends a task's own run of siblings in the renderer's group: the next box, the task line or a face. */
+  const JOURNEY_TASK_RUN_STOP = "rect.task, rect.journey-section, line.task-line, circle.face";
+  /** The four sides of a backing. */
+  const JOURNEY_BACKING_SIDES = Object.freeze(["left", "right", "top", "bottom"]);
+
+  /**
+   * The padding a journey task's backing has (item 183 build 3, L2): the standard padding, cut on each
+   * side to what leaves the ring, and never below none.
+   *
+   * @param {Object} geometry - All client px
+   * @param {number} geometry.scale - The svg's settled scale (px per viewBox unit)
+   * @param {DOMRect} geometry.task - The task rect's fill box
+   * @param {number} geometry.taskStrokeWidth - The task rect's stroke width, viewBox units
+   * @param {DOMRect} geometry.words - The words' own box
+   * @returns {{left:number, right:number, top:number, bottom:number}}
+   */
+  function journeyBackingPadding({ scale, task, taskStrokeWidth, words }) {
+    const taskHalf = (taskStrokeWidth / 2) * scale;
+    const backHalf = (CATEGORY_OUTLINE_WIDTH / 2) * scale;
+    const pads = { left: CATEGORY_PAD_X, right: CATEGORY_PAD_X, top: CATEGORY_PAD_Y, bottom: CATEGORY_PAD_Y };
+    // Room each side between the words and the task's stroked edge, less the ring and the backing's stroke.
+    const room = {
+      left: words.left - backHalf - (task.left - taskHalf + JOURNEY_BACKING_RING),
+      right: task.right + taskHalf - JOURNEY_BACKING_RING - (words.right + backHalf),
+      top: words.top - backHalf - (task.top - taskHalf + JOURNEY_BACKING_RING),
+      bottom: task.bottom + taskHalf - JOURNEY_BACKING_RING - (words.bottom + backHalf),
+    };
+    JOURNEY_BACKING_SIDES.forEach((side) => {
+      if (room[side] < pads[side]) pads[side] = Math.max(0, room[side]);
+    });
+    return pads;
+  }
+
+  /**
+   * The first actor dot of a journey task, or null: the first `circle.actor-N` among the siblings that
+   * follow the task's rect in the renderer's group, before the next box, task line or face (item 183
+   * build 3, L1). The backing goes in front of it, so every dot of the task paints over the backing.
+   *
+   * @param {Element} taskRect - The task's `rect.task`
+   * @returns {Element|null}
+   */
+  function journeyFirstDot(taskRect) {
+    for (let node = taskRect.nextElementSibling; node && !node.matches(JOURNEY_TASK_RUN_STOP); node = node.nextElementSibling) {
+      if (node.tagName === "circle" && JOURNEY_ACTOR_DOT_CLASS.test(node.getAttribute("class") || "")) return node;
+    }
+    return null;
+  }
+
   const CATEGORY_TYPES = Object.freeze({
     mindmap: {
       detect: (svg) => !!svg.querySelector("g.mindmap-node"),
@@ -13355,6 +13442,137 @@ window.MermaidThemes = (function () {
           role: "assign",
           marker: categoryMarker(element, CATEGORY_MARKER_TYPE),
         })),
+      // ITEM 183 BUILD 3 (16 November 2026, rulings L1 to L4, amending build 2's K1 to K7): a TASK's
+      // backing keeps a ring of the task's colour where the words leave room, and is painted beneath
+      // the task's actor dots (journeyBackingPadding, journeyFirstDot). No task loses its backing.
+      // Section headers (K6) keep the standard backing. The answer is `true` (standard padding, in
+      // front of the label) or the padding of each side plus `before`, the element the backing goes in
+      // front of.
+      labels: (label, svg, host) => {
+        if (!host || !host.element.matches("rect.task")) return true;
+        const wordsBox = (() => {
+          if (!label.html) return label.element.getBoundingClientRect();
+          const range = document.createRange();
+          range.selectNodeContents(label.element);
+          return range.getBoundingClientRect();
+        })();
+        const matrix = svg.getScreenCTM();
+        if (!wordsBox || wordsBox.width <= 0 || wordsBox.height <= 0 || !matrix || !(matrix.a > 0)) return true;
+        const pads = journeyBackingPadding({
+          scale: matrix.a,
+          task: host.element.getBoundingClientRect(),
+          taskStrokeWidth: parseFloat(window.getComputedStyle(host.element).strokeWidth) || 0,
+          words: wordsBox,
+        });
+        const before = journeyFirstDot(host.element);
+        const standard =
+          pads.left === CATEGORY_PAD_X && pads.right === CATEGORY_PAD_X && pads.top === CATEGORY_PAD_Y && pads.bottom === CATEGORY_PAD_Y;
+        return standard && !before ? true : { ...pads, before };
+      },
+    },
+    // GANTT-LABELS-1 (13 November 2026, Matthew's ruling L1: "gantt yes"): gantt takes rule 63's
+    // label background. Hosts are the section bands and the task bars, both `plain`, so nothing is
+    // ever patterned and Patterns stays disabled with its reason. The names beside a bar and the
+    // section names sit on a band and get a backing.
+    //   L3: a task name drawn INSIDE its bar keeps the bar as its ground. `labels` below drops it
+    //   when its whole box lies within one bar (GANTT_INSIDE_BAR_SLACK of tolerance) and no painted
+    //   line runs through it; a name that crosses the bar's edge ("Technical Specification") or has a
+    //   grid or today line through it keeps its backing.
+    //   Venn is NOT reached (L2): its word collisions are Mermaid's layout (register item 108).
+    gantt: {
+      detect: (svg) => !!svg.querySelector("rect.task"),
+      shapes: (svg) =>
+        [...svg.querySelectorAll("rect.section, rect.task")].map((element) => ({
+          element,
+          role: "plain",
+          marker: null,
+        })),
+      labels: (label, svg) => {
+        if (label.html) return true;
+        const box = label.element.getBoundingClientRect();
+        // GANTT-LABELS-FIX-1 (13 November 2026, rulings F1 and F2): a bar's two ends show the task's
+        // dates, so a backing must never cover either. For a name drawn inside its bar (its centre
+        // lies in the bar), no backing is drawn when the backing's box would reach within
+        // GANTT_BACKING_END_CLEARANCE of the bar's left or right end. Everything is read in client
+        // space. A grid or today line through such a name is left as it is: a backing would hide the bar.
+        const centreX = box.left + box.width / 2;
+        const centreY = box.top + box.height / 2;
+        for (const bar of svg.querySelectorAll("rect.task")) {
+          const ends = bar.getBoundingClientRect();
+          const centred =
+            centreX >= ends.left && centreX <= ends.right && centreY >= ends.top && centreY <= ends.bottom;
+          if (!centred) continue;
+          const reach = CATEGORY_PAD_X + CATEGORY_OUTLINE_WIDTH / 2;
+          if (
+            box.left - reach <= ends.left + GANTT_BACKING_END_CLEARANCE ||
+            box.right + reach >= ends.right - GANTT_BACKING_END_CLEARANCE
+          ) {
+            return false;
+          }
+        }
+        for (const bar of svg.querySelectorAll("rect.task")) {
+          const bounds = bar.getBoundingClientRect();
+          const within =
+            box.left >= bounds.left - GANTT_INSIDE_BAR_SLACK &&
+            box.right <= bounds.right + GANTT_INSIDE_BAR_SLACK &&
+            box.top >= bounds.top - GANTT_INSIDE_BAR_SLACK &&
+            box.bottom <= bounds.bottom + GANTT_INSIDE_BAR_SLACK;
+          if (!within) continue;
+          // Inside its bar, the bar is the ground, unless a painted line (a grid line or the today
+          // marker) runs through the words: then the name keeps its backing (L3).
+          return [...svg.querySelectorAll("line")].some((line) => {
+            if (line.closest("defs, marker, [" + CATEGORY_LABEL_RECT_ATTRIBUTE + "]")) return false;
+            const style = window.getComputedStyle(line);
+            const painted = style.stroke !== "none" && parseFloat(style.strokeWidth) > 0 && parseFloat(style.strokeOpacity) > 0.05;
+            if (!painted) return false;
+            const mark = line.getBoundingClientRect();
+            return (
+              mark.left < box.right - 1 && mark.right > box.left + 1 && mark.top < box.bottom - 1 && mark.bottom > box.top + 1
+            );
+          });
+        }
+        // GANTT-LABELS-FIX-2 (13 November 2026, rulings G2 and G3): a name BESIDE a bar keeps its
+        // backing, but on the side facing a bar end the padding is trimmed so the stroked backing
+        // stops GANTT_BACKING_END_CLEARANCE clear of that end (client space). Other sides keep the
+        // standard padding, and the backing never becomes narrower than the words' own box (padding
+        // never goes below 0). If the words' box is already within the clearance of the end (no
+        // padding left), or the end lies under the words, no backing is drawn: the words never move.
+        // The pass can run while the diagram is drawn at a different size from the one it settles at
+        // (measured 13 November 2026: 0.578 of its viewBox at pass time, 1.0 once settled), and every
+        // client distance below scales with it. The clearance and the stroke are therefore taken in
+        // viewBox units (2 px at natural size) and converted to client px by the svg's own scale; the
+        // standard padding stays the pass's own client constant.
+        const svgMatrix = svg.getScreenCTM();
+        const scale = svgMatrix && svgMatrix.a > 0 ? svgMatrix.a : 1;
+        const clearance = GANTT_BACKING_END_CLEARANCE * scale;
+        const halfStroke = (CATEGORY_OUTLINE_WIDTH / 2) * scale;
+        let padLeft = CATEGORY_PAD_X;
+        let padRight = CATEGORY_PAD_X;
+        const stroked = {
+          left: box.left - CATEGORY_PAD_X - halfStroke,
+          right: box.right + CATEGORY_PAD_X + halfStroke,
+          top: box.top - CATEGORY_PAD_Y - halfStroke,
+          bottom: box.bottom + CATEGORY_PAD_Y + halfStroke,
+        };
+        for (const bar of svg.querySelectorAll("rect.task")) {
+          const ends = bar.getBoundingClientRect();
+          if (ends.bottom <= stroked.top || ends.top >= stroked.bottom) continue;
+          for (const end of [ends.left, ends.right]) {
+            if (end < stroked.left - clearance || end > stroked.right + clearance) continue;
+            if (end >= box.left && end <= box.right) return false;
+            if (end > box.right) {
+              padRight = Math.min(padRight, end - clearance - halfStroke - box.right);
+            } else {
+              padLeft = Math.min(padLeft, box.left - (end + clearance + halfStroke));
+            }
+          }
+        }
+        // A shortfall within rounding (a tie at exactly no padding) still keeps the backing, at none.
+        if (padLeft < -GANTT_BACKING_TIE_TOLERANCE || padRight < -GANTT_BACKING_TIE_TOLERANCE) return false;
+        padLeft = Math.max(0, padLeft);
+        padRight = Math.max(0, padRight);
+        return padLeft === CATEGORY_PAD_X && padRight === CATEGORY_PAD_X ? true : { left: padLeft, right: padRight };
+      },
     },
     // Every other diagram that draws its shapes as `g.node` (flowchart, state,
     // class, ER, requirement and the rest). They carry no section number, so the
@@ -13806,6 +14024,31 @@ window.MermaidThemes = (function () {
         if (shape.fill && pointInShape(shape, cx, cy)) host = shape;
       }
       if (!host) return;
+      // GANTT-LABELS-1: a type may narrow which of its labels are backed (L3).
+      // GANTT-LABELS-FIX-2 (13 November 2026, ruling G2): the hook may also answer with the padding
+      // each side of the words, trimmed so the backing stops clear of a bar's end. `true` keeps the
+      // standard padding.
+      // ITEM 183 BUILD 2 (K7): the answer may also carry `top` and `bottom`, each optional; an absent side
+      // keeps the standard padding. The hook is given the host shape (its element, and whether Patterns
+      // filled it) as a third argument; gantt ignores it.
+      let padLeft = CATEGORY_PAD_X;
+      let padRight = CATEGORY_PAD_X;
+      let padTop = CATEGORY_PAD_Y;
+      let padBottom = CATEGORY_PAD_Y;
+      // ITEM 183 BUILD 3 (L1): the hook may name an element the backing goes in front of, so a shape
+      // drawn between the label's own shape and the label (journey's actor dots) paints over it.
+      let backingBefore = null;
+      if (CATEGORY_TYPES[type].labels) {
+        const verdict = CATEGORY_TYPES[type].labels(label, svg, host);
+        if (!verdict) return;
+        if (typeof verdict === "object") {
+          if (typeof verdict.left === "number") padLeft = verdict.left;
+          if (typeof verdict.right === "number") padRight = verdict.right;
+          if (typeof verdict.top === "number") padTop = verdict.top;
+          if (typeof verdict.bottom === "number") padBottom = verdict.bottom;
+          if (verdict.before instanceof Element) backingBefore = verdict.before;
+        }
+      }
 
       // LP9: a label on a patterned shape keeps its background whatever the option says.
       if (!labelsOn && !host.patterned) {
@@ -13866,10 +14109,10 @@ window.MermaidThemes = (function () {
       const matrix = parent.getScreenCTM && parent.getScreenCTM();
       if (!matrix) return;
       const inverse = matrix.inverse();
-      const topLeft = new DOMPoint(wordsBox.x - CATEGORY_PAD_X, wordsBox.y - CATEGORY_PAD_Y).matrixTransform(inverse);
+      const topLeft = new DOMPoint(wordsBox.x - padLeft, wordsBox.y - padTop).matrixTransform(inverse);
       const bottomRight = new DOMPoint(
-        wordsBox.x + wordsBox.width + CATEGORY_PAD_X,
-        wordsBox.y + wordsBox.height + CATEGORY_PAD_Y
+        wordsBox.x + wordsBox.width + padRight,
+        wordsBox.y + wordsBox.height + padBottom
       ).matrixTransform(inverse);
       // The rectangle sits in its own group: a bare `rect` beside a label is what passes and
       // guards read as a node's backing or body, and this one is neither.
@@ -13892,13 +14135,58 @@ window.MermaidThemes = (function () {
       // No `pointer-events: none`: the contrast sweep's hit-test canary requires every painted ground
       // shape to be findable by elementFromPoint (880 misses measured with it), and the label's own
       // words sit in front of this rectangle, so nothing interactive is covered.
-      parent.insertBefore(wrapper, anchor);
+      // The named element is used only when it is a sibling in the same group AND comes before the
+      // label, so the backing can never end up in front of the words.
+      const useNamed =
+        backingBefore &&
+        backingBefore.parentNode === parent &&
+        !!(anchor.compareDocumentPosition(backingBefore) & Node.DOCUMENT_POSITION_PRECEDING);
+      parent.insertBefore(wrapper, useNamed ? backingBefore : anchor);
       if (inkHex !== currentHex) own(label.element, label.html ? { color: inkHex } : { fill: inkHex });
       applied.labelled += 1;
       if (host.patterned) applied.labelsOnPatterned += 1;
     });
 
+    watchCategoryScale(root, svg);
     return applied;
+  }
+
+  /**
+   * Record the width the svg is drawn at now and, once per svg, start watching it (item 183 build
+   * 1, rulings J2 and J3). A change of more than CATEGORY_SCALE_TOLERANCE px runs the label pass
+   * again after layout; the pass is idempotent, and the width it records stops the next callback.
+   *
+   * @param {HTMLElement|SVGElement} root - What the pass was called with
+   * @param {SVGElement} svg - The diagram the pass has just drawn on
+   */
+  function watchCategoryScale(root, svg) {
+    const width = svg.getBoundingClientRect().width;
+    const existing = categoryScaleWatch.get(svg);
+    if (existing) {
+      existing.root = root;
+      existing.width = width;
+      return;
+    }
+    if (typeof ResizeObserver !== "function") return;
+    const watch = { root, width, frame: 0, observer: null };
+    watch.observer = new ResizeObserver(() => {
+      if (watch.frame) return;
+      watch.frame = requestAnimationFrame(() => {
+        watch.frame = 0;
+        if (!svg.isConnected) {
+          watch.observer.disconnect();
+          categoryScaleWatch.delete(svg);
+          return;
+        }
+        if (svg.closest(".fullscreen-mode")) return;
+        const drawn = svg.getBoundingClientRect().width;
+        if (drawn <= 0 || Math.abs(drawn - watch.width) <= CATEGORY_SCALE_TOLERANCE) return;
+        logDebug("Label pass re-run: drawn width " + watch.width + " -> " + drawn);
+        applyCategoryOptions(watch.root);
+      });
+    });
+    categoryScaleWatch.set(svg, watch);
+    watch.observer.observe(svg);
   }
 
   // ---------------------------------------------------------------------------

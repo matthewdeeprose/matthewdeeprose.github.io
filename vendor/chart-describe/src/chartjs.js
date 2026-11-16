@@ -91,6 +91,8 @@
     NAMED_STACK_GROUPS: "named-stack-groups",
     TIME_SCALE: "time-scale",
     POINT_DATA: "point-data",
+    RANGE_DATA: "range-data",
+    OBJECT_DATA: "object-data",
     MISSING_LABELS: "missing-labels",
     NON_STRING_LABEL: "non-string-label",
     NULL_VALUES: "null-values",
@@ -99,7 +101,8 @@
     PIE_LENGTH_MISMATCH: "pie-length-mismatch",
     PARTIAL_CIRCLE: "partial-circle",
     NON_FINITE_TOTAL: "non-finite-total",
-    BUILDER_ERROR_PREFIX: "builder-error: ",
+    INVALID_CONFIG: "invalid-config",
+    BUILDER_ERROR: "builder-error",
   });
 
   // The words the shared builders' overflow refusals share ("... add up to more than a number can hold.").
@@ -339,7 +342,7 @@
             : ORIENTATION_VERTICAL
           : null,
       stacked:
-        family === "cartesian" && !!(valueScale && valueScale.stacked === true),
+        family === "cartesian" && !!(valueScale && valueScale.stacked),
       domainAxis,
       valueAxis: hasValueAxis
         ? {
@@ -459,6 +462,17 @@
     return scaleKeys.some((k) => k !== valueKey && k !== domainKey);
   }
 
+  /** True when a dataset's `data` is an object that is not a list: values keyed by name. */
+  function hasKeyedData(dataset) {
+    return !!dataset && dataset.data !== null && typeof dataset.data === "object" && !Array.isArray(dataset.data);
+  }
+
+  /** True when a dataset's first row is a pair of numbers, the shape of a floating bar. */
+  function hasRangeRows(dataset) {
+    const rows = dataset && Array.isArray(dataset.data) ? dataset.data : [];
+    return Array.isArray(rows.find((row) => row !== null));
+  }
+
   /**
    * Can the shared core describe this config?
    * @param {Object} model - from toModel(config)
@@ -481,9 +495,15 @@
     if (model.series.some((r) => !r.shown)) {
       return unsupported(REASONS.HIDDEN_SERIES);
     }
+    // A dataset's data given as an object (keyed values) is read by Chart.js and is not a list of numbers here.
+    if (config.data.datasets.some(hasKeyedData)) return unsupported(REASONS.OBJECT_DATA);
     if (model.series.some((r) => r.points !== null)) {
-      return model.domainAxis && model.domainAxis.kind === AXIS_KIND_TIME
-        ? unsupported(REASONS.TIME_SCALE)
+      if (model.domainAxis && model.domainAxis.kind === AXIS_KIND_TIME) {
+        return unsupported(REASONS.TIME_SCALE);
+      }
+      // Floating bars give each row a pair [low, high]; every other object row is a point.
+      return config.data.datasets.some(hasRangeRows)
+        ? unsupported(REASONS.RANGE_DATA)
         : unsupported(REASONS.POINT_DATA);
     }
     if (model.domainAxis && model.domainAxis.kind === AXIS_KIND_TIME) {
@@ -539,7 +559,7 @@
     const scales = options.scales || {};
     if (
       model.stacked ||
-      Object.keys(scales).some((k) => scales[k] && scales[k].stacked === true)
+      Object.keys(scales).some((k) => scales[k] && scales[k].stacked)
     ) {
       return unsupported(REASONS.STACKED);
     }
@@ -669,6 +689,8 @@
    * @returns {{supported: true, short: string, shortHTML: string, detailed: string} | {supported: false, reason: string}}
    */
   function describe(config) {
+    // Until the config has been read and classified, a thrown error means the config is malformed.
+    let readingConfig = true;
     try {
       if (!config || typeof config !== "object" || !config.data) {
         return unsupported(REASONS.NO_CONFIG);
@@ -676,6 +698,7 @@
       const model = toModel(config);
       const verdict = classify(model, config);
       if (!verdict.supported) return verdict;
+      readingConfig = false;
       const tiers =
         model.family === "proportion"
           ? composePie(model.title ?? "", toPieSegmentsShape(model))
@@ -692,7 +715,8 @@
       if (err instanceof RangeError && OVERFLOW_MESSAGE.test(err.message)) {
         return unsupported(REASONS.NON_FINITE_TOTAL);
       }
-      return unsupported(REASONS.BUILDER_ERROR_PREFIX + err.message);
+      // The message is logged above; the reason names the cause without carrying a raw JavaScript message.
+      return unsupported(readingConfig ? REASONS.INVALID_CONFIG : REASONS.BUILDER_ERROR);
     }
   }
 

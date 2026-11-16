@@ -1622,6 +1622,135 @@ window.MermaidControls = (function () {
   const SVG_FOCUSABLE_SELECTOR =
     'a[href], a[*|href], area[href], [tabindex]:not([tabindex="-1"]), button, input, select, textarea, summary, iframe, [contenteditable="true"]';
 
+  // Item 174 (DL1, Matthew, 15 November 2026, from his G and down-arrow
+  // listens): the form of a diagram whose SVG holds something focusable. An
+  // image stand-in sits just before the diagram's box (role img, named by the
+  // short description, described by the pointer), the SVG becomes a group
+  // named "Diagram links", and every label outside a focusable element is
+  // hidden from screen readers. Nothing focusable is ever hidden (DL2).
+  const LINK_FORM = Object.freeze({
+    groupRole: "group",
+    groupName: "Diagram links",
+    standInClass: "mermaid-link-standin",
+    standInRole: "img",
+    srOnlyClass: "sr-only",
+    labelSelector: "foreignObject, text",
+    hiddenMark: "data-link-form-hidden",
+    removedAttributes: Object.freeze([
+      "aria-roledescription",
+      "aria-labelledby",
+      "aria-describedby",
+    ]),
+  });
+
+  /**
+   * The container's image stand-in, or null. It is a direct child of the
+   * element that holds the diagram's box, so it outlives every re-render.
+   * @param {HTMLElement} container - The .mermaid-container element
+   * @returns {HTMLElement|null}
+   */
+  function findLinkStandIn(container) {
+    if (!container) return null;
+    return container.querySelector(`:scope > .${LINK_FORM.standInClass}`);
+  }
+
+  /** Remove the stand-in, when a diagram no longer holds anything focusable. */
+  function removeLinkStandIn(container) {
+    const standIn = findLinkStandIn(container);
+    if (standIn) standIn.remove();
+  }
+
+  /**
+   * Make exactly one stand-in, immediately before the diagram's box, named
+   * and described as given. Idempotent: a second call finds the first.
+   * @param {HTMLElement} container - The .mermaid-container element
+   * @param {string} name - The plain short tier, or the interim name
+   * @param {string|null} pointerId - The pointer element's id, or null
+   * @returns {HTMLElement|null} The stand-in, or null when there is no box
+   */
+  function ensureLinkStandIn(container, name, pointerId) {
+    const box = container.querySelector(":scope > .mermaid");
+    if (!box) return null;
+
+    let standIn = findLinkStandIn(container);
+    if (!standIn) {
+      standIn = document.createElement("div");
+      standIn.className = `${LINK_FORM.srOnlyClass} ${LINK_FORM.standInClass}`;
+      standIn.setAttribute("role", LINK_FORM.standInRole);
+    }
+    if (standIn.nextElementSibling !== box) box.before(standIn);
+
+    // aria-label is an attribute sink: the name goes in verbatim.
+    standIn.setAttribute("aria-label", name);
+    if (pointerId) standIn.setAttribute("aria-describedby", pointerId);
+    else standIn.removeAttribute("aria-describedby");
+    return standIn;
+  }
+
+  /**
+   * Hide from screen readers every label in the SVG that is not inside a
+   * focusable element and does not hold one (DL1d, DL2). A label that holds a
+   * focusable element stays exposed, because hiding it would hide the link.
+   * Focusable elements and everything inside them are never touched.
+   * @param {SVGElement} svgElement - The diagram SVG
+   * @returns {number} How many labels are hidden
+   */
+  function hideLabelsOutsideFocusables(svgElement) {
+    if (!svgElement) return 0;
+    let hidden = 0;
+    svgElement.querySelectorAll(LINK_FORM.labelSelector).forEach((label) => {
+      const owner = label.closest(SVG_FOCUSABLE_SELECTOR);
+      const insideFocusable =
+        !!owner && owner !== svgElement && svgElement.contains(owner);
+      if (insideFocusable || label.querySelector(SVG_FOCUSABLE_SELECTOR)) return;
+      label.setAttribute("aria-hidden", "true");
+      label.setAttribute(LINK_FORM.hiddenMark, "true");
+      hidden += 1;
+    });
+    return hidden;
+  }
+
+  /**
+   * Write the link form (DL1) onto a diagram SVG that holds something
+   * focusable. Called by the choke point and by the interim form, so every
+   * render site gets the same result, and a second call changes nothing.
+   * The type stamp was taken by the caller before anything was removed (DL3).
+   *
+   * @param {HTMLElement} container - The .mermaid-container element
+   * @param {SVGElement} svgElement - The diagram SVG as just rendered
+   * @param {string} name - The plain short tier, or the interim name
+   * @param {string|null} pointerId - The pointer element's id, or null
+   * @param {HTMLElement|null} figcaption - The sr-only figcaption, if built
+   * @returns {boolean} True when the attributes read back as written
+   */
+  function applyLinkDiagramForm(
+    container,
+    svgElement,
+    name,
+    pointerId,
+    figcaption
+  ) {
+    svgElement.setAttribute("role", LINK_FORM.groupRole);
+    LINK_FORM.removedAttributes.forEach((attribute) =>
+      svgElement.removeAttribute(attribute)
+    );
+    svgElement.setAttribute("aria-label", LINK_FORM.groupName);
+    hideLabelsOutsideFocusables(svgElement);
+    if (figcaption) figcaption.setAttribute("aria-hidden", "true");
+
+    const standIn = ensureLinkStandIn(container, name, pointerId);
+
+    return (
+      !!standIn &&
+      standIn.getAttribute("aria-label") === name &&
+      svgElement.getAttribute("role") === LINK_FORM.groupRole &&
+      svgElement.getAttribute("aria-label") === LINK_FORM.groupName &&
+      !svgElement.hasAttribute("aria-roledescription") &&
+      !svgElement.hasAttribute("aria-labelledby") &&
+      !svgElement.hasAttribute("aria-describedby")
+    );
+  }
+
   /**
    * Write a diagram SVG's name, role and description, at ONE choke point.
    * Called by the first build (initAccessibilityFeatures) and by
@@ -1636,9 +1765,13 @@ window.MermaidControls = (function () {
    * accessibility tree, and the SVG points at a hidden element holding one
    * sentence about the full description.
    *
-   * Focusable content (DI4): today's structure. Mermaid's role and
-   * aria-roledescription stay as written, the SVG is described by the
-   * figcaption, and the figcaption is exposed.
+   * Focusable content (DI4, amended by item 174 DL1, 15 November 2026): the
+   * link form. An image stand-in before the diagram carries the short
+   * description (described by the pointer), the SVG is a group named
+   * "Diagram links" with Mermaid's roledescription, aria-labelledby and
+   * aria-describedby removed, the figcaption is hidden, and every label
+   * outside a focusable element is hidden (applyLinkDiagramForm). No
+   * focusable element is ever hidden. The SVG is still the one with the link.
    *
    * The container holds every value, because it outlives the SVG:
    * dataset.svgAccessibleName, dataset.figcaptionId, dataset.pointerId.
@@ -1667,13 +1800,26 @@ window.MermaidControls = (function () {
     // one route (window.MermaidDiagramType, resolved at call time).
     if (window.MermaidDiagramType) window.MermaidDiagramType.stamp(svgElement);
 
+    // Item 174 (DL1): a diagram whose SVG holds anything focusable takes the
+    // link form, an image stand-in plus a group. Decided before the SVG's
+    // own name is written, because the group carries a different one.
+    const hasFocusable = !!svgElement.querySelector(SVG_FOCUSABLE_SELECTOR);
+    if (hasFocusable) {
+      return applyLinkDiagramForm(
+        container,
+        svgElement,
+        accessibleName,
+        pointer ? pointerId : null,
+        figcaption
+      );
+    }
+    removeLinkStandIn(container);
+
     // aria-label is an attribute sink: the name goes in verbatim.
     svgElement.setAttribute("aria-label", accessibleName);
 
-    const hasFocusable = !!svgElement.querySelector(SVG_FOCUSABLE_SELECTOR);
-
-    if (hasFocusable || !pointer) {
-      // DI4 (or no pointer to point at): today's structure, unchanged.
+    if (!pointer) {
+      // No pointer to point at: today's structure, unchanged.
       if (figcaptionId) {
         svgElement.setAttribute("aria-describedby", figcaptionId);
       }
@@ -1724,7 +1870,8 @@ window.MermaidControls = (function () {
    * aria-describedby, and the interim name; nothing else. Initialisation
    * replaces the name, adds the pointer and hides the figcaption.
    *
-   * A diagram holding anything focusable keeps Mermaid's own structure (DI4).
+   * A diagram holding anything focusable gets the link form (item 174, DL1:
+   * stand-in, group, hidden labels), the stand-in named with the interim name.
    * A container that already stores its full name is left to
    * applyDiagramAccessibleWiring.
    *
@@ -1735,7 +1882,6 @@ window.MermaidControls = (function () {
   function applyInterimImageForm(container, svgElement) {
     if (!container || !svgElement) return false;
     if (container.dataset.svgAccessibleName) return false;
-    if (svgElement.querySelector(SVG_FOCUSABLE_SELECTOR)) return false;
 
     const core = window.MermaidAccessibility;
     if (!core || typeof core.interimDiagramName !== "function") return false;
@@ -1748,6 +1894,20 @@ window.MermaidControls = (function () {
     }
 
     if (window.MermaidDiagramType) window.MermaidDiagramType.stamp(svgElement);
+
+    // Item 174 (DL1a): a diagram holding anything focusable gets the link
+    // form, its stand-in named with the interim name until the description
+    // lands. Initialisation replaces the name and adds the pointer.
+    if (svgElement.querySelector(SVG_FOCUSABLE_SELECTOR)) {
+      return applyLinkDiagramForm(
+        container,
+        svgElement,
+        core.interimDiagramName(code),
+        null,
+        null
+      );
+    }
+    removeLinkStandIn(container);
     svgElement.setAttribute("role", INTERIM_ROLE);
     INTERIM_REMOVED_ATTRIBUTES.forEach((name) => svgElement.removeAttribute(name));
     svgElement.setAttribute("aria-label", core.interimDiagramName(code));
@@ -2836,6 +2996,10 @@ window.MermaidControls = (function () {
     // Item 168, fix 1 (12 November 2026): the DI4 test's selector, read by
     // mermaid-view-controls.js at call time so the two files never disagree.
     svgFocusableSelector: SVG_FOCUSABLE_SELECTOR,
+    // Item 174: the link form, for the export's second copy and the saved file.
+    hideLabelsOutsideFocusables: hideLabelsOutsideFocusables,
+    linkFormGroupName: LINK_FORM.groupName,
+    linkFormHiddenMark: LINK_FORM.hiddenMark,
     noteRenderFailure: noteRenderFailure,
     clearRenderFailureNote: clearRenderFailureNote,
     reviveRendered: reviveRendered,

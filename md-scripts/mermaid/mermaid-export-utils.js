@@ -348,6 +348,97 @@ window.MermaidExportUtils = (function () {
   }
 
   /**
+   * Layout properties of an HTML label that the saved file must carry as the
+   * page computed them (item 168, label-backgrounds fix 1, 12 November 2026).
+   * Every one is written at `important` priority, because the export's own
+   * `*` font rule is `!important` and an inline declaration at the same
+   * priority is the one thing in a file that outranks a stylesheet rule.
+   */
+  const CARRIED_HTML_LAYOUT_PROPERTIES = Object.freeze([
+    "font-family",
+    "font-size",
+    "font-weight",
+    "line-height",
+    "white-space",
+    "display",
+  ]);
+
+  /** The div's own box, written at full precision (never rounded). */
+  const CARRIED_HTML_BOX_PROPERTIES = Object.freeze(["width", "max-width"]);
+
+  /**
+   * Carry each HTML label's computed layout onto the clone, the way
+   * inlineComputedPaint carries paint. Nothing in the page's own DOM changes.
+   *
+   * WHY: the page lays a label out in `Verdana, sans-serif` and sizes its
+   * foreignObject, and the label's backing, from those words. The export used to
+   * force Trebuchet, floor the width to a whole pixel (190.4 became 190) and
+   * turn `display: table-cell` into `display: table`, so words reflowed or lost
+   * their vertical centring inside a backing the page had sized for the
+   * original (mind map 6 to 9 of 42 backings misfit, flowchart 1, journey 4 to
+   * 6; docs/mermaid-label-bg-export-measure-1-2026-11-12.md). Each of those
+   * three rewrites is gone from prepareSvgForExport; this writes the page's own
+   * values instead. The page's stack is kept as written, generic family
+   * included, so a viewer without Verdana falls back as the page would.
+   *
+   * Written on every HTML element inside a foreignObject, because the file has
+   * no page stylesheet and the export's own rules would otherwise reach each
+   * one. An inline `important` declaration is idempotent where the value
+   * already held. Pairing is by index, as in inlineComputedPaint, and refused
+   * on a length mismatch.
+   *
+   * @param {SVGElement} originalSvg - The live, in-document diagram SVG
+   * @param {SVGElement} clone - The detached clone, before any export style
+   * @returns {number} Count of HTML elements whose layout was carried
+   */
+  function inlineComputedLabelLayout(originalSvg, clone) {
+    const originals = originalSvg.querySelectorAll("foreignObject *");
+    const clones = clone.querySelectorAll("foreignObject *");
+
+    if (originals.length !== clones.length) {
+      logError(
+        `[Mermaid Export] Label layout carry ABORTED - original has ${originals.length} label elements, clone has ${clones.length}. Labels keep the page's inline style only.`
+      );
+      return 0;
+    }
+
+    let carried = 0;
+
+    originals.forEach((original, index) => {
+      if (original.namespaceURI === SVG_NAMESPACE) return;
+
+      const computed = window.getComputedStyle(original);
+      const target = clones[index];
+
+      CARRIED_HTML_LAYOUT_PROPERTIES.forEach((property) => {
+        const value = computed.getPropertyValue(property);
+        if (value) target.style.setProperty(property, value, "important");
+      });
+
+      // Only a div has a box of its own that Mermaid sized. A computed width
+      // that is not a pixel length means the element was not laid out, so there
+      // is no exact value to carry.
+      if (original.tagName.toLowerCase() !== "div") {
+        carried++;
+        return;
+      }
+
+      CARRIED_HTML_BOX_PROPERTIES.forEach((property) => {
+        const value = computed.getPropertyValue(property);
+        if (value && /px$/.test(value)) {
+          target.style.setProperty(property, value, "important");
+        }
+      });
+      carried++;
+    });
+
+    logInfo(
+      `[Mermaid Export] Carried the page's label layout onto ${carried} of ${originals.length} label elements`
+    );
+    return carried;
+  }
+
+  /**
    * Selectors, classes and wording the static document export works with.
    * The disclosure's two classes are the SCORM builder's own long-description
    * convention (scorm-builder/enhancers/long-descriptions.js), not new names.
@@ -913,6 +1004,23 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
         else rendered.setAttribute(name, value);
       });
 
+      // Item 174 (DL5): a live SVG in the link form (a group named "Diagram
+      // links") has no aria-labelledby or aria-describedby and hides every
+      // label outside a focusable element. The fresh render has Mermaid's own
+      // pair (for an accTitle or accDescr) and exposes every label, so mirror
+      // the form onto it. The stand-in is outside the SVG and is not copied.
+      const linkControls = window.MermaidControls;
+      if (
+        linkControls &&
+        typeof linkControls.hideLabelsOutsideFocusables === "function" &&
+        liveSvg.getAttribute("aria-label") === linkControls.linkFormGroupName
+      ) {
+        ["aria-labelledby", "aria-describedby"].forEach((name) =>
+          rendered.removeAttribute(name)
+        );
+        linkControls.hideLabelsOutsideFocusables(rendered);
+      }
+
       // The page's own after-render paint, against this host's ground.
       themes.applySeriesEncoding(host);
 
@@ -1041,6 +1149,50 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
   }
 
   /**
+   * Mermaid's own role on the diagram SVG root. The saved file carried it
+   * before item 174, so the file's role is put back to it.
+   */
+  const MERMAID_SVG_ROLE = "graphics-document document";
+
+  /**
+   * Item 174: take the page's link form off a clone made for a saved SVG
+   * file. A no-op for a diagram that is not in the link form.
+   * @param {SVGElement} liveSvg - The diagram on the page
+   * @param {SVGElement} clone - The clone being prepared for the file
+   */
+  function undoLinkFormForFile(liveSvg, clone) {
+    const controls = window.MermaidControls;
+    if (
+      !controls ||
+      liveSvg.getAttribute("aria-label") !== controls.linkFormGroupName
+    ) {
+      return;
+    }
+
+    const container = liveSvg.closest(".mermaid-container");
+    const standIn = container
+      ? container.querySelector(":scope > .mermaid-link-standin")
+      : null;
+    const name =
+      (container && container.getAttribute("data-svg-accessible-name")) ||
+      (standIn && standIn.getAttribute("aria-label")) ||
+      "";
+    if (name) clone.setAttribute("aria-label", name);
+    else clone.removeAttribute("aria-label");
+
+    clone.setAttribute("role", MERMAID_SVG_ROLE);
+    const type = clone.getAttribute("data-mermaid-type");
+    if (type) clone.setAttribute("aria-roledescription", type);
+
+    clone
+      .querySelectorAll(`[${controls.linkFormHiddenMark}]`)
+      .forEach((label) => {
+        label.removeAttribute("aria-hidden");
+        label.removeAttribute(controls.linkFormHiddenMark);
+      });
+  }
+
+  /**
    * Fix text wrapping in SVG elements and apply consistent font
    * @param {SVGElement} svgElement - The SVG element to prepare
    * @returns {SVGElement} Prepared SVG clone with fixed text wrapping and font
@@ -1068,9 +1220,19 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
     // aria-label as its name.
     clone.removeAttribute("aria-describedby");
 
+    // Item 174: the saved file is not changed by the link form. Put back what
+    // the file carried before it: Mermaid's role and role description, the
+    // diagram's own name, every label exposed.
+    undoLinkFormForFile(svgElement, clone);
+
     // Carry the resolved cascade onto the clone before anything else touches it,
     // so the saved file matches the screen. Runs for every diagram type.
     inlineComputedPaint(svgElement, clone);
+
+    // Carry each HTML label's computed layout the same way (item 168, label
+    // backgrounds fix 1, 12 November 2026), so the file keeps the page's font,
+    // exact width and display instead of the three rewrites removed below.
+    inlineComputedLabelLayout(svgElement, clone);
 
     // Background, from the diagram's own host chain rather than from anything
     // the diagram happened to draw. The previous form read `rect.background`,
@@ -1163,33 +1325,13 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
         overflow: div.style.overflow,
       });
 
-      // Apply critical text wrapping fixes based on working mermaid-cli exports
-      div.style.whiteSpace = "break-spaces"; // Changed from "normal" to "break-spaces"
-      div.style.display = "table"; // Changed from "block" to "table"
+      // Item 168, label backgrounds fix 1 (12 November 2026): the forced
+      // `break-spaces`, `display: table`, Trebuchet font and whole-pixel width
+      // that were written here (from the initial commit, "based on working
+      // mermaid-cli exports", no other recorded reason) are removed. The
+      // page's computed values are carried by inlineComputedLabelLayout, so
+      // the words wrap and sit inside the backing the page sized for them.
       div.style.overflow = "visible";
-      div.style.fontFamily = config.font;
-
-      // Get the foreignObject parent to determine width
-      const foreignObject = div.closest("foreignObject");
-      if (foreignObject) {
-        const foreignObjectWidth = foreignObject.getAttribute("width");
-        if (foreignObjectWidth) {
-          const availableWidth = parseInt(foreignObjectWidth);
-          // Use full width instead of reducing by 10px - this was causing text overflow
-          div.style.width = `${availableWidth}px`;
-          logDebug(
-            `[Mermaid Export] Set div width to full foreignObject width: ${availableWidth}px`
-          );
-        } else {
-          logWarn(
-            `[Mermaid Export] ForeignObject ${index + 1} has no width attribute`
-          );
-        }
-      } else {
-        logWarn(
-          `[Mermaid Export] Div ${index + 1} has no foreignObject parent`
-        );
-      }
 
       logDebug(`[Mermaid Export] Updated div styles:`, {
         whiteSpace: div.style.whiteSpace,
@@ -1200,22 +1342,9 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
       });
     });
 
-    // Fix edge label text wrapping
-    const edgeLabels = clone.querySelectorAll(".edgeLabel div");
-    logDebug(
-      `[Mermaid Export] Found ${edgeLabels.length} edge label divs to process`
-    );
-
-    edgeLabels.forEach((div, index) => {
-      logDebug(
-        `[Mermaid Export] Processing edge label div ${index + 1}/${
-          edgeLabels.length
-        }`
-      );
-      div.style.whiteSpace = "break-spaces"; // Changed from "normal" to "break-spaces"
-      div.style.display = "table"; // Changed from "block" to "table"
-      div.style.fontFamily = config.font;
-    });
+    // Edge label divs sit inside a foreignObject, so inlineComputedLabelLayout
+    // has already carried their layout; the old per-div rewrite is removed
+    // with the one above (item 168 fix 1, 12 November 2026).
 
     // Apply styles to all text elements
     const textElements = clone.querySelectorAll("text, tspan");
@@ -1244,22 +1373,15 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
           font-family: ${config.font} !important;
         }
         
-        /* Text element styles with improved wrapping */
+        /* Label divs: font, line height, white space, display and width are
+           the page's own, carried inline by inlineComputedLabelLayout (item 168
+           fix 1, 12 November 2026); only overflow and alignment are set here. */
         .nodeLabel div, foreignObject div {
-          white-space: break-spaces !important; 
-          display: table !important;
           overflow: visible !important;
-          font-family: ${config.font} !important;
-          line-height: 1.5 !important;
           text-align: center !important;
         }
-        
-        /* Edge label styles with improved wrapping */
+
         .edgeLabel div {
-          white-space: break-spaces !important;
-          display: table !important;
-          font-family: ${config.font} !important;
-          line-height: 1.5 !important;
           text-align: center !important;
         }
 
@@ -1283,16 +1405,11 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
           `[Mermaid Export] Updating existing style element ${index + 1}`
         );
         style.textContent += `
-            /* Override problematic styles for text wrapping */
-            div { 
-              white-space: break-spaces !important; 
-              display: table !important;
-            }
+            /* Label layout is carried inline from the page (item 168 fix 1,
+               12 November 2026); the forced white-space, display and
+               line-height rules that were here are removed. */
             .labelBkg div, .edgeLabel div, foreignObject div, .nodeLabel div {
-              white-space: break-spaces !important;
-              display: table !important;
               overflow: visible !important;
-              line-height: 1.5 !important;
             }
           `;
       }

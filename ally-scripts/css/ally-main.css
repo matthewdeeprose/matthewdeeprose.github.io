@@ -4868,3 +4868,13 @@ span.ally-sp-disclosure-text {
 .ally-credentials-summary {
   flex-wrap: wrap;
 }
+
+/* Register 66 (RA-112, ruling R13, RA-124): Ally's "Developer Information" row
+   draws its focus ring inside the row, because #ally-debug-panel has
+   overflow: hidden and clipped the outside ring. The theme sheets' own -2px
+   offset on this summary loses to the global summary:focus-visible
+   (!important); this wins: 0-2-0 !important, and this sheet loads after
+   main.css. */
+.ally-debug-panel-summary:focus-visible {
+  outline-offset: -0.3rem !important;
+}

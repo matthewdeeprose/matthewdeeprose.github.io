@@ -143,6 +143,10 @@
   // model with no word said. Holding the id sends that open back through the
   // withdrawn-model check instead, until the person picks a model themselves.
   let withdrawnSavedModel = null;
+  // Parcel P22e: what reflectSelection's own range call did to a person's answer
+  // length ({ kind, value } or null), kept for wireChange's one switch line.
+  // Overwritten on every reflectSelection, so it is never stale.
+  let selectionLengthMove = null;
 
   // The four sampling controls the ignored-parameter notice covers, each as its
   // wire param name, the visible label shown in the Parameters panel, and the
@@ -879,8 +883,14 @@
     if (window.ChatCore && window.ChatCore._updateInputCounter)
       window.ChatCore._updateInputCounter();
     // Answer-length range follows the new model (H-20); the send recomputes it anyway.
-    if (window.ChatCore && window.ChatCore._applyModelTokenRange)
+    // Read the move at once: the default-prompt call below runs the range again and
+    // resets the record (parcel P22e).
+    selectionLengthMove = null;
+    if (window.ChatCore && window.ChatCore._applyModelTokenRange) {
       window.ChatCore._applyModelTokenRange(S.currentModel);
+      if (window.ChatCore._lastLengthMove)
+        selectionLengthMove = window.ChatCore._lastLengthMove();
+    }
     // Foundry default system prompt follows the model (parcel 15c). Silent, and never overwrites typed text.
     if (window.ChatCore && window.ChatCore._applyDefaultSystemPrompt)
       window.ChatCore._applyDefaultSystemPrompt(S.currentModel);
@@ -1464,6 +1474,18 @@
     );
   }
 
+  // The sentence for a recorded move of the person's answer length, with its
+  // leading space, or "" when nothing moved (parcel P22e).
+  function describeLengthMove(move) {
+    if (!move) return "";
+    const grouped = Number(move.value).toLocaleString();
+    if (move.kind === "raised")
+      return " Answer length raised to " + grouped + ", the lowest this model allows.";
+    if (move.kind === "lowered")
+      return " Answer length lowered to " + grouped + ", the most this model allows.";
+    return "";
+  }
+
   /**
    * Wire the <select> change handler exactly once. On change, store the FULL id
    * in ChatState and mirror the chosen option's name into the status region.
@@ -1486,12 +1508,16 @@
       const opt = select.options[select.selectedIndex] || null;
       const name =
         (opt && opt.textContent) || S.currentModel || "the selected model";
+      // Parcel P22e: a move of the person's own answer length rides in this one
+      // line, never as a second announcement. Numbers grouped as chat-core groups
+      // its token readouts (toLocaleString, the browser's locale).
+      const lengthSentence = describeLengthMove(selectionLengthMove);
       if (S.messages && S.messages.length > 0) {
         S.announceToScreenReader(
-          "Switched to " + name + ". Your conversation continues.",
+          "Switched to " + name + ". Your conversation continues." + lengthSentence,
         );
       } else {
-        S.announceToScreenReader("Switched to " + name + ".");
+        S.announceToScreenReader("Switched to " + name + "." + lengthSentence);
       }
       logDebug("model selection changed to:", S.currentModel);
     });

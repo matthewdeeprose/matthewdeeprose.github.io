@@ -154,11 +154,34 @@ const TTSSemantic = (function () {
     else br.before(document.createTextNode(LINE_BREAK_COMMA));
   }
 
-  // F2 on a section's finished text; also strips F1's mark.
+  // RA-125 (register 63, O16 = version 5): "Part a." is its own spoken piece, so the voice's own start-up between two utterances
+  // is the pause after it. F2 leaves this private-use mark (F1's is U+E000) straight after each "Part x. " it makes, in
+  // sections[].text ONLY; splitIntoSemanticChunks() in tts-controller.js cuts at it and removes it, and linearise() strips it from
+  // the joined `text`, so no mark reaches a voice, a file, the screen or a name. The same constant is in the controller.
+  const PART_SPLIT_MARK = '';
+
+  // F2 on a section's finished text; also strips F1's mark. Leaves the split mark after each label.
   function speakPartLabels(text) {
     return text.replace(PART_LABEL_PATTERN, function (match, lead, letter) {
-      return lead + 'Part ' + letter + '. ';
+      return lead + 'Part ' + letter + '. ' + PART_SPLIT_MARK;
     }).replace(LINE_BREAK_MARK_PATTERN, '');
+  }
+
+  // ---- Code blocks and captions end in a full stop (RA-128, register 69) -----------
+  // A code block and a caption line are not punctuated by any other rule, so they ran into the next block. A stop is added only where the text
+  // does not already end in one of . ? ! :, so nothing is doubled.
+  const BLOCK_END_PUNCTUATION = /[.?!:]$/;
+  const CAPTION_CLASS_PREFIX = 'caption';
+
+  function endBlockWithFullStop(text) {
+    const trimmed = text.trim();
+    if (!trimmed || BLOCK_END_PUNCTUATION.test(trimmed)) return text;
+    return trimmed + '.';
+  }
+
+  function isCaptionElement(el) {
+    if (el.tagName === 'FIGCAPTION') return true;
+    return Array.from(el.classList).some(function (c) { return c.toLowerCase().indexOf(CAPTION_CLASS_PREFIX) === 0; });
   }
 
   // ---- Cue words (RA-122, register 69) ----------------------------------------
@@ -210,7 +233,8 @@ const TTSSemantic = (function () {
     if (el.nodeType !== Node.ELEMENT_NODE) return false;
     if (el.getAttribute('aria-hidden') === 'true') return true;
     if (el.hasAttribute('hidden')) return true;
-    if (SKIP_TAGS.has(el.tagName)) return true;
+    // RA-127: an SVG <style> reports a lower-case tagName, so fold the case or its CSS is read aloud.
+    if (SKIP_TAGS.has(String(el.tagName).toUpperCase())) return true;
     if (skipSelectors && el.matches(skipSelectors)) return true;
     return false;
   }
@@ -441,7 +465,7 @@ const TTSSemantic = (function () {
       }
       if (tag === 'PRE') {
         pushCurrentSection();
-        sections.push({ type: 'code', text: lineariseCodeBlock(node, cues) });
+        sections.push({ type: 'code', text: endBlockWithFullStop(lineariseCodeBlock(node, cues)) });
         return;
       }
       if (tag === 'DL') {
@@ -479,6 +503,7 @@ const TTSSemantic = (function () {
         for (let i = 0; i < node.childNodes.length; i++) {
           processNode(node.childNodes[i]);
         }
+        if (isCaptionElement(node)) currentText = endBlockWithFullStop(currentText);
         pushCurrentSection();
         return;
       }
@@ -519,8 +544,9 @@ const TTSSemantic = (function () {
     }
     const sections = walkDOM(walkRoot, opts.skipSelectors || null, cues);
     sections.forEach(function (s) { s.text = speakPartLabels(s.text); });
+    // The joined `text` never carries RA-125's split mark; only sections[].text does, for the chunker.
     const text = sections
-      .map(function (s) { return s.text; })
+      .map(function (s) { return s.text.split(PART_SPLIT_MARK).join(''); })
       .join(' ')
       .replace(/\s+/g, ' ')
       .trim();

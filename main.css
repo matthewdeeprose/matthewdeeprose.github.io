@@ -629,7 +629,7 @@ span[role="img"] {
 }
 
 .definition-list dt {
-  font-weight: bold;
+
   margin-top: 1em;
   margin-bottom: 0.5em;
 }
@@ -637,6 +637,7 @@ span[role="img"] {
 .definition-list dd {
   margin-left: 1.5em;
   margin-bottom: 0.5em;
+    font-weight: bold;
 }
 .definition-list {
   border-left: 3px solid #758d9a;

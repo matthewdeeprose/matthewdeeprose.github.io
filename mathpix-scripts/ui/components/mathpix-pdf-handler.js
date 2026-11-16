@@ -116,6 +116,14 @@ const PDF_COST_NOTICE_ID = "mathpix-pdf-cost-notice";
 const COST_NOTICE_PRICE_BASIS = "(MathPix list price, US dollars)";
 const PDF_FORMATS_INCLUDED_SENTENCE = "All selected output formats are included.";
 
+// P25c: where focus goes when Proceed (Word box) or Yes (PDF preview) hides the
+// box that held it. The checked page-range radio first, then "All Pages".
+const PAGE_RANGE_FOCUS = Object.freeze({
+  CHECKED_SELECTOR: 'input[name="pdf-page-range"]:checked',
+  FALLBACK_ID: "pdf-pages-all",
+  HIDING_BOX_SELECTOR: "#mathpix-file-confirmation, #mathpix-upload-preview",
+});
+
 // SVG icons come from the shared icon library, icon-library.js.
 let libraryMissingWarned = false;
 
@@ -498,6 +506,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
       // Step 5: Display PDF processing options interface
       this.displayPDFOptions(pdfFile);
+      this.restoreFocusToPageRangeIfDropped();
 
       // Phase 4: Format-aware logging and notification
       const formatInfo = getFormatInfo(pdfFile.type);
@@ -558,6 +567,9 @@ class MathPixPDFHandler extends MathPixBaseModule {
       // Phase 4: Conditional preview based on format
       if (formatInfo?.showPdfPreview) {
         // PDF format - show full PDF preview
+        // Parcel P25b: a Word box still waiting for Proceed or Cancel ends quietly first
+        this.abandonWordBox();
+
         return new Promise((resolve) => {
           // Parcel P20: lets a later non-PDF file end this wait without a toast or an announcement
           this.settlePdfPreviewQuietly = () => resolve(false);
@@ -571,13 +583,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
                 format: formatName,
               });
 
-              // Announce confirmation to screen readers
-              if (this.pdfAccessibility) {
-                this.pdfAccessibility.announce(
-                  `${formatName} ${confirmedFile.name} confirmed. Proceeding to processing options.`,
-                );
-              }
-
+              // No announcement here: handlePDFUpload's "ready" toast is the one voice for Yes (P25b)
               resolve(true);
             },
             // onCancel callback - user cancelled
@@ -821,6 +827,49 @@ class MathPixPDFHandler extends MathPixBaseModule {
       initialFormats: this.currentProcessingOptions.formats,
       currentEndpoint: this.controller.apiClient?.currentEndpoint || "unknown",
     });
+  }
+
+  /**
+   * @method restoreFocusToPageRangeIfDropped
+   * @description After Proceed (Word box) or Yes (PDF preview) hides the box that
+   * held focus, focus falls to the page. Without a target NVDA then reads the whole
+   * newly shown options panel unprompted (P25b listen, 16 Nov 2026). Move focus to
+   * the checked page-range radio, but only when focus was dropped: on the body, on
+   * nothing, or inside a box that is now hidden. Focus anywhere else still shown is
+   * left alone.
+   *
+   * @returns {void}
+   * @accessibility Moves focus deliberately after content is removed (WCAG 2.4.3)
+   * @since P25c
+   */
+  restoreFocusToPageRangeIfDropped() {
+    const active = document.activeElement;
+    const hidingBox = active?.closest?.(PAGE_RANGE_FOCUS.HIDING_BOX_SELECTOR);
+    const dropped =
+      !active ||
+      active === document.body ||
+      (hidingBox && hidingBox.getClientRects().length === 0);
+
+    if (!dropped) {
+      logDebug("Focus not dropped; leaving it where it is", {
+        activeId: active.id || active.tagName,
+      });
+      return;
+    }
+
+    const target =
+      document.querySelector(PAGE_RANGE_FOCUS.CHECKED_SELECTOR) ||
+      document.getElementById(PAGE_RANGE_FOCUS.FALLBACK_ID);
+
+    // A radio inside a hidden panel has no layout box and cannot take focus.
+    if (!target || target.getClientRects().length === 0) {
+      logWarn("Page-range radio not available to receive focus");
+      return;
+    }
+
+    // The options panel scrolls itself into view shortly after, so do not scroll here.
+    target.focus({ preventScroll: true });
+    logInfo("Focus moved to the page-range choice", { id: target.id });
   }
 
   /**
@@ -3556,6 +3605,12 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
     // Hide previous PDF interface
     const pdfInterface = document.getElementById("mathpix-pdf-interface");
+
+    // Note whether focus sits inside the interface about to be hidden (for
+    // example on the Word box's Proceed button when a PDF is dropped on top)
+    const focusWasInInterface = Boolean(
+      pdfInterface && pdfInterface.contains(document.activeElement),
+    );
     if (pdfInterface) {
       pdfInterface.style.display = "none";
       logDebug("Previous PDF interface hidden");
@@ -3571,6 +3626,12 @@ class MathPixPDFHandler extends MathPixBaseModule {
     const imageInterface = document.getElementById("mathpix-main-interface");
     if (imageInterface) {
       imageInterface.style.display = "block";
+    }
+
+    // Focus would otherwise fall to the page: put it on the drop zone, the
+    // control the person started from (matches the PDF Cancel above)
+    if (focusWasInInterface) {
+      document.getElementById("mathpix-drop-zone")?.focus();
     }
 
     // Reset handler state
@@ -4037,6 +4098,24 @@ class MathPixPDFHandler extends MathPixBaseModule {
   }
 
   /**
+   * @method abandonWordBox
+   * @description Ends a waiting Word "confirm file" box without Proceed or Cancel (parcel P25b).
+   * Removes both buttons' listeners and resolves the pending wait as "not this file", through
+   * neither click handler, so there is no toast and no announcement. The mirror of abandonPdfPreview.
+   *
+   * @returns {boolean} True if a Word box was waiting
+   */
+  abandonWordBox() {
+    const settle = this.settleWordBoxQuietly;
+    if (this.wordBoxAbort) this.wordBoxAbort.abort();
+    this.wordBoxAbort = null;
+    this.settleWordBoxQuietly = null;
+    if (typeof settle !== "function") return false;
+    settle();
+    return true;
+  }
+
+  /**
    * @method showSimpleFilePreview
    * @description Shows simple file information preview for non-PDF formats (Phase 4)
    *
@@ -4074,6 +4153,10 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // Parcel P20: a PDF's "Verify Your Upload" box may still be waiting for Yes or No. This file's
     // own box is the one to answer now, so end that wait quietly and hide the old box.
     this.abandonPdfPreview();
+
+    // Parcel P25b: the same for an older Word box. Its listeners go and its wait settles false,
+    // before this file's listeners are added.
+    this.abandonWordBox();
 
     // Show the PDF interface container
     const pdfInterface = document.getElementById("mathpix-pdf-interface");
@@ -4120,6 +4203,12 @@ class MathPixPDFHandler extends MathPixBaseModule {
       const proceedBtn = document.getElementById("confirm-proceed-btn");
       const cancelBtn = document.getElementById("confirm-cancel-btn");
 
+      // Parcel P25b: one controller per box. Aborting it removes BOTH buttons' listeners, so an
+      // answered or replaced box leaves nothing behind to fire on the next file's press.
+      const boxAbort = new AbortController();
+      this.wordBoxAbort = boxAbort;
+      this.settleWordBoxQuietly = () => resolve(false);
+
       const cleanup = () => {
         confirmationSection.style.display = "none";
       };
@@ -4135,17 +4224,15 @@ class MathPixPDFHandler extends MathPixBaseModule {
             // Store file after confirmation
             this.currentPDFFile = file;
 
-            // Announce to screen readers
-            if (this.pdfAccessibility) {
-              this.pdfAccessibility.announce(
-                `${formatName} ${file.name} confirmed. Proceeding to processing options.`,
-              );
-            }
+            // No announcement here: handlePDFUpload's "ready" toast is the one voice for Proceed
+            boxAbort.abort();
+            this.wordBoxAbort = null;
+            this.settleWordBoxQuietly = null;
 
             cleanup();
             resolve(true);
           },
-          { once: true },
+          { signal: boxAbort.signal },
         );
       }
 
@@ -4155,12 +4242,16 @@ class MathPixPDFHandler extends MathPixBaseModule {
           () => {
             logInfo("User cancelled file selection", { fileName: file.name });
 
-            // Announce to screen readers
+            // Announce to screen readers: no toast speaks on Cancel, so this stays
             if (this.pdfAccessibility) {
               this.pdfAccessibility.announce(
                 `${formatName} selection cancelled.`,
               );
             }
+
+            boxAbort.abort();
+            this.wordBoxAbort = null;
+            this.settleWordBoxQuietly = null;
 
             cleanup();
 
@@ -4171,7 +4262,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
             resolve(false);
           },
-          { once: true },
+          { signal: boxAbort.signal },
         );
       }
 

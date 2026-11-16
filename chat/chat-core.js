@@ -81,6 +81,18 @@
     "azure-openai/gpt-5.4-mini": FOUNDRY_PUBLISHED_OUTPUT,
     "azure-openai/gpt-5": FOUNDRY_PUBLISHED_OUTPUT,
     "azure-openai/grok-4.7": CHAT_OUTPUT_CEILING,
+    // Parcel P22c-2: the seven Responses models whose adapter raises a small cap to
+    // 16,000. None carries a registered limit, so each takes Microsoft's published
+    // Max Output Tokens (128,000) from its own row on Microsoft Learn's "Foundry
+    // Models sold by Azure" page (ms.date 2026-09-21, updated 2026-10-29; read
+    // 13 Nov 2026; rows quoted in .claude/measurements/da-p22c-2-responses-floor/).
+    "azure-responses/gpt-5-pro": FOUNDRY_PUBLISHED_OUTPUT,
+    "azure-responses/gpt-5-codex": FOUNDRY_PUBLISHED_OUTPUT,
+    "azure-responses/gpt-5.1-codex": FOUNDRY_PUBLISHED_OUTPUT,
+    "azure-responses/gpt-5.1-codex-mini": FOUNDRY_PUBLISHED_OUTPUT,
+    "azure-responses/gpt-5.2-codex": FOUNDRY_PUBLISHED_OUTPUT,
+    "azure-responses/gpt-5.4-pro": FOUNDRY_PUBLISHED_OUTPUT,
+    "azure-responses/gpt-5.1-codex-max": FOUNDRY_PUBLISHED_OUTPUT,
   });
 
   // Answer room for the Foundry thinking models (parcel 16b). These models spend
@@ -204,9 +216,12 @@
     if (wanted < r.min) return 0;
     return r.min + Math.floor((wanted - r.min) / r.step) * r.step;
   }
-  // The value this code last wrote, so a value the person set is told apart from
-  // one it set. null until the first write.
-  let lastAppliedAnswerRoom = null;
+  // Parcel P22b: true once the person has set the answer length themselves (slider,
+  // number field or a preset), and only then. Set by those three handlers and by
+  // nothing else: not setMaxTokens, not the load-time sync, not applyModelTokenRange.
+  // The value is never inferred from the number, so a person who chooses exactly
+  // the default (1,024) or exactly the model's start is still believed.
+  let answerLengthChosenByPerson = false;
   const FINISH_REASON_LENGTH = "length";
   // One sentence on screen and in the ear, per the announcement rules: the
   // refusal goes through the toast (which announces once), the cut-off line is
@@ -414,6 +429,70 @@
     return v;
   }
 
+  // ── Answer length is never shown under what is sent (parcel P22) ───────────
+  // The slider's own default minimum, in tokens (tools.html min="128").
+  const ANSWER_MIN_DEFAULT = 128;
+  const FOUNDRY_V1_PREFIX = "azure-openai/";
+  const FOUNDRY_V1_PROVIDER_ID = "azure-openai";
+  const FOUNDRY_RESPONSES_PREFIX = "azure-responses/";
+  const FOUNDRY_RESPONSES_PROVIDER_ID = "azure-responses";
+  function setTokenMin(value) {
+    if (S.els.maxTokensSlider) S.els.maxTokensSlider.min = String(value);
+    if (S.els.maxTokensNumber) S.els.maxTokensNumber.min = String(value);
+  }
+  // The cap the Foundry v1 adapter really sends for the smallest cap Chat can ask
+  // for: its reasoning-budget floor, or ANSWER_MIN_DEFAULT when it has none. Read
+  // through the registered provider's buildRequest (pure: no network, no stored
+  // state; its logs are DEBUG), so Chat keeps no copy of the adapter's two floor
+  // lists. The Responses surface is read the same way (P22c-2). Other ids
+  // (OpenRouter, on-device) have none.
+  function answerFloorFor(model) {
+    if (!model) return ANSWER_MIN_DEFAULT;
+    // Parcel P22c-2: the Responses surface is read the same way, through its own
+    // registered provider; it names the cap max_output_tokens.
+    let providerId = null;
+    if (model.indexOf(FOUNDRY_V1_PREFIX) === 0) providerId = FOUNDRY_V1_PROVIDER_ID;
+    else if (model.indexOf(FOUNDRY_RESPONSES_PREFIX) === 0) providerId = FOUNDRY_RESPONSES_PROVIDER_ID;
+    if (!providerId) return ANSWER_MIN_DEFAULT;
+    const registry = window.EmbedProviderRegistry;
+    const provider = registry && typeof registry.get === "function" ? registry.get(providerId) : null;
+    if (!provider || typeof provider.buildRequest !== "function") return ANSWER_MIN_DEFAULT;
+    try {
+      const body = provider.buildRequest([], { model: model, max_tokens: ANSWER_MIN_DEFAULT });
+      let sent = body.max_completion_tokens != null ? body.max_completion_tokens : body.max_tokens;
+      if (sent == null) sent = body.max_output_tokens;
+      if (typeof sent !== "number" || sent <= ANSWER_MIN_DEFAULT) return ANSWER_MIN_DEFAULT;
+      // Aligned UP to a slider step, so a floor is always on the grid.
+      const step = maxTokenRange().step || ANSWER_MIN_DEFAULT;
+      return ANSWER_MIN_DEFAULT + Math.ceil((sent - ANSWER_MIN_DEFAULT) / step) * step;
+    } catch (e) {
+      return ANSWER_MIN_DEFAULT;
+    }
+  }
+
+  // ── A length preset under the model's minimum is hidden (parcel P22d) ──────
+  // Each preset whose value is under the control's current minimum gets `hidden`;
+  // the rest lose it. When none is left the group is hidden too, so nobody reaches
+  // an empty "Quick length presets" group. Nothing is announced: a hidden button
+  // is simply absent. A preset that holds focus when it goes sends focus to the
+  // slider, so it never falls to <body>.
+  function applyPresetVisibility(minimum) {
+    const presets = S.els.maxTokensPresets || [];
+    if (!presets.length) return;
+    const active = document.activeElement;
+    let anyVisible = false;
+    let focusedPresetHidden = false;
+    presets.forEach(function (btn) {
+      const tooLow = parseInt(btn.dataset.tokens, 10) < minimum;
+      if (tooLow && btn === active) focusedPresetHidden = true;
+      btn.hidden = tooLow;
+      if (!tooLow) anyVisible = true;
+    });
+    const group = presets[0].parentNode;
+    if (group && group.nodeType === 1) group.hidden = !anyVisible;
+    if (focusedPresetHidden && S.els.maxTokensSlider) S.els.maxTokensSlider.focus();
+  }
+
   // ── Answer length follows the model (parcel H-20) ──────────────────────────
   // The most a model can be asked to write, aligned DOWN to a slider step so the
   // slider, the number entry and the sent value can never disagree (a range input
@@ -433,28 +512,56 @@
     return Math.max(base, FOUNDRY_ANSWER_ROOM[model] || 0);
   }
 
+  // Parcel P22e: what the last applyModelTokenRange call did to a PERSON's value:
+  // null (nothing), or { kind: "raised" | "lowered", value }. Reset at the top of
+  // every call, so a stale move can never be read; a value the person never set
+  // is never recorded (it follows the model, and is not theirs to be told about).
+  const LENGTH_MOVE = Object.freeze({ RAISED: "raised", LOWERED: "lowered" });
+  let lastLengthMove = null;
+
   // Set the visible range for the model being sent to, and lower the user's value
-  // if it now sits above it. Silent by design: the value is read when the control
-  // is focused, and one more spoken line at a model change would double what the
-  // picker already says. Called at the picker (chat.js reflectSelection) and, as
-  // the one that must be right, at the top of every send.
+  // if it now sits above it. Silent itself: it speaks nothing and writes no
+  // region. A move of the PERSON's own value is recorded (lastLengthMove) so the
+  // one caller that already announces the model change, chat.js wireChange, can
+  // say it inside that same line, never as a second one (parcel P22e). Called at
+  // the picker (chat.js reflectSelection) and, as the one that must be right, at
+  // the top of every send.
   function applyModelTokenRange(model) {
-    const max = modelOutputMax(model);
+    lastLengthMove = null;
     const slider = S.els.maxTokensSlider;
-    // Read BEFORE the max moves: a range input clamps its own value the instant
-    // its max drops, which would hide that the user's value was above it.
+    // Read BEFORE the range moves: a range input clamps its own value the instant
+    // its min or max moves, which would hide that the user's value was outside it.
     const before = slider ? parseInt(slider.value, 10) : NaN;
+    // The minimum goes back to the default first, so modelOutputMax aligns the max
+    // to the same step grid whatever floor the previous model had.
+    setTokenMin(ANSWER_MIN_DEFAULT);
+    const max = modelOutputMax(model);
     if (slider) slider.max = String(max);
     if (S.els.maxTokensNumber) S.els.maxTokensNumber.max = String(max);
-    // Parcel 16b: a value still at the default, or at what this code last wrote, is
-    // not the person's choice, so it follows the model. Anything else is theirs and
-    // is only ever lowered to fit (below).
-    const untouched =
-      isNaN(before) || before === DEFAULT_ANSWER_ROOM || before === lastAppliedAnswerRoom;
+    // Parcel P22: a Foundry model whose adapter raises a small cap to a floor never
+    // shows a value under that floor. The floor becomes the minimum (never above
+    // the max); a value already under it is raised, silently, below.
+    const floor = Math.min(answerFloorFor(model), max);
+    if (floor > ANSWER_MIN_DEFAULT) setTokenMin(floor);
+    // Parcel P22d: a length preset under the minimum is hidden, never shown.
+    applyPresetVisibility(floor);
+    // Parcel 16b: a value the person has not set is not their choice, so it follows
+    // the model. Parcel P22b: "has not set" is the flag the three person handlers
+    // raise, not a comparison of the number with the default or with what this code
+    // last wrote (which also caught a person who chose exactly that number). The
+    // flag never clears: a person's value survives every model change, lowered only
+    // to fit the max and raised only to the floor, and stays theirs afterwards.
+    const untouched = isNaN(before) || !answerLengthChosenByPerson;
     if (untouched && slider) {
-      const wanted = Math.min(answerRoomFor(model), max);
-      lastAppliedAnswerRoom = setMaxTokens(wanted);
-    } else if (!isNaN(before) && before > max) setMaxTokens(max);
+      const wanted = Math.max(Math.min(answerRoomFor(model), max), floor);
+      setMaxTokens(wanted);
+    } else if (!isNaN(before) && before > max) {
+      setMaxTokens(max);
+      lastLengthMove = { kind: LENGTH_MOVE.LOWERED, value: max };
+    } else if (!isNaN(before) && before < floor) {
+      setMaxTokens(floor);
+      lastLengthMove = { kind: LENGTH_MOVE.RAISED, value: floor };
+    }
     return max;
   }
 
@@ -1848,16 +1955,19 @@
     }
     if (els.maxTokensSlider) {
       els.maxTokensSlider.addEventListener("input", function () {
+        answerLengthChosenByPerson = true;
         setMaxTokens(els.maxTokensSlider.value);
       });
     }
     if (els.maxTokensNumber) {
       els.maxTokensNumber.addEventListener("change", function () {
+        answerLengthChosenByPerson = true;
         setMaxTokens(els.maxTokensNumber.value);
       });
     }
     els.maxTokensPresets.forEach(function (btn) {
       btn.addEventListener("click", function () {
+        answerLengthChosenByPerson = true;
         setMaxTokens(btn.dataset.tokens);
       });
     });
@@ -2078,11 +2188,25 @@
     // Answer length follows the model (parcel H-20): the picker refreshes the
     // range through _applyModelTokenRange; the other two are exposed for inspection.
     _applyModelTokenRange: applyModelTokenRange,
+    // Parcel P22e: what the last _applyModelTokenRange call did to a person's value,
+    // as a copy ({ kind, value }) or null. Read by chat.js reflectSelection right
+    // after its own call, because the default-prompt call that follows resets it.
+    _lastLengthMove: function () {
+      return lastLengthMove ? { kind: lastLengthMove.kind, value: lastLengthMove.value } : null;
+    },
     // Foundry default system prompt (parcel 15c): called by chat.js reflectSelection().
     _applyDefaultSystemPrompt: applyDefaultSystemPrompt,
     _foundryDefaultPromptModelIds: FOUNDRY_DEFAULT_PROMPT_MODEL_IDS,
     _foundryDefaultSystemPrompt: FOUNDRY_DEFAULT_SYSTEM_PROMPT,
     _modelOutputMax: modelOutputMax,
+    _answerFloorFor: answerFloorFor,
+    // Parcel P22b test hook: read the "person chose the length" flag, optionally
+    // setting it, and return the value it had before. Nothing in the product calls it.
+    _answerLengthChosen: function (next) {
+      const was = answerLengthChosenByPerson;
+      if (typeof next === "boolean") answerLengthChosenByPerson = next;
+      return was;
+    },
     _resolveAnswerBudget: resolveAnswerBudget,
     // Wire-normalisation of one turn's content (Unified Chat attachments) —
     // exposed for inspection: preserves live arrays, collapses byte-free refs.
