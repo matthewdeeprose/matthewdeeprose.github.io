@@ -1,5 +1,13 @@
 {
   "presentations": [
+    {
+      "title": "Your module has 47 accessibility issues. Now what?",
+      "url": "ts26.html",
+      "summary": "Presentation for TechShare Pro 2026.",
+      "isTranscript": false,
+      "tags": [],
+      "theme": ""
+    },
           {
       "title": "Building Digital Accessibility Tools with Generative AI",
       "url": "BuildingA11yToolsWithGenAI.html",
