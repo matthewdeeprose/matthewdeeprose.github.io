@@ -15,6 +15,42 @@
       <height>1125</height>
     </image>
     <item>
+      <title>What I learnt at TechShare Pro 2026, and what it said about AI</title>
+      <pubDate>Sun, 22 Nov 2026 20:01:10 GMT</pubDate>
+      <link>https://matthewdeeprose.github.io/ts26-blog.html</link>
+      <description><![CDATA[My five favourite sessions from AbilityNet TechShare Pro 2026, what the event said about AI, and how my own AI-assisted accessibility work at the University of Southampton compares.]]></description>
+    </item>
+    <item>
+      <title>TechShare Pro 2026: Your module has 47 accessibility issues. Now what?</title>
+      <pubDate>Thu, 12 Nov 2026 12:00:00 GMT</pubDate>
+      <link>https://matthewdeeprose.github.io/ts26.html</link>
+      <description><![CDATA[Slides, links and resources for the TechShare Pro 2026 talk Your module has 47 accessibility issues. Now what? by Matthew Deeprose, University of Southampton]]></description>
+    </item>
+    <item>
+      <title>Accessibility as a driver of digital transformation</title>
+      <pubDate>Thu, 12 Nov 2026 11:00:00 GMT</pubDate>
+      <link>https://matthewdeeprose.github.io/disabilitynow26.html</link>
+      <description><![CDATA[Slide text and speaker notes from the talk Accessibility as a driver of digital transformation, by Dr Ben Whitburn, Joshie Christian and Matthew Deeprose, University of Southampton, 3 June 2026]]></description>
+    </item>
+    <item>
+      <title>iSolutions at Disability Now: Building Tools, Sharing Knowledge, Removing Barriers</title>
+      <pubDate>Mon, 02 Feb 2026 09:00:00 GMT</pubDate>
+      <link>https://generic.wordpress.soton.ac.uk/digital-learning/2026/02/02/isolutions-at-disability-now-building-tools-sharing-knowledge-removing-barriers/</link>
+      <description><![CDATA[A blog post on the University of Southampton Digital Learning Blog about the Disability Now! symposium of 18 November 2025, which brought together staff, students and community partners to explore how disabled people shape the University and how we can remove barriers.]]></description>
+    </item>
+    <item>
+      <title>From barrier to solution: how educators can identify and build their own accessibility tools</title>
+      <pubDate>Sun, 01 Feb 2026 09:00:00 GMT</pubDate>
+      <link>https://media-and-learning.eu/subject/artificial-intelligence/from-barrier-to-solution-how-educators-can-identify-and-build-their-own-accessibility-tools/</link>
+      <description><![CDATA[A follow-up blog post for the Media & Learning Association to my webinar presentation Building Digital Accessibility Tools with Generative AI.]]></description>
+    </item>
+    <item>
+      <title>Building Digital Accessibility Tools with Generative AI</title>
+      <pubDate>Mon, 22 Dec 2025 09:00:00 GMT</pubDate>
+      <link>https://matthewdeeprose.github.io/BuildingA11yToolsWithGenAI.html</link>
+      <description><![CDATA[Presentation for a Media & Learning Association (MLA) webinar, with the recording and slide deck.]]></description>
+    </item>
+    <item>
       <title>PanoptoText: Download Text / Captions from Panopto</title>
       <pubDate>Wed, 19 Nov 2025 07:35:38 GMT</pubDate>
       <link>https://matthewdeeprose.github.io/panoptoText</link>
@@ -23,7 +59,7 @@
     <item>
       <title>Democratising Digital Accessibility: AI-Enabled Tool Development for Barrier-Free Content Creation</title>
       <pubDate>Wed, 19 Nov 2025 07:33:29 GMT</pubDate>
-      <link>https://matthewdeeprose.github.io/aiEnabledA11yToolDevelopment.htmlDemocratising Digital Accessibility: AI-Enabled Tool Develohttps://matthewdeeprose.github.io/aiEnabledA11yToolDevelopment.htmlpment for Barrier-Free Content Creation</link>
+      <link>https://matthewdeeprose.github.io/aiEnabledA11yToolDevelopment.html</link>
       <description><![CDATA[A presentation for the DisabilityNow event organised by University of Southampton]]></description>
     </item>
     <item>

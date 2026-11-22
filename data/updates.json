@@ -1,6 +1,13 @@
 {
   "updates": [
     {
+      "title": "What I learnt at TechShare Pro 2026",
+      "link": "ts26-blog.html",
+      "imageSrc": "ts26/blog/images/techshare-pro-2026-share.png",
+      "imageAlt": "",
+      "description": "Blog post: my favourite sessions, and what the event said about AI."
+    },
+    {
       "title": "Your module has 47 accessibility issues. Now what?",
       "link": "ts26.html",
       "imageSrc": "images/ts26-preview.png",

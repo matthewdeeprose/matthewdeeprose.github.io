@@ -5,7 +5,8 @@
  * data table, a wrong count line, month names listed one by one, a sentence said twice) and two it cannot
  * (a missing section, a missing closing line), and builds the repair request for the first five.
  * No network, no DOM, no announcement. Nothing here reads window.PROMPT_*: the caller passes the text.
- * NOT LOADED BY ANY PAGE YET (the wiring is H-202).
+ * Loaded by tools.html before the controller's generate file (H-202). It also holds the keep-or-discard
+ * checks for a fixed description (numbersPreserved, judgeFix).
  *
  * The rules are the H-194 rules (.claude/measurements/h194/rules.mjs, proved on 135 records), TEXTLATE from
  * H-200, and the request text is H-200's, with one change: TABLELATE names every late block.
@@ -334,11 +335,140 @@
     };
   }
 
+  // =========================================================================
+  // Keep-or-discard checks for a fixed description (H-202; H-200's H1, H4, H5, H7)
+  // =========================================================================
+
+  const NUMBER_TOKEN = /\d+(?:[.,]\d+)*/g;
+  const FINISH_STOP = "stop";
+  const MONTHS_FOLD_NUMBER = "12";
+
+  /** Number tokens of the whole text, leaving out list and heading markers at the start of a line ("12." / "## 3."), which a renumber moves. */
+  function numberTokens(text) {
+    const bag = new Map();
+    for (const line of text.split(/\r?\n/)) {
+      const body = line
+        .replace(/^\s*(?:#{1,6}\s+)?\d+\.\s+/, "")
+        .replace(/^\s*(?:#{1,6}\s+)?\d+\.$/, "");
+      for (const token of body.match(NUMBER_TOKEN) ?? []) {
+        bag.set(token, (bag.get(token) ?? 0) + 1);
+      }
+    }
+    return bag;
+  }
+
+  /** Tokens in `b` not in `a` (added) and tokens in `a` not in `b` (removed). */
+  function bagDiff(a, b) {
+    const added = [];
+    const removed = [];
+    for (const [token, n] of b) {
+      for (let i = 0; i < n - (a.get(token) ?? 0); i++) added.push(token);
+    }
+    for (const [token, n] of a) {
+      for (let i = 0; i < n - (b.get(token) ?? 0); i++) removed.push(token);
+    }
+    return { added, removed };
+  }
+
+  /** Remove each allowed token from `list` once; return what is left. */
+  function takeAllowed(list, allowed) {
+    const rest = list.slice();
+    for (const token of allowed) {
+      const i = rest.indexOf(token);
+      if (i >= 0) rest.splice(i, 1);
+    }
+    return rest;
+  }
+
+  /**
+   * True when the fixed text carries the same number tokens as the original, apart from the two
+   * changes a repair is asked to make: the COUNTLINE number (old said removed, new said added, when
+   * COUNTLINE or MONTHS fired) and, with MONTHS, a "12" added.
+   * @param {string} original
+   * @param {string} fixed
+   * @param {Array<{rule: string}>} fired - check(original).fired
+   * @returns {boolean}
+   */
+  function numbersPreserved(original, fixed, fired) {
+    requireString(original, "original");
+    requireString(fixed, "fixed");
+    if (!Array.isArray(fired)) {
+      throw new TypeError("ImageDescriberStructureCheck: fired must be check(text).fired");
+    }
+    const has = (rule) => fired.some((f) => f.rule === rule);
+    const diff = bagDiff(numberTokens(original), numberTokens(fixed));
+    const allowedRemoved = [];
+    const allowedAdded = [];
+    const before = countLine(original);
+    const after = countLine(fixed);
+    if (
+      (has(RULES.COUNTLINE) || has(RULES.MONTHS)) &&
+      before.said !== null &&
+      after.said !== null &&
+      before.said !== after.said
+    ) {
+      allowedRemoved.push(String(before.said));
+      allowedAdded.push(String(after.said));
+    }
+    if (has(RULES.MONTHS)) allowedAdded.push(MONTHS_FOLD_NUMBER);
+    return (
+      takeAllowed(diff.removed, allowedRemoved).length === 0 &&
+      takeAllowed(diff.added, allowedAdded).length === 0
+    );
+  }
+
+  /** The check ids judgeFix can name when it discards a fix. */
+  const FIX_CHECKS = Object.freeze({
+    EMPTY: "EMPTY",
+    FINISH: "FINISH",
+    NEW_RULE: "NEW_RULE",
+    SECTIONS: "SECTIONS",
+    ENDS: "ENDS",
+    NUMBERS: "NUMBERS",
+  });
+
+  /**
+   * Decide whether a fixed description may replace the original. Keep only when ALL hold: the reply is
+   * non-empty and finished "stop"; check() on it fires no rule that did not fire on the original; the
+   * four sections and a last line "Description ends." are present; the number tokens are unchanged
+   * (numbersPreserved). Never throws on a bad reply: a non-string reply is a discard.
+   * @param {{ original: string, fixed: *, finishReason: *, fired: Array<{rule: string}> }} input
+   *   `fired` is check(original).fired
+   * @returns {{ keep: boolean, failed: string|null }} the first check that failed, or null
+   */
+  function judgeFix({ original, fixed, finishReason, fired }) {
+    requireString(original, "original");
+    if (typeof fixed !== "string" || fixed.trim() === "") {
+      return { keep: false, failed: FIX_CHECKS.EMPTY };
+    }
+    if (finishReason !== FINISH_STOP) return { keep: false, failed: FIX_CHECKS.FINISH };
+
+    const firedBefore = new Set(fired.map((f) => f.rule));
+    const after = check(fixed).fired.map((f) => f.rule);
+    if (after.some((rule) => !firedBefore.has(rule))) {
+      return { keep: false, failed: FIX_CHECKS.NEW_RULE };
+    }
+    if (!SECTION_NUMBERS.every((n) => new RegExp(`^##\\s+${n}\\.`, "m").test(fixed))) {
+      return { keep: false, failed: FIX_CHECKS.SECTIONS };
+    }
+    const lastLine = fixed.split(/\r?\n/).filter((l) => l.trim()).pop() ?? "";
+    if (lastLine.trim() !== "Description ends.") {
+      return { keep: false, failed: FIX_CHECKS.ENDS };
+    }
+    if (!numbersPreserved(original, fixed, fired)) {
+      return { keep: false, failed: FIX_CHECKS.NUMBERS };
+    }
+    return { keep: true, failed: null };
+  }
+
   window.ImageDescriberStructureCheck = Object.freeze({
     RULES,
+    FIX_CHECKS,
     check,
     buildRepairRequest,
     monthSentence,
+    numbersPreserved,
+    judgeFix,
   });
 
   logInfo("ImageDescriberStructureCheck ready");

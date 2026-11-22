@@ -1,5 +1,13 @@
 {
   "blogPosts": [
+    {
+      "title": "What I learnt at TechShare Pro 2026, and what it said about AI",
+      "url": "https://matthewdeeprose.github.io/ts26-blog.html",
+      "themes": [],
+      "tags": [],
+      "summary": "My five favourite sessions from AbilityNet TechShare Pro 2026, what the event said about AI, and how my own AI-assisted accessibility work at the University of Southampton compares.",
+      "publisher": "matthewdeeprose.github.io"
+    },
         {
       "title": "iSolutions at Disability Now: Building Tools, Sharing Knowledge, Removing Barriers",
       "url": "https://generic.wordpress.soton.ac.uk/digital-learning/2026/02/02/isolutions-at-disability-now-building-tools-sharing-knowledge-removing-barriers/",
