@@ -145,6 +145,8 @@
     <!-- TikZ Studio (hidden Alpha). Layout only: the paper surface's colours
          are in light.css and dark.css, like every other tool's. -->
     <link rel="stylesheet" href="tikz-studio/tikz-studio.css" />
+    <!-- Make an image (FI-6, alpha). Layout only: the colours are in light.css and dark.css. -->
+    <link rel="stylesheet" href="image-maker/image-maker.css" />
     <link rel="stylesheet" href="setup-tool/setup-tool.css" />
 
     <link
@@ -1058,6 +1060,24 @@
               ></span>
               <span class="radio">TikZ Studio</span>
             </label>
+            <!-- Make an image (FI-6, alpha). The value must match the
+                 js/tool-registry.js row exactly. -->
+            <label class="tool-option-wrapper" for="ImageMaker">
+              <input
+                type="radio"
+                id="ImageMaker"
+                name="presentation"
+                autocomplete="off"
+                value="Image Maker"
+                onclick="showImageMaker()"
+              />
+              <span
+                class="tool-icon"
+                aria-hidden="true"
+                data-icon="image"
+              ></span>
+              <span class="radio">Make an image</span>
+            </label>
           </fieldset>
         </nav>
         <!-- Tool registry — controls which tools appear above, in what order,
@@ -1098,6 +1118,7 @@
               "showCaptionsFixerTool",
               "showWordFormsTool",
               "showTikzStudio",
+              "showImageMaker",
             ];
             names.forEach(function (name) {
               window[name] = function () {
@@ -1506,6 +1527,15 @@
                   alternative, caption and long description, then download it as
                   SVG or PNG or export it. Alpha — expect rough edges. Needs no
                   key.
+                </dd>
+
+                <dt>Make an image</dt>
+                <dd>
+                  Describe a picture and make it with AI, on Microsoft Foundry or
+                  OpenRouter, whichever you chose above. Edit each picture's alt
+                  text, copy it, download the picture, or use it as the starting
+                  point for the next. Alpha — expect rough edges. Needs a
+                  Microsoft Foundry connection or an OpenRouter key.
                 </dd>
               </dl>
               <!-- Order the list to match the tool picker NOW, rather than at
@@ -10000,6 +10030,36 @@ Science,91</pre
                       </label>
                     </div>
                   </fieldset>
+
+                  <!-- QZ-3: the practice quiz option. NOT a format, so it is
+                       outside the fieldset and never takes
+                       name="resume-convert-format" (any input with that name is
+                       read as a format), nor the mathpix-format-checkbox class
+                       (a page-wide selector in mathpix-pdf-handler.js reads it).
+                       Hidden until mathpix-quiz-store.js holds a quiz for the
+                       open session; the script fills the count and shows it. -->
+                  <div
+                    id="resume-quiz-option"
+                    class="mathpix-quiz-option"
+                    hidden
+                  >
+                    <input
+                      type="checkbox"
+                      id="resume-include-quiz"
+                      checked
+                      aria-describedby="resume-include-quiz-desc"
+                    />
+                    <label for="resume-include-quiz"
+                      >Include the practice quiz (<span
+                        id="resume-include-quiz-count"
+                        >0 questions</span
+                      >)</label
+                    >
+                    <p id="resume-include-quiz-desc" class="help-text">
+                      Adds a practice quiz at the end. Answers are checked on
+                      the page; no score is sent to the VLE.
+                    </p>
+                  </div>
 
                   <!-- Cost notice: MATHPIX_PRICING.CONVERTER_PER_REQUEST is
                        unpublished, so no figure is given -->
@@ -22076,6 +22136,187 @@ Science,91</pre
           </div>
         </article>
 
+        <!-- Make an image (FI-6, ALPHA). Everything a person meets is written here:
+             every control and label, the 7 style radios, the 4 shape radios and the
+             card template. image-maker/image-maker-ui.js only fills the model list and
+             the cards, and listens.
+
+             NO LIVE REGION IS CREATED HERE OR BY THE SCRIPT. The status line is a plain
+             paragraph. Every spoken line is a notify*() (AGENTS.md § Announcements). -->
+        <article
+          id="image-maker-app"
+          class="tool-container"
+          aria-hidden="true"
+          style="display: none"
+        >
+          <h1>Make an image</h1>
+          <p class="tool-description">
+            Describe a picture and make it with AI. Every picture comes with a
+            text alternative you can edit, and you can use any picture you make
+            as the starting point for the next one.
+          </p>
+          <p id="image-maker-provider-line" class="image-maker-hint">
+            Making with <span id="image-maker-provider-name">Microsoft Foundry</span>.
+            Change this on the Set Up page.
+          </p>
+
+          <div class="image-maker-field">
+            <label for="image-maker-prompt">Describe the picture</label>
+            <textarea
+              id="image-maker-prompt"
+              rows="4"
+              autocomplete="off"
+            ></textarea>
+          </div>
+
+          <fieldset class="image-maker-group">
+            <legend>Style</legend>
+            <label class="image-maker-choice">
+              <input type="radio" name="image-maker-style" value="none" />
+              None
+            </label>
+            <label class="image-maker-choice">
+              <input type="radio" name="image-maker-style" value="photo" checked />
+              Photo
+            </label>
+            <label class="image-maker-choice">
+              <input type="radio" name="image-maker-style" value="line-diagram" />
+              Line diagram
+            </label>
+            <label class="image-maker-choice">
+              <input type="radio" name="image-maker-style" value="flat-illustration" />
+              Flat illustration
+            </label>
+            <label class="image-maker-choice">
+              <input type="radio" name="image-maker-style" value="3d-render" />
+              3D render
+            </label>
+            <label class="image-maker-choice">
+              <input type="radio" name="image-maker-style" value="infographic" />
+              Infographic
+            </label>
+            <label class="image-maker-choice">
+              <input type="radio" name="image-maker-style" value="watercolour" />
+              Watercolour
+            </label>
+          </fieldset>
+
+          <fieldset class="image-maker-group" aria-describedby="image-maker-shape-note">
+            <legend>Shape</legend>
+            <label class="image-maker-choice" data-shape="square">
+              <input type="radio" name="image-maker-shape" value="square" checked />
+              Square
+            </label>
+            <label class="image-maker-choice" data-shape="landscape-4-3">
+              <input type="radio" name="image-maker-shape" value="landscape-4-3" />
+              Landscape 4:3
+            </label>
+            <label class="image-maker-choice" data-shape="portrait-3-4">
+              <input type="radio" name="image-maker-shape" value="portrait-3-4" />
+              Portrait 3:4
+            </label>
+            <label class="image-maker-choice" data-shape="wide-16-9">
+              <input type="radio" name="image-maker-shape" value="wide-16-9" />
+              Wide 16:9
+            </label>
+            <p id="image-maker-shape-note" class="image-maker-hint" hidden></p>
+          </fieldset>
+
+          <div class="image-maker-field">
+            <label for="image-maker-model">Model</label>
+            <select id="image-maker-model"></select>
+          </div>
+
+          <fieldset id="image-maker-reference" class="image-maker-group" hidden>
+            <legend>Picture to imitate (optional)</legend>
+            <div id="image-maker-drop-zone" class="image-maker-drop-zone">
+              <label for="image-maker-reference-file">
+                Choose a picture, or drop or paste one here
+              </label>
+              <input
+                type="file"
+                id="image-maker-reference-file"
+                accept="image/*"
+              />
+            </div>
+            <div id="image-maker-reference-preview" class="image-maker-preview" hidden>
+              <img id="image-maker-reference-img" alt="The picture to imitate" />
+              <button type="button" id="image-maker-reference-remove">
+                <span aria-hidden="true" data-icon="trash"></span>
+                Remove picture
+              </button>
+            </div>
+          </fieldset>
+
+          <p class="image-maker-cost">
+            Cost: <span id="image-maker-cost">Foundry credit</span>
+          </p>
+
+          <div class="image-maker-actions">
+            <button type="button" id="image-maker-make">
+              <span aria-hidden="true" data-icon="aiSparkle"></span>
+              Make image
+            </button>
+            <button type="button" id="image-maker-cancel" aria-disabled="true">
+              Cancel
+            </button>
+            <p id="image-maker-status" class="image-maker-status" hidden></p>
+          </div>
+
+          <h2 id="image-maker-results-heading" tabindex="-1">
+            Images made (<span id="image-maker-count">0</span>)
+          </h2>
+          <button type="button" id="image-maker-clear-all" hidden>
+            <span aria-hidden="true" data-icon="trash"></span>
+            Clear all images
+          </button>
+          <!-- FI-8: plain text, shown only when the browser will not keep the images. Never live. -->
+          <p id="image-maker-not-kept" class="image-maker-hint" hidden>
+            Images are not being kept in this browser, so they will go when you leave or reload.
+          </p>
+          <p id="image-maker-empty">No images yet.</p>
+          <ul id="image-maker-results" class="image-maker-results"></ul>
+          <!-- FI-7: the place a description's headless embed writes to. Never shown, never live. -->
+          <div id="image-maker-embed-sink" hidden></div>
+
+          <template id="image-maker-card-template">
+            <li class="image-maker-card">
+              <h3 class="image-maker-card-heading" tabindex="-1"></h3>
+              <img class="image-maker-card-image" alt="" />
+              <div class="image-maker-field">
+                <label class="image-maker-alt-label">Alt text</label>
+                <textarea class="image-maker-alt" rows="3" autocomplete="off"></textarea>
+              </div>
+              <p class="image-maker-placeholder-note">
+                Placeholder: this is your prompt, not a description of the picture.
+              </p>
+              <p class="image-maker-meta"></p>
+              <div class="image-maker-card-actions">
+                <button type="button" class="image-maker-describe">
+                  <span aria-hidden="true" data-icon="eye"></span>
+                  Describe this image
+                </button>
+                <button type="button" class="image-maker-copy">
+                  <span aria-hidden="true" data-icon="clipboardCopy"></span>
+                  Copy alt text
+                </button>
+                <button type="button" class="image-maker-download">
+                  <span aria-hidden="true" data-icon="download"></span>
+                  Download
+                </button>
+                <button type="button" class="image-maker-imitate">
+                  <span aria-hidden="true" data-icon="image"></span>
+                  Use as picture to imitate
+                </button>
+                <button type="button" class="image-maker-delete">
+                  <span aria-hidden="true" data-icon="trash"></span>
+                  Delete
+                </button>
+              </div>
+            </li>
+          </template>
+        </article>
+
         <!-- Local Chat Tool (Phase 11a) -->
         <article id="local-chat-app" style="display: none" aria-hidden="true">
           <h1>Local Chat</h1>
@@ -22790,6 +23031,13 @@ Science,91</pre
     <script src="mathpix-scripts/core/session-restorer/session-restorer-persistence.js?v=9.0"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-convert.js?v=8.2"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-file-registration.js?v=9.0"></script>
+    <!-- QZ-3: the practice quiz's format checker, then its session store and
+         Convert option. Both load BEFORE the export mixin below, which reads
+         window.MathPixQuizStore and window.MathPixQuizFormat at export time. -->
+    <script src="mathpix-scripts/ai-enhancement/mathpix-quiz-format.js"></script>
+    <script src="mathpix-scripts/ai-enhancement/mathpix-quiz-store.js"></script>
+    <!-- QZ-4: the practice quiz writer (window.MathPixQuizWriter). Reads the registry, the provider and the session at call time, so its place here only needs the format and store above it. Nothing calls it yet; part 3 builds the window. -->
+    <script src="mathpix-scripts/ai-enhancement/mathpix-quiz-writer.js"></script>
     <!-- SCORM/HTML export mixin. Must load AFTER session-restorer-core.js (it
          hard-errors on a missing window._SRShared) and BEFORE
          session-restorer-index.js (which counts the prototype methods). -->
@@ -22854,6 +23102,7 @@ Science,91</pre
       data-src="mathpix-scripts/testing/mathpix-alt-text-integrator-tests.js"
     ></script>
     <script src="mathpix-scripts/ui/components/mathpix-image-manager-ui.js"></script>
+    <script src="mathpix-scripts/ui/components/mathpix-image-recreate.js"></script>
     <script
       type="application/dev-test"
       data-src="mathpix-scripts/testing/mathpix-stage4-tests.js"
@@ -23520,6 +23769,14 @@ Science,91</pre
     <script src="openrouter-embed/providers/openrouter.js"></script>
     <script src="openrouter-embed/providers/azure-openai-v1.js"></script>
     <script src="openrouter-embed/providers/azure-openai-responses.js"></script>
+    <script src="openrouter-embed/providers/foundry-flux.js"></script>
+    <script src="openrouter-embed/openrouter-embed-image.js"></script>
+    <!-- Make an image (FI-6, alpha). Both are small and eager; nothing runs until
+         TOOL_CONFIG["Image Maker"].init() calls window.ImageMakerUI.init(). The ui
+         reads window.ImageMaker, so the state file loads first. -->
+    <script src="image-maker/image-maker-store.js"></script>
+    <script src="image-maker/image-maker.js"></script>
+    <script src="image-maker/image-maker-ui.js"></script>
 
     <script
       type="module"
@@ -26188,6 +26445,37 @@ Science,91</pre
           },
         },
 
+        "Image Maker": {
+          articleId: "image-maker-app",
+          displayName: "Make an image",
+          announceText: "Switched to Make an image tool",
+          // init RETURNS FALSE ON A GENUINE FAILURE (the ui or the state file did
+          // not load), so a broken tool refuses to open rather than opening with
+          // dead controls. Being signed out or having no key is NOT a failure: Make
+          // says so when it is pressed.
+          init: function () {
+            if (
+              !window.ImageMakerUI ||
+              typeof window.ImageMakerUI.init !== "function"
+            ) {
+              console.error(
+                "[ImageMaker] image-maker/image-maker-ui.js did not load",
+              );
+              return false;
+            }
+            return window.ImageMakerUI.init();
+          },
+          // Aborts a request in flight, so nothing outlives the tool.
+          cleanup: function () {
+            if (
+              window.ImageMakerUI &&
+              typeof window.ImageMakerUI.cleanup === "function"
+            ) {
+              window.ImageMakerUI.cleanup();
+            }
+          },
+        },
+
         "Local Chat": {
           articleId: "local-chat-app",
           displayName: "Local Chat",
@@ -26516,6 +26804,10 @@ Science,91</pre
         switchToTool("TikZ Studio", isUserInitiated);
       }
 
+      function showImageMaker(isUserInitiated = true) {
+        switchToTool("Image Maker", isUserInitiated);
+      }
+
       function showAllyReporting(isUserInitiated = true) {
         switchToTool("Ally Reporting", isUserInitiated);
       }
@@ -26548,6 +26840,7 @@ Science,91</pre
       window.showCaptionsFixerTool = showCaptionsFixerTool;
       window.showWordFormsTool = showWordFormsTool;
       window.showTikzStudio = showTikzStudio;
+      window.showImageMaker = showImageMaker;
 
       // Replay a tool selection made while the page was still loading. The stubs
       // near the tool fieldset queue the request; the declarations above have just
@@ -26652,6 +26945,7 @@ Science,91</pre
           "Captions Fixer": "Captions Fixer",
           "Word Forms": "Word Forms",
           "TikZ Studio": "TikZ Studio",
+          "Image Maker": "Image Maker",
         };
 
         // MEASURED 2 September 2026, and the omission was NOT cosmetic: with

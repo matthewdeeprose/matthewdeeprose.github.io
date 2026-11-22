@@ -1,0 +1,8 @@
+Write alt text for the attached picture.
+
+Rules:
+- Use one or two plain sentences that say what the picture shows.
+- If the picture contains visible text, quote it exactly.
+- Do not start with "image of", "picture of" or "photo of".
+- Describe only what can be seen. Do not guess at why the picture was made or what it is for.
+- Reply with the alt text only: no heading, no quotation marks around it, no explanation.

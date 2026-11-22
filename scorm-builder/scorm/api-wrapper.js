@@ -4,6 +4,9 @@
 //
 // The returned string is the file contents; it self-discovers the LMS API by
 // walking window.parent up to maxSearchDepth, then Initialize/SetValue/Terminate.
+//
+// RA-151 (register 81): initialise no longer writes cmi.comments_from_learner. That
+// field belongs to the learner, and an LMS may show it as the student's own words.
 
 /**
  * @param {object} [opts]
@@ -80,12 +83,6 @@ export function generateApiWrapper(opts = {}) {
           api.SetValue("cmi.completion_status", "incomplete");
           api.SetValue("cmi.success_status", "unknown");
           api.SetValue("cmi.exit", "");
-
-          api.SetValue("cmi.comments_from_learner._count", "1");
-          api.SetValue("cmi.comments_from_learner.0.comment",
-                      "Accessible content with WCAG 2.2 AA features");
-          api.SetValue("cmi.comments_from_learner.0.location", "accessibility");
-          api.SetValue("cmi.comments_from_learner.0.timestamp", new Date().toISOString());
 
           api.Commit("");
           return true;

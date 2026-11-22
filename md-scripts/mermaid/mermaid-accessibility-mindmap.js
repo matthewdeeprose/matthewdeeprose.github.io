@@ -482,6 +482,64 @@ const MermaidAccessibilityMindmap = (function () {
     return Common.renderSegmentsHtml(segments, displayText);
   }
 
+  // ITEM 189, BUILD 2 (21 November 2026), MM1: "lines Mermaid does not draw are
+  // not nodes." Measured 17 November 2026 (docs/mermaid-item-189-measure-1-
+  // 2026-11-17.md): a frontmatter block, a `%%` comment and an accTitle or
+  // accDescr line were each read as a concept, and a comment before the root
+  // became the central concept. Mermaid's own mindmap db never receives them.
+  const FRONTMATTER_FENCE = /^---\s*$/;
+  const COMMENT_LINE = /^\s*%%/;
+  const ACCESSIBLE_LINE = /^\s*acc(?:Title|Descr)\s*:/;
+  const ACCESSIBLE_BLOCK_OPEN = /^\s*accDescr\s*\{/;
+  const BLOCK_CLOSE = /\}/;
+
+  /**
+   * Drop the lines Mermaid does not draw: a YAML frontmatter block at the very
+   * start of the source, every `%%` line, every accTitle: and accDescr: line,
+   * and an accDescr { ... } block.
+   * @param {string} source - The source after the header and init removal
+   * @returns {string[]} The remaining lines, in order
+   */
+  function dropUndrawnLines(source) {
+    const all = source.replace(/\r/g, "").split("\n");
+    const kept = [];
+    let i = 0;
+
+    // Frontmatter only counts when its opening fence is the first line.
+    if (all.length > 0 && FRONTMATTER_FENCE.test(all[0])) {
+      let close = 1;
+      while (close < all.length && !FRONTMATTER_FENCE.test(all[close])) close++;
+      if (close < all.length) i = close + 1;
+    }
+
+    for (; i < all.length; i++) {
+      const line = all[i];
+      if (COMMENT_LINE.test(line) || ACCESSIBLE_LINE.test(line)) continue;
+      if (ACCESSIBLE_BLOCK_OPEN.test(line)) {
+        // Skip through the line that closes the block (it may be this one).
+        while (i < all.length && !BLOCK_CLOSE.test(all[i])) i++;
+        continue;
+      }
+      kept.push(line);
+    }
+    return kept;
+  }
+
+  // ITEM 189, BUILD 2, MM2: "a line that is only an icon or only a class
+  // decoration is not a node, at any indent." It decorates the node before it,
+  // and the words say nothing about it in this build (whether they should
+  // mention an icon or a class is item 142, open).
+  const ICON_ONLY_LINE = /^\s*::\s*icon\(.*\)\s*$/;
+  const CLASS_ONLY_LINE = /^\s*(?:::: *[\w-]+(?: +[\w-]+)* *)+$/;
+
+  /**
+   * @param {string} line - One source line
+   * @returns {boolean} True when the line holds only an icon or class decoration
+   */
+  function isDecorationOnlyLine(line) {
+    return ICON_ONLY_LINE.test(line) || CLASS_ONLY_LINE.test(line);
+  }
+
   /**
    * Parse mindmap from mermaid code
    * @param {string} code - The mermaid code
@@ -510,8 +568,12 @@ const MermaidAccessibilityMindmap = (function () {
     // Handle any theme initialisation by removing it
     cleanCode = cleanCode.replace(/%%\{init:[\s\S]*?\}%%/, "");
 
-    // Split the code into lines and remove empty lines
-    const lines = cleanCode.split("\n").filter((line) => line.trim());
+    // Split the code into lines and remove empty lines, then drop what Mermaid
+    // does not draw as a node (item 189, MM1 and MM2). What is dropped never
+    // reaches the node reader, so the first line left is the root.
+    const lines = dropUndrawnLines(cleanCode)
+      .filter((line) => line.trim())
+      .filter((line) => !isDecorationOnlyLine(line));
 
     if (lines.length === 0) {
       logDebug("No content lines found after cleaning code");
@@ -708,6 +770,18 @@ const MermaidAccessibilityMindmap = (function () {
       return node;
     }
 
+    // Circle ((text)). ITEM 189, BUILD 2, MM3 (item 71): tested BEFORE the
+    // rounded shape, because `((text))` also fits the rounded pattern and was
+    // read as rounded; the canvas draws it as a circle.
+    const circleMatch = node.text.match(/^(\w+)?\(\((.*?)\)\)$/);
+    if (circleMatch) {
+      node.id = circleMatch[1] || node.id;
+      node.text = circleMatch[2];
+      node.shape = "circle";
+      logDebug(`Detected circle shape`);
+      return node;
+    }
+
     // Rounded square (text)
     const roundedMatch = node.text.match(/^(\w+)?\((.*?)\)$/);
     if (roundedMatch) {
@@ -715,16 +789,6 @@ const MermaidAccessibilityMindmap = (function () {
       node.text = roundedMatch[2];
       node.shape = "rounded";
       logDebug(`Detected rounded shape`);
-      return node;
-    }
-
-    // Circle ((text))
-    const circleMatch = node.text.match(/^(\w+)?\(\((.*?)\)\)$/);
-    if (circleMatch) {
-      node.id = circleMatch[1] || node.id;
-      node.text = circleMatch[2];
-      node.shape = "circle";
-      logDebug(`Detected circle shape`);
       return node;
     }
 

@@ -485,13 +485,15 @@ window.MermaidExportUtils = (function () {
    * F22 (Mermaid UI parcel 9d). The page draws a diagram no narrower than the
    * width that keeps its smallest text at 10 px (the SVG's inline min-width,
    * written by mermaid-controls.js), so its box scrolls where the column is
-   * narrower. The export has no script to watch that, so each box is made a
-   * named, focusable group AT EXPORT TIME wherever its floor is wider than
-   * the narrowest column the document can be read in: 320 CSS px, the WCAG
-   * 1.4.10 reflow width, Matthew's choice of 28 September 2026 (the brief's
-   * 647 px, parcel 9c's column at 1366, left the sequence and timeline boxes
-   * unreachable at 1280, where the column is 571 px). On a wide screen some
-   * such boxes do not scroll; that is the accepted cost of a script-free rule.
+   * narrower. AT EXPORT TIME each box is made a named, focusable group
+   * wherever its floor is wider than the narrowest column the document can be
+   * read in: 320 CSS px, the WCAG 1.4.10 reflow width, Matthew's choice of
+   * 28 September 2026 (the brief's 647 px, parcel 9c's column at 1366, left
+   * the sequence and timeline boxes unreachable at 1280, where the column is
+   * 571 px). Since CD-65e (Matthew's ruling of 21 November 2026, reversing the
+   * script-free choice) that build-time state is only the fallback for an
+   * export whose script does not run: EXPORT_SCROLL_SCRIPT re-decides the
+   * stop and the note from real overflow, on load and on every resize.
    *
    * Parcel 9e, Matthew's two rulings of 28 September 2026 (item 94), decided
    * on the same rule, never a second one: (A) a stop whose container carries
@@ -509,6 +511,11 @@ window.MermaidExportUtils = (function () {
     namedRole: "img",
     noteClass: "mermaid-scroll-note",
     noteText: "Scroll sideways to see the whole diagram.",
+    // CD-65e: the stop's attributes as recorded on every box for the script.
+    roleData: "data-scroll-role",
+    labelData: "data-scroll-label",
+    namedData: "data-scroll-named",
+    describedByData: "data-scroll-describedby",
   });
 
   /**
@@ -548,6 +555,74 @@ window.MermaidExportUtils = (function () {
   ]);
 
   /**
+   * CD-65e (Matthew's ruling, 21 November 2026): in an export the scroll note
+   * and the box's focus stop follow REAL overflow, as in the editor preview
+   * (mermaid-view-controls.js updateScrollBox / watchScrollBox). The page's
+   * script cannot be loaded by a saved file, so this is the smallest part of
+   * its logic, as plain ES5 text: one ResizeObserver over every diagram box
+   * and its SVGs, writes a frame later (the preview's loop guard), writes
+   * only on a change. markExportScrollBox records each box's stop attributes
+   * in data-scroll-*; this applies them while scrollWidth exceeds clientWidth.
+   * A box that holds focus keeps its stop until focus leaves, so focus never
+   * drops to <body> on a resize. With no script (blocked, or stripped by an
+   * LMS) every box keeps its build-time state, the floor rule of parcel 9d.
+   * The text carries no backtick, no dollar-brace and no closing script tag.
+   * CE2: the script's TOLERANCE_PX (1) must equal SCROLL_OVERFLOW_TOLERANCE_PX
+   * in mermaid-view-controls.js; change them together.
+   */
+  const EXPORT_SCROLL_SCRIPT = `<script>
+(function () {
+  var TOLERANCE_PX = 1;
+  var NOTE = ".mermaid-scroll-note";
+  var boxes = [];
+  var pending = false;
+  function put(el, name, value) {
+    if (value === null) {
+      if (el.hasAttribute(name)) el.removeAttribute(name);
+    } else if (el.getAttribute(name) !== value) {
+      el.setAttribute(name, value);
+    }
+  }
+  function update(box) {
+    var scrolls = box.scrollWidth > box.clientWidth + TOLERANCE_PX;
+    var stop = scrolls || box === document.activeElement;
+    var named = box.getAttribute("data-scroll-named") === "true";
+    put(box, "tabindex", stop ? "0" : null);
+    put(box, "role", stop ? box.getAttribute("data-scroll-role") : null);
+    put(box, "aria-label", stop ? box.getAttribute("data-scroll-label") : null);
+    put(box, "aria-describedby", stop && named ? box.getAttribute("data-scroll-describedby") : null);
+    var svgs = box.querySelectorAll(":scope > svg");
+    for (var i = 0; i < svgs.length; i++) put(svgs[i], "aria-hidden", stop && named ? "true" : null);
+    var note = box.querySelector(":scope > " + NOTE);
+    if (note && note.hidden === scrolls) note.hidden = !scrolls;
+  }
+  function updateAll() {
+    pending = false;
+    for (var i = 0; i < boxes.length; i++) update(boxes[i]);
+  }
+  function schedule() {
+    if (pending) return;
+    pending = true;
+    window.requestAnimationFrame(updateAll);
+  }
+  function start() {
+    boxes = Array.prototype.slice.call(document.querySelectorAll(".mermaid[data-scroll-role]"));
+    if (!boxes.length || typeof ResizeObserver !== "function") return;
+    var observer = new ResizeObserver(schedule);
+    boxes.forEach(function (box) {
+      observer.observe(box);
+      var svgs = box.querySelectorAll(":scope > svg");
+      for (var i = 0; i < svgs.length; i++) observer.observe(svgs[i]);
+      box.addEventListener("focusout", schedule);
+    });
+    schedule();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  else start();
+})();
+</script>`;
+
+  /**
    * Head CSS for the themed static export: hide the diagram copy that does not
    * match the exported page's own light/dark switch (`data-theme` on <html>,
    * set by the SCORM builder's shell). With no `data-theme` at all, the light
@@ -583,10 +658,14 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
   padding: 0.25rem 0.5rem;
   font-size: 0.8em;
 }
+.mermaid > .mermaid-scroll-note[hidden] {
+  display: none;
+}
 .mermaid > svg {
   height: auto !important;
 }
-</style>`;
+</style>
+${EXPORT_SCROLL_SCRIPT}`;
 
   /**
    * Build a static copy of a rendered document for export (HTML or SCORM).
@@ -657,12 +736,15 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
   function markExportScrollBox(liveSvg, cloneBox) {
     if (!cloneBox) return;
     const floorPx = parseFloat(liveSvg.style.minWidth);
+    // CD-65e: this is the box's state with NO script (the fallback). The
+    // export's own script (EXPORT_SCROLL_SCRIPT) re-decides it from real overflow.
     const isStop = floorPx > EXPORT_SCROLL_BOX.minColumnPx;
     const container = cloneBox.closest(".mermaid-container");
-    const cachedName =
-      isStop && container
-        ? container.getAttribute("data-svg-accessible-name") || ""
-        : "";
+    // CD-65e: read for every box, so a box that is not a stop yet can be
+    // made the named form by the script when it starts to scroll.
+    const cachedName = container
+      ? container.getAttribute("data-svg-accessible-name") || ""
+      : "";
     // Item 168, fix 2 (12 November 2026): the page's DI4 test, applied to the
     // copies in the box. A diagram whose SVG holds anything focusable keeps its
     // structure, so its box is the group and no copy is hidden. The selector is
@@ -684,17 +766,21 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
       focusableSelector === "" ||
       boxSvgs.some((svg) => svg.querySelector(focusableSelector));
     const named = cachedName.trim() !== "" && !hasFocusable;
+    const stopRole = named ? EXPORT_SCROLL_BOX.namedRole : EXPORT_SCROLL_BOX.role;
+    const stopLabel = named ? cachedName : EXPORT_SCROLL_BOX.label;
+
+    // CD-65e: the stop's role and label, recorded on EVERY box for the
+    // export's script to apply while the box really scrolls.
+    cloneBox.setAttribute(EXPORT_SCROLL_BOX.roleData, stopRole);
+    cloneBox.setAttribute(EXPORT_SCROLL_BOX.labelData, stopLabel);
+    if (named) cloneBox.setAttribute(EXPORT_SCROLL_BOX.namedData, "true");
+    else cloneBox.removeAttribute(EXPORT_SCROLL_BOX.namedData);
+    cloneBox.removeAttribute(EXPORT_SCROLL_BOX.describedByData);
 
     if (isStop) {
       cloneBox.setAttribute("tabindex", "0");
-      cloneBox.setAttribute(
-        "role",
-        named ? EXPORT_SCROLL_BOX.namedRole : EXPORT_SCROLL_BOX.role
-      );
-      cloneBox.setAttribute(
-        "aria-label",
-        named ? cachedName : EXPORT_SCROLL_BOX.label
-      );
+      cloneBox.setAttribute("role", stopRole);
+      cloneBox.setAttribute("aria-label", stopLabel);
     } else {
       cloneBox.removeAttribute("tabindex");
       cloneBox.removeAttribute("role");
@@ -721,7 +807,8 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
           ? scope.querySelector(`[id="${CSS.escape(pointerId)}"]`)
           : null;
       if (pointer) {
-        cloneBox.setAttribute("aria-describedby", pointerId);
+        cloneBox.setAttribute(EXPORT_SCROLL_BOX.describedByData, pointerId);
+        if (isStop) cloneBox.setAttribute("aria-describedby", pointerId);
       } else if (!pointerWarned) {
         pointerWarned = true;
         logWarn(
@@ -732,7 +819,7 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
 
     // (A) The named stop is the diagram's one reading; its SVG leaves the tree.
     cloneBox.querySelectorAll(":scope > svg").forEach((svg) => {
-      if (named) svg.setAttribute("aria-hidden", "true");
+      if (isStop && named) svg.setAttribute("aria-hidden", "true");
       else svg.removeAttribute("aria-hidden");
     });
 
@@ -747,13 +834,14 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
         .querySelectorAll(`.${EXPORT_SCROLL_BOX.noteClass}`)
         .forEach((note) => note.remove());
     }
-    if (isStop) {
-      const note = document.createElement("p");
-      note.className = EXPORT_SCROLL_BOX.noteClass;
-      note.setAttribute("aria-hidden", "true");
-      note.textContent = EXPORT_SCROLL_BOX.noteText;
-      cloneBox.append(note);
-    }
+    // CD-65e: every box carries a note. A box that is not a stop (no script)
+    // has its note `hidden`; the script shows it only while the box scrolls.
+    const note = document.createElement("p");
+    note.className = EXPORT_SCROLL_BOX.noteClass;
+    note.setAttribute("aria-hidden", "true");
+    note.textContent = EXPORT_SCROLL_BOX.noteText;
+    if (!isStop) note.hidden = true;
+    cloneBox.append(note);
   }
 
   function prepareStaticExport(root) {

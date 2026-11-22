@@ -1152,6 +1152,26 @@
   };
 
   /**
+   * FI-9e: runs after every undo and redo, by either route.
+   *
+   * 1. Cancels the restorer's pending auto-save. A swap arms a one-second
+   *    save that carries the swap's text; an undo inside that second used to
+   *    be overwritten by it (the save re-applied the swapped text and pushed
+   *    the undone text back onto the undo stack, measured at FI-9e Q1).
+   * 2. Puts swapped pictures back to match the text (the swap ledger).
+   * 3. Arms a fresh save of what is now on screen, so the stored version
+   *    agrees with it (a reload then brings back the same picture).
+   * @private
+   */
+  proto._afterHistoryStep = function () {
+    clearTimeout(this.autoSaveTimer);
+    /*FI9E_RECONCILE_BODY*/ this._reconcileSwapLedger?.();
+    if (this.restoredSession?.currentMMD) {
+      this.scheduleAutoSave(this.restoredSession.currentMMD);
+    }
+  };
+
+  /**
    * Undo last edit
    * @private
    */
@@ -1165,6 +1185,7 @@
       if (result) {
         // Sync our state with persistence
         this.syncFromPersistence();
+        this._afterHistoryStep();
         return;
       }
     }
@@ -1198,6 +1219,7 @@
     this.updateSessionStatus("saved");
     this.hasUnsavedChanges = false;
 
+    this._afterHistoryStep();
     this.showNotification("Change undone", "success");
     logDebug("Undo applied, remaining:", this.undoStack.length);
   };
@@ -1216,6 +1238,7 @@
       if (result) {
         // Sync our state with persistence
         this.syncFromPersistence();
+        this._afterHistoryStep();
         return;
       }
     }
@@ -1249,6 +1272,7 @@
     this.updateSessionStatus("saved");
     this.hasUnsavedChanges = false;
 
+    this._afterHistoryStep();
     this.showNotification("Change redone", "success");
     logDebug("Redo applied, remaining:", this.redoStack.length);
   };

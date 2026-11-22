@@ -118,6 +118,91 @@ const FlowchartModule = (function () {
   // "A flowchart of N steps", whatever the diamond ratio. Nothing else read it.
 
   /**
+   * ITEM 187 round A, FA1 (FC-1): resolve an edge whose end is a group's id.
+   *
+   * Mermaid's db creates a vertex, with no type, for an edge endpoint that
+   * names a subgraph, and the adapter passes it through as a node. Counted and
+   * narrated, it is a step the picture does not draw: the picture draws an
+   * arrow that ends at the group's border. The module reads the adapter's
+   * graph at two places (the short and detailed tiers) and both call this
+   * once, so the tiers read one graph. The adapter is not edited.
+   *
+   * An edge INTO the group goes to the group's entry steps: the members, at
+   * any depth, that no other member of the group reaches by an edge. An edge
+   * OUT of it leaves from its exit steps: the members that reach no other
+   * member. Where several steps qualify, every one of them does, so the order
+   * of the adapter's arrays decides nothing. Where none does (every member
+   * is reached from another member, as in a cycle), the group has no
+   * distinguished step and every member qualifies. A group with no member at
+   * all has no step to point at: edges that name it are dropped, and FA3's
+   * sentence says that the group holds no steps.
+   *
+   * @param {Object} graph - The parse adapter's normalised graph
+   * @returns {Object} The graph with no phantom vertex and its edges re-pointed
+   */
+  function resolveGroupEndpoints(graph) {
+    const groupIds = new Set(graph.subgraphs.map((sub) => sub.id));
+    const phantomIds = new Set(
+      graph.nodes.filter((node) => groupIds.has(node.id)).map((node) => node.id)
+    );
+    if (phantomIds.size === 0) return graph;
+
+    const realIds = new Set(
+      graph.nodes.filter((node) => !phantomIds.has(node.id)).map((node) => node.id)
+    );
+    const subById = new Map(graph.subgraphs.map((sub) => [sub.id, sub]));
+    const membersOf = (groupId, seen = new Set()) => {
+      const sub = subById.get(groupId);
+      if (!sub || seen.has(groupId)) return [];
+      seen.add(groupId);
+      let members = sub.nodeIds.filter((id) => realIds.has(id));
+      for (const childId of sub.childSubgraphIds || []) {
+        members = members.concat(membersOf(childId, seen));
+      }
+      return members;
+    };
+    const stepsAt = (groupId, isEntry) => {
+      const members = new Set(membersOf(groupId));
+      const inside = [...members].filter(
+        (id) =>
+          !graph.edges.some((edge) =>
+            isEntry
+              ? edge.to === id && members.has(edge.from) && edge.from !== id
+              : edge.from === id && members.has(edge.to) && edge.to !== id
+          )
+      );
+      return inside.length > 0 ? inside : [...members];
+    };
+
+    const edges = [];
+    for (const edge of graph.edges) {
+      const fromPhantom = phantomIds.has(edge.from);
+      const toPhantom = phantomIds.has(edge.to);
+      if (!fromPhantom && !toPhantom) {
+        edges.push(edge);
+        continue;
+      }
+      // An edge from a group to itself has no step at either end to keep.
+      if (edge.from === edge.to) continue;
+      const fromIds = fromPhantom ? stepsAt(edge.from, false) : [edge.from];
+      const toIds = toPhantom ? stepsAt(edge.to, true) : [edge.to];
+      for (const from of fromIds) {
+        for (const to of toIds) edges.push({ ...edge, from, to });
+      }
+    }
+
+    return {
+      ...graph,
+      nodes: graph.nodes.filter((node) => !phantomIds.has(node.id)),
+      edges,
+      subgraphs: graph.subgraphs.map((sub) => ({
+        ...sub,
+        nodeIds: sub.nodeIds.filter((id) => !phantomIds.has(id)),
+      })),
+    };
+  }
+
+  /**
    * Generate a short description for a flowchart
    *
    * Async since stage 2 of the flowchart rewrite: the values come from the
@@ -139,7 +224,7 @@ const FlowchartModule = (function () {
   async function generateShortDescription(svgElement, code) {
     logInfo("generateShortDescription", "Generating short description");
 
-    const graph = await window.MermaidParseAdapter.parse(code);
+    const graph = resolveGroupEndpoints(await window.MermaidParseAdapter.parse(code));
     if (window.MermaidParseAdapter.isHealthy() === false) {
       throw new Error(
         "Parse adapter failed its self-check; refusing to narrate an unverified graph"
@@ -677,15 +762,26 @@ const FlowchartModule = (function () {
 
       let sentence = `A flowchart of ${total} step${totalSteps === 1 ? "" : "s"}`;
 
+      // FA7 (FC-10): a lone step has no flow, so no start, no end and no
+      // "no distinct end point" to say. Its group clause takes no trailing
+      // comma, because nothing follows it.
+      const loneStep = totalSteps === 1 && t.isolated.length === 1;
+
       const groupCount = graph.subgraphs.length;
       if (groupCount > 0) {
-        sentence += ` in ${Common.narrationNumber(groupCount)} group${groupCount === 1 ? "" : "s"},`;
+        sentence += ` in ${Common.narrationNumber(groupCount)} group${groupCount === 1 ? "" : "s"}${loneStep ? "" : ","}`;
       }
 
-      if (t.mainStartIds.length > 0) {
+      // FA5 (FC-6a): where the only start is the only end, "from X to X"
+      // reads as a loop that is not drawn, so the short names neither.
+      const soleStartIsSoleEnd =
+        t.mainStartIds.length === 1 &&
+        t.mainEndIds.length === 1 &&
+        t.mainStartIds[0] === t.mainEndIds[0];
+      if (t.mainStartIds.length > 0 && !soleStartIsSoleEnd && !loneStep) {
         sentence += ` from ${namedSet(t.mainStartIds, "starting points")}`;
       }
-      if (t.mainEndIds.length > 0) {
+      if (t.mainEndIds.length > 0 && !soleStartIsSoleEnd && !loneStep) {
         sentence += ` to ${namedSet(t.mainEndIds, "outcomes")}`;
       }
 
@@ -694,7 +790,7 @@ const FlowchartModule = (function () {
       // feature of it, but the short has no other slot for it once the "to …"
       // clause has nothing to say. DERIVED; the detailed tier's wording is
       // reused so the two tiers say the same thing.
-      if (t.mainEndIds.length === 0) features.push("no distinct end point");
+      if (t.mainEndIds.length === 0 && !loneStep) features.push("no distinct end point");
       if (t.diamondCount > 0) {
         features.push(
           `${Common.narrationNumber(t.diamondCount)} decision point${t.diamondCount === 1 ? "" : "s"}`
@@ -1491,7 +1587,13 @@ const FlowchartModule = (function () {
     // label draws nothing reads as the unlabelled phrase and that phrase is
     // capitalised only when nothing precedes it in the item.)
 
-    const out = t.orderingOut.get(id);
+    // FA2 (FC-2): an invisible link draws nothing, so it is not a way on to
+    // list beside a visible one. The traversal keeps it in `orderingOut` for
+    // ordering. A step whose ONLY exit is invisible keeps it, or it would
+    // read as an ending (flowchart-edges/invisible-link pins that).
+    const allOut = t.orderingOut.get(id);
+    const visibleOut = allOut.filter((edge) => !isInvisibleLink(edge));
+    const out = visibleOut.length > 0 ? visibleOut : allOut;
     const loops = t.selfLoops.get(id);
     const opens = t.openFrom.get(id);
     // A DECISION POINT, not merely a diamond: a diamond with fewer than two
@@ -1634,7 +1736,14 @@ const FlowchartModule = (function () {
       // both read `hasWayOut`, they cannot drift apart.
       const ending =
         t.endCount === 1 ? NARRATION.SOLE_ENDING : NARRATION.PATH_ENDING;
-      main = `${shapeLead}<span class="diagram-node">${safeLabel}</span>${labelStop} ${ending}`;
+      // FA4 (FC-5): a step whose only way on is a loop to itself does not end
+      // the process. Every self-loop that reaches this branch is unlabelled (a
+      // labelled one forces the nested form above), so the appendix below
+      // says "This step can repeat itself." and the item still says it repeats.
+      main =
+        loops.length > 0
+          ? `${shapeLead}<span class="diagram-action">${safeLabel}</span>${labelStop}`
+          : `${shapeLead}<span class="diagram-node">${safeLabel}</span>${labelStop} ${ending}`;
     }
 
     // R14 REJOIN ACKNOWLEDGEMENT. A generator-owned sentence naming the
@@ -1688,7 +1797,7 @@ const FlowchartModule = (function () {
   async function generateDetailedDescription(svgElement, code) {
     logInfo("generateDetailedDescription", "Generating flowchart description");
 
-    const graph = await window.MermaidParseAdapter.parse(code);
+    const graph = resolveGroupEndpoints(await window.MermaidParseAdapter.parse(code));
     if (window.MermaidParseAdapter.isHealthy() === false) {
       throw new Error(
         "Parse adapter failed its self-check; refusing to narrate an unverified graph"
@@ -1707,10 +1816,16 @@ const FlowchartModule = (function () {
     let flowSentence = directionPhrase
       ? `This flowchart flows from ${directionPhrase} through ${totalSteps} step${totalSteps === 1 ? "" : "s"}`
       : `This flowchart flows through ${totalSteps} step${totalSteps === 1 ? "" : "s"}`;
+    // FA7 (FC-10): a lone step has no flow and no "others" to be unconnected
+    // from, so it is named instead of being called disconnected.
+    const loneStep = totalSteps === 1 && t.isolated.length === 1;
+    if (loneStep) {
+      flowSentence = `This flowchart has one step, ${quotedStepName(t.nodeById.get(t.isolated[0]))}`;
+    }
     if (t.diamondCount > 0) {
       flowSentence += `, including ${Common.narrationNumber(t.diamondCount)} decision point${t.diamondCount === 1 ? "" : "s"}`;
     }
-    if (t.isolated.length > 0) {
+    if (t.isolated.length > 0 && !loneStep) {
       flowSentence +=
         t.isolated.length === 1
           ? `, one of which is not connected to the others`
@@ -1772,7 +1887,16 @@ const FlowchartModule = (function () {
       } else {
         endClause = `${endsLead} one of ${Common.narrationNumber(ends.length)} outcomes`;
       }
-      sentences.push(`${beginClause} and ${endClause}.`);
+      // FA5 (FC-6a): the only start is the only end, so "and ends at X" would
+      // repeat the name and read as a loop that is not drawn.
+      if (starts.length === 1 && ends.length === 1 && t.mainStartIds[0] === t.mainEndIds[0]) {
+        sentences.push(`${beginClause}.`);
+      } else {
+        // FA6 (FC-11): a three-name list reads on into the next clause with a
+        // comma, "…or "Start three", and every path ends…". The name lists
+        // themselves keep their no-serial-comma form.
+        sentences.push(`${beginClause}${starts.length === 3 ? "," : ""} and ${endClause}.`);
+      }
     }
 
     // R2 DECISION-POINT NAMING AND REJOIN. Only when the diagram has
@@ -1923,7 +2047,13 @@ const FlowchartModule = (function () {
     parts.push(`<section class="mermaid-section">`);
     parts.push(`<h4 class="mermaid-details-heading">Overview</h4>`);
     parts.push(`<p>${sentences.join(" ")}</p>`);
-    parts.push(`<h4 class="mermaid-details-heading">Steps</h4>`);
+    // FA7: a Steps heading over an empty list introduces nothing, so when no
+    // step is numbered (every step is isolated) the heading and its list are
+    // both omitted. The isolated steps are named in the paragraph below.
+    const hasNumberedSteps = t.stepsInOrder.length > 0;
+    if (hasNumberedSteps) {
+      parts.push(`<h4 class="mermaid-details-heading">Steps</h4>`);
+    }
 
     // R8 HEADING ALLOCATION, pinned 19 August 2026 (re-open trigger: user
     // feedback). Groups take h5 in a single-component diagram, which is the
@@ -1964,10 +2094,8 @@ const FlowchartModule = (function () {
       parts.push(
         ...GROUP_PRESENTATION.render(t.components[0].segments, t, groupHeadingTag)
       );
-    } else {
-      // One component with no groups, or no components at all (every node
-      // isolated, so stepsInOrder is empty and this renders an empty list —
-      // the pre-R8 behaviour, deliberately unchanged).
+    } else if (hasNumberedSteps) {
+      // One component with no groups.
       parts.push(`<ol class="flowchart-steps">`);
       for (const id of t.stepsInOrder) {
         parts.push(renderStepItem(id, t));
@@ -1975,7 +2103,32 @@ const FlowchartModule = (function () {
       parts.push(`</ol>`);
     }
 
-    if (t.isolated.length > 0) {
+    // FA3 (FC-3, option B): a group that holds no step at any depth is drawn
+    // as a box and counted in the overview, and it takes no step heading, so
+    // it is named once here, after the step list. A group that holds only
+    // another group is NOT empty: the steps inside the inner one are its own.
+    const nodeIdSet = new Set(graph.nodes.map((node) => node.id));
+    const subgraphById = new Map(graph.subgraphs.map((sub) => [sub.id, sub]));
+    const holdsAStep = (sub, seen = new Set()) => {
+      if (seen.has(sub.id)) return false;
+      seen.add(sub.id);
+      if (sub.nodeIds.some((id) => nodeIdSet.has(id))) return true;
+      return (sub.childSubgraphIds || []).some((childId) => {
+        const child = subgraphById.get(childId);
+        return child ? holdsAStep(child, seen) : false;
+      });
+    };
+    const emptyGroups = graph.subgraphs.filter((sub) => !holdsAStep(sub));
+    if (emptyGroups.length > 0) {
+      const sentencesForEmpty = emptyGroups.map((sub) =>
+        isUnlabelledGroup(sub)
+          ? `${UNLABELLED_GROUP_PHRASE} "${Common.escapeHtml(sub.id)}" holds no steps.`
+          : `The group ${quoteAuthorLabel(sub.title || sub.id, "double")} holds no steps.`
+      );
+      parts.push(`<p>${sentencesForEmpty.join(" ")}</p>`);
+    }
+
+    if (t.isolated.length > 0 && !loneStep) {
       // Each label is escaped BEFORE the list is formatted — formatList
       // inserts its own commas and "and", which must not be escaped.
       const labels = t.isolated.map((id) => {

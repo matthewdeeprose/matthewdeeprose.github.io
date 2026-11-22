@@ -901,6 +901,27 @@
   }
 
   /**
+   * The review round's instruction (FI-11, 22 November 2026; 72 words), verbatim as measured: six pictures, one model, a blind judge
+   * found it restored missing parts in one, changed nothing a reader needs in four, and made none worse. Do not reword it.
+   */
+  function generateReviewText() {
+    return (
+      "The first picture is the original. The second picture is the drawing your TikZ produced. " +
+      "First, list briefly the differences that matter to someone learning from the diagram: missing parts, wrong connections, wrong positions, and wrong or missing labels. " +
+      "Then give the whole corrected TikZ in the same JSON reply format as before. " +
+      "If nothing needs correcting, reply with the word UNCHANGED in place of the JSON."
+    );
+  }
+
+  /** The review's reply is the bare word UNCHANGED (any case, space around it allowed). */
+  const REVIEW_UNCHANGED_RE = /^\s*UNCHANGED\s*$/i;
+  /** The drawing's PNG for a review: white background, longer side about this many pixels (FI-11's measured setting). */
+  const REVIEW_PNG_LONG_SIDE = 1024;
+  const REVIEW_PNG_MIN_SCALE = 1;
+  const REVIEW_PNG_MAX_SCALE = 8;
+  const REVIEW_STATUS = Object.freeze({ CHANGED: "changed", UNCHANGED: "unchanged", KEPT: "kept", SKIPPED: "skipped" });
+
+  /**
    * Models for a Draw with AI press, from the active provider's DRAW_MODEL_BY_PROVIDER pair only: with a picture, both must be
    * eligible and vision-capable; for words alone eligibility is enough.
    */
@@ -921,8 +942,10 @@
    * One press of Draw with AI: up to MAX_SENDS_PER_PRESS sends (the same cap as Describe and Fix), each proposal trial-rendered through
    * options.trialRender, stopping at the first that renders. Same model order and escalation as Fix. The author's source is never read
    * or written here: the adapter returns a drawing and the page decides what to do with it. Never rejects.
-   * @param {{words?: string, pictureDataUrl?: string, trialRender: Function, signal?: AbortSignal}} options
-   * @returns {Promise<{ok: true, source: string, summary: string, svg: string, model: string, escalated: boolean, sends: number, attempts: object[], raw: string}
+   * FI-12: with options.review true and a picture sent, the first drawing that renders is checked once against the original (one
+   * more send, counted in the cap); options.onReview is called once as that send starts. Off by default; the result then has no `review`.
+   * @param {{words?: string, pictureDataUrl?: string, trialRender: Function, signal?: AbortSignal, review?: boolean, onReview?: Function}} options
+   * @returns {Promise<{ok: true, source: string, summary: string, svg: string, model: string, escalated: boolean, sends: number, attempts: object[], raw: string, review?: {status: string, reason: string}}
    *   | {ok: false, reason: string, message: string, sends?: number, attempts?: object[]}>}
    */
   async function generate(options) {
@@ -972,6 +995,85 @@
     const attempts = []; // proposals that did not render, oldest first
     const finish = (result) => Object.assign(result, { sends, attempts: attempts.slice() });
 
+    /**
+     * FI-12: one review round, opt-in. The model sees the original beside its own drawing once, with the same model that drew it. It
+     * counts as one of the press's sends. Anything that goes wrong keeps the first drawing and never fails the press; only a cancel ends it.
+     * @returns {Promise<{cancelled: true} | {result: object, review: {status: string, reason: string}}>}
+     */
+    const reviewDrawing = async (first, conversation) => {
+      const done = (result, status, reason) => ({ result, review: { status, reason } });
+      const kept = (reason) => done(first, REVIEW_STATUS.KEPT, reason);
+      if (!dataUrl) return done(first, REVIEW_STATUS.SKIPPED, "no-picture");
+      if (sends >= MAX_SENDS_PER_PRESS) return done(first, REVIEW_STATUS.SKIPPED, "no-send-left");
+      const png = window.TikzKitPng;
+      if (!png || typeof png.toPng !== "function") return done(first, REVIEW_STATUS.SKIPPED, "no-png");
+
+      let drawingUrl;
+      try {
+        let scale = REVIEW_PNG_MIN_SCALE;
+        try {
+          const size = png.svgSize(first.svg);
+          scale = Math.min(REVIEW_PNG_MAX_SCALE, Math.max(REVIEW_PNG_MIN_SCALE, REVIEW_PNG_LONG_SIDE / Math.max(size.w, size.h)));
+        } catch (e) {
+          logWarn("The drawing's size could not be read; the review's PNG is made at 1x:", e);
+        }
+        const blob = await Promise.race([png.toPng(first.svg, { scale, background: "#ffffff" }), cancellation]);
+        drawingUrl = await Promise.race([blobToDataUrl(blob), cancellation]);
+      } catch (e) {
+        if (cancelled) return { cancelled: true };
+        return kept(REASONS.PNG);
+      }
+
+      if (typeof opts.onReview === "function") {
+        try {
+          opts.onReview();
+        } catch (e) {
+          logWarn("onReview threw; the press goes on:", e);
+        }
+      }
+
+      const reviewMessages = conversation.concat([
+        { role: "assistant", content: first.raw },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: generateReviewText() },
+            { type: "image_url", image_url: { url: dataUrl } },
+            { type: "image_url", image_url: { url: drawingUrl } },
+          ],
+        },
+      ]);
+      let reply = "";
+      try {
+        instance.setModel(first.model);
+        await Promise.race([refreshFoundryTokenIfNeeded(), cancellation]);
+        sends += 1; // the review is one of the press's sends
+        const response = await Promise.race([instance.sendStreamingRequest({ userPrompt: generateReviewText(), messages: reviewMessages }), cancellation]);
+        reply = typeof response === "string" ? response : (response && response.text) || "";
+        if (response && response.finishReason === FINISH_REASON_LENGTH) return kept(REASONS.TRUNCATED);
+      } catch (e) {
+        if (cancelled) return { cancelled: true };
+        return kept(REASONS.SEND);
+      }
+      if (cancelled) return { cancelled: true };
+
+      if (REVIEW_UNCHANGED_RE.test(reply)) return done(first, REVIEW_STATUS.UNCHANGED, "model-said-unchanged");
+      const parsed = parseGenerateReply(reply);
+      if (!parsed) return kept(REASONS.PARSE);
+      if (parsed.source === first.source) return done(first, REVIEW_STATUS.UNCHANGED, "same-source");
+      let trial;
+      try {
+        trial = await Promise.race([opts.trialRender(parsed.source, trialAbort.signal), cancellation]);
+      } catch (e) {
+        if (cancelled) return { cancelled: true };
+        return kept(REASONS.NO_DRAWING);
+      }
+      if (cancelled) return { cancelled: true };
+      if (!(trial && trial.ok && trial.svg)) return kept(REASONS.NO_DRAWING);
+      const changed = { ok: true, source: parsed.source, summary: parsed.summary, svg: trial.svg, model: first.model, escalated: first.escalated, raw: reply };
+      return done(changed, REVIEW_STATUS.CHANGED, "corrected");
+    };
+
     try {
       const prompt = await Promise.race([loadPrompt(GENERATE_PROMPT_FILE, GENERATE_PROMPT_GLOBAL), cancellation]);
       if (!prompt) return fail(REASONS.NO_PROMPT, "The drawing prompt could not be loaded, so nothing was sent.");
@@ -1018,7 +1120,11 @@
         const trial = await Promise.race([opts.trialRender(parsed.source, trialAbort.signal), cancellation]);
         if (cancelled) return finish(fail(REASONS.CANCELLED, GENERATE_CANCEL_MESSAGE, { model: modelId }));
         if (trial.ok && trial.svg) {
-          return finish({ ok: true, source: parsed.source, summary: parsed.summary, svg: trial.svg, model: modelId, escalated: modelIndex > 0, raw });
+          const first = { ok: true, source: parsed.source, summary: parsed.summary, svg: trial.svg, model: modelId, escalated: modelIndex > 0, raw };
+          if (!opts.review) return finish(first);
+          const reviewed = await reviewDrawing(first, messages);
+          if (reviewed.cancelled) return finish(fail(REASONS.CANCELLED, GENERATE_CANCEL_MESSAGE, { model: modelId }));
+          return finish(Object.assign(reviewed.result, { review: reviewed.review }));
         }
         attempts.push({ n: attempts.length + 1, model: modelId, source: parsed.source, summary: parsed.summary, errors: trial.errors, log: trial.log });
         messages = messages.concat([{ role: "assistant", content: raw }, { role: "user", content: generateRetryText(trial.errors, trial.log) }]);

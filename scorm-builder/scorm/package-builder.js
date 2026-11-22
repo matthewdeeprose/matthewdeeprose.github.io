@@ -14,6 +14,7 @@ import { generateReadme } from "./readme.js";
 import { generateFilename } from "./filename.js";
 import {
   resolveJSZip,
+  utf8ZipData,
   bundleLocalMathjax,
   bundleAssets,
   auditMathjaxAssets,
@@ -57,7 +58,8 @@ export async function buildPackage(html, metadata = {}, opts = {}) {
   const scormHTML = prepareScormHtml(html, { config, mathjaxMode });
 
   const zip = new JSZip();
-  zip.file(config.CONTENT_FILENAME, scormHTML);
+  // Every string goes in as UTF-8 bytes (utf8ZipData), so an emoji on a 16,384-unit edge stays whole. RA-149.
+  zip.file(config.CONTENT_FILENAME, utf8ZipData(scormHTML));
 
   // Bundle caller-supplied companion files (video/audio/etc.) first, so their
   // paths can be declared as <file> entries in the manifest. Path-safe: throws
@@ -87,21 +89,23 @@ export async function buildPackage(html, metadata = {}, opts = {}) {
 
   zip.file(
     config.MANIFEST_FILENAME,
-    generateManifest(metadata, {
-      identifier,
-      config,
-      files: assetEntries,
-      masteryScore: scored ? masteryScore : null,
-      lom: renderLomFragment(lom, 4), // indented to sit inside <metadata> at depth 1
-    })
+    utf8ZipData(
+      generateManifest(metadata, {
+        identifier,
+        config,
+        files: assetEntries,
+        masteryScore: scored ? masteryScore : null,
+        lom: renderLomFragment(lom, 4), // indented to sit inside <metadata> at depth 1
+      })
+    )
   );
-  zip.file(config.METADATA_FILENAME, renderLomDocument(lom));
-  zip.file(config.API_FILENAME, generateApiWrapper({ quizPresent: scored, reportScore: scored }));
+  zip.file(config.METADATA_FILENAME, utf8ZipData(renderLomDocument(lom)));
+  zip.file(config.API_FILENAME, utf8ZipData(generateApiWrapper({ quizPresent: scored, reportScore: scored })));
   zip.file(
     config.README_FILENAME,
     // isoDate is threaded through so the README honours the determinism pin like
     // the filename and manifest do; unpinned it still resolves to today.
-    generateReadme(metadata, { config, mathjaxMode, reportScore: scored, maxScore, isoDate })
+    utf8ZipData(generateReadme(metadata, { config, mathjaxMode, reportScore: scored, maxScore, isoDate }))
   );
 
   const entries = [

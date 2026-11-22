@@ -1869,6 +1869,11 @@ ${
 aria-label="Replace image ${this._escapeAttr(displayName)}">
               <span aria-hidden="true" data-icon="refresh"></span> Replace
             </button>
+            <button type="button" class="image-manager-btn image-manager-recreate-btn"
+                    onclick="recreateImage('${escapeForOnclick(entry.id)}')"
+aria-label="Recreate image ${this._escapeAttr(displayName)}">
+              <span aria-hidden="true" data-icon="image"></span> Recreate
+            </button>
             <button type="button" class="image-manager-btn image-manager-delete-btn"
                     onclick="deleteImage('${escapeForOnclick(entry.id)}')"
 aria-label="Remove image ${this._escapeAttr(displayName)}">
@@ -7813,6 +7818,48 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
     }
 
     /**
+     * FI-9: Replace image's own path with a file in hand and no file picker.
+     * Runs validateFile, processFile and _executeSwap in that order, exactly as
+     * _handleFileSelected does for a swap. Never rejects. Does not touch
+     * _pendingAction or _pendingSwapId.
+     * @param {string} imageId - Registry image ID
+     * @param {File} file - The replacement picture
+     * @returns {Promise<{ok: boolean, error?: string}>}
+     */
+    async swapFromFile(imageId, file) {
+      try {
+        const registry = this.restorer.imageRegistry;
+        if (!registry || !registry.hasImage(imageId)) {
+          const message = "Image not found in registry";
+          this._showStatus(message, "error");
+          return { ok: false, error: message };
+        }
+
+        const validation = this.validateFile(file);
+        if (!validation.valid) {
+          this._showStatus(validation.message, "error");
+          return { ok: false, error: validation.message };
+        }
+
+        this._showStatus("Processing image…", "loading");
+        const fileData = await this.processFile(file);
+
+        // _executeSwap reports its own failure line and does not rethrow, so
+        // read the outcome off the registry: the swap took if the entry now
+        // holds the new file's bytes.
+        await this._executeSwap(imageId, fileData);
+        if (registry.getImage(imageId)?.dataUri !== fileData.dataUri) {
+          return { ok: false, error: STATUS_SWAP_FAILED_TEXT };
+        }
+        return { ok: true };
+      } catch (error) {
+        logError("swapFromFile failed:", error);
+        this._showStatus(STATUS_FILE_FAILED_TEXT, "error");
+        return { ok: false, error: STATUS_FILE_FAILED_TEXT };
+      }
+    }
+
+    /**
      * Execute the swap after file is processed.
      * @param {string} imageId - Registry image ID
      * @param {Object} fileData - Processed file data
@@ -8280,6 +8327,14 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
     if (mgr) {
       mgr.handleSwap(imageId);
     }
+  };
+
+  // FI-9: the card's Recreate button calls this. A stand-in that logs and does
+  // nothing; mathpix-image-recreate.js replaces it when it loads (after this file).
+  window.recreateImage = function (imageId) {
+    logWarn(
+      `recreateImage: mathpix-image-recreate.js has not loaded (image ${imageId})`,
+    );
   };
 
   window.addImageToDocument = function () {

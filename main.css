@@ -4634,3 +4634,83 @@ body.tts-controls-bar-on::after {
     outline-offset: 0.15rem !important;
   }
 }
+
+/* FI-9b: the Recreate dialog's Model select took its width from its longest option label and ran
+   past the dialog's right edge (measured: 25px at 1280 wide, 371px at 320 wide, where the label and
+   the right border were clipped). Keep the select inside the dialog; the 0.3rem is the select's own
+   end margin (`select` rule above). The full label still shows when the list is opened. */
+.image-recreate-dialog select {
+  box-sizing: border-box;
+  max-width: calc(100% - 0.3rem);
+}
+
+/* FI-9d: the Recreate dialog opens at the "large" size (800px) and lays the form and the two
+   pictures out side by side from 48rem up. Below that it is one column in source order: the form,
+   then the pictures. CSS does no reordering, so reading and tab order follow the source.
+   Measured before this rule: a 1024px made picture sat at its natural width in a 602px column and
+   the dialog body scrolled sideways (scrollWidth 1048 against 650). */
+.image-recreate-dialog .universal-modal-container {
+  max-width: 95vw;
+}
+
+.image-recreate-columns {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media (min-width: 48rem) {
+  .image-recreate-columns {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: start;
+  }
+}
+
+.image-recreate-form,
+.image-recreate-pictures {
+  min-width: 0;
+}
+
+.image-recreate-pictures h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+
+.image-recreate-picture + .image-recreate-result {
+  margin-top: 1.5rem;
+}
+
+/* Each picture is scaled to fit its column and never cropped. */
+.image-recreate-pictures img {
+  display: block;
+  /* FI-9d-PICTURE-CAP */ max-width: 100%;
+  height: auto;
+}
+
+/* The Prompt label sat on its box (0px gap). */
+.image-recreate-dialog label[for="image-recreate-prompt"] {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+/* FI-10: the "How to make it" group sat on the Prompt label under it (0px gap). */
+.image-recreate-dialog .image-recreate-route {
+  margin-bottom: 1rem;
+}
+
+/* The global `textarea` rules (main.css height 150px, markdown-editor.css min-height 200px) fix
+   the box at 200px whatever its rows say; let rows decide here. */
+.image-recreate-dialog textarea {
+  height: auto;
+  min-height: 0;
+}
+
+/* FI-9d: the card's "alt text was kept" note, a paragraph in the card's text flow under the
+   file details. It was appended to the card's first role="group", which is the absolutely placed
+   icon cluster, so it was drawn over the thumbnail and squashed the icons. Spacing matches
+   .image-manager-meta (mathpix-image-manager.css). */
+.image-manager-recreate-note {
+  margin: 0;
+  padding: 0 0.65rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}

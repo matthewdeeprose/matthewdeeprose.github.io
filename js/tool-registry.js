@@ -90,6 +90,10 @@ window.ToolRegistry = (function () {
     // Chat is hidden), so a screen reader says "N of 10" for every tool.
     { value: "TikZ Studio", status: "alpha", hidden: false, alias: "tikz" },
 
+    // Make an image (FI-6, 20 November 2026): placed directly after TikZ Studio.
+    // The value must match the radio in tools.html exactly.
+    { value: "Image Maker", status: "alpha", hidden: false, alias: "image" },
+
     // Hidden 20 October 2026 because Chat replaced it. Kept in the page and
     // loaded because Chat depends on local-chat-state.js (createChatState)
     // and local-chat.css.

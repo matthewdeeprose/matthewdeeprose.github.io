@@ -79,6 +79,12 @@
   /** Live region the browser branch reports progress into (already in tools.html). */
   const CONVERT_STATUS_ID = "resume-convert-status";
 
+  /**
+   * QZ-3: the start of the error-list line when a held practice quiz could not
+   * be added. The export still goes ahead, without the quiz.
+   */
+  const QUIZ_REFUSAL_PREFIX = "Practice quiz: not added to the export.";
+
   /** base64 expands binary by 4/3; used for the advisory pre-export estimate. */
   const BASE64_EXPANSION = 4 / 3;
 
@@ -1022,6 +1028,61 @@
   };
 
   /**
+   * QZ-3: the export facade's module, behind a method so a test can supply a
+   * stub `exportContent` on an instance. The URL and the import are unchanged.
+   * @returns {Promise<object>} the facade module
+   * @private
+   */
+  proto._importScormExportFacade = function () {
+    return import(EXPORT_FACADE_URL);
+  };
+
+  /**
+   * QZ-3: the practice quiz blocks for this export, or nothing.
+   *
+   * Only when `MathPixQuizStore` holds a quiz for the open session AND its
+   * Convert option is shown and ticked (`quizForExport`). The blocks are built
+   * ONCE here with `MathPixQuizFormat.toQuizContent`, so both formats carry the
+   * same string. A refusal (or a missing module) gives no blocks and one
+   * plain-English line for the error list; it never stops the export.
+   *
+   * @returns {Promise<{content: (string|null), count: number, refusal: (string|null)}>}
+   * @private
+   */
+  proto._prepareBrowserExportQuiz = async function () {
+    const none = { content: null, count: 0, refusal: null };
+    const store = window.MathPixQuizStore;
+    if (!store || typeof store.quizForExport !== "function") return none;
+
+    const quiz = store.quizForExport();
+    if (!quiz) return none;
+
+    const format = window.MathPixQuizFormat;
+    if (!format || typeof format.toQuizContent !== "function") {
+      return { ...none, refusal: `${QUIZ_REFUSAL_PREFIX} The quiz checker has not loaded.` };
+    }
+
+    let built;
+    try {
+      built = await format.toQuizContent(quiz);
+    } catch (err) {
+      built = { ok: false, errors: [{ questionId: null, field: "", message: (err && err.message) || String(err) }] };
+    }
+
+    if (!built || !built.ok || typeof built.content !== "string" || !built.content) {
+      const errors = (built && built.errors) || [];
+      logWarn("browser export: the practice quiz was refused and left out", errors);
+      const first = errors[0];
+      const where = first && first.questionId ? `Question ${first.questionId}: ` : "";
+      const reason = first ? `${where}${first.message}` : "The quiz could not be checked";
+      const more = errors.length > 1 ? ` (and ${errors.length - 1} more)` : "";
+      return { ...none, refusal: `${QUIZ_REFUSAL_PREFIX} ${reason}${more}` };
+    }
+
+    return { content: built.content, count: quiz.questions.length, refusal: null };
+  };
+
+  /**
    * Build the browser-only export formats and hand each one to the SHARED
    * convert UI — the same progress rows and the same "Ready for Download"
    * buttons the API formats use. No Convert API call is made.
@@ -1090,9 +1151,23 @@
       return;
     }
 
+    // QZ-3: the practice quiz, appended ONCE after the shared build so both
+    // formats carry it; refused → exported without it, and the reason joins the
+    // error list (which stays on screen). Nothing held or option unticked →
+    // content and every exportContent argument are exactly as before.
+    const quizPart = await this._prepareBrowserExportQuiz();
+    if (!isCurrentRun()) return; // T-08a
+    if (quizPart.content) content = `${content}\n${quizPart.content}`;
+    if (quizPart.refusal) errorMessages.push(quizPart.refusal);
+    this._lastScormExportQuiz = {
+      included: !!quizPart.content,
+      count: quizPart.count,
+      refusal: quizPart.refusal,
+    };
+
     let exportContent;
     try {
-      ({ exportContent } = await import(EXPORT_FACADE_URL));
+      ({ exportContent } = await this._importScormExportFacade());
     } catch (err) {
       const message = "The export library could not be loaded.";
       logError("browser export: facade import failed", err);
@@ -1121,6 +1196,12 @@
           // across both packages rather than once per package.
           options: build.options,
           download: false,
+          // QZ-3: only with a quiz. Never `scorm.reportScore`: the quiz is
+          // practice, so no score is sent and no mastery score is written.
+          // QZ-3b: and then no "passed" on close; completion is still reported.
+          ...(quizPart.content
+            ? { features: { quiz: true }, honestCompletionStatus: true }
+            : {}),
         });
 
         if (!isCurrentRun()) return; // T-08a

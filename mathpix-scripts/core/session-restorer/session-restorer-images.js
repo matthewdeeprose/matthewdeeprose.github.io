@@ -1656,6 +1656,222 @@
   };
 
   // =========================================================================
+  // FI-9e: THE SWAP LEDGER — undo and redo bring a swapped picture back
+  // =========================================================================
+  // Both undo systems store document TEXT only. A swap changes the picture's
+  // blob URL inside that text, so undoing the text alone left the registry,
+  // the card and the file name on the new picture, and (before FI-9e) pointed
+  // the text at a URL the swap had revoked. The ledger keeps, per picture, every
+  // state a swap has put it in, keyed by that state's blob URL. After any undo
+  // or redo, one reconcile step reads which URL the text now holds and puts the
+  // registry, the blob map, the file-name map, the cache and the card back to
+  // that state, without pushing an undo step.
+
+  // Arm B: a swap whose bytes are not the type the file name's extension says
+  // takes the extension of its bytes. Switched off only by the proof plants.
+  const FI9E_RENAME = true;
+  const SWAP_EXTENSIONS = Object.freeze({
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/webp": "webp",
+  });
+
+  /**
+   * The swap ledger: image id -> states (each keyed by its blob URL). Tied to
+   * the registry it was built for, so a new session starts with an empty one.
+   * @returns {Map<string, Object[]>}
+   * @private
+   */
+  proto._swapLedgerMap = function () {
+    if (!this._swapLedger || this._swapLedger.registry !== this.imageRegistry) {
+      this._swapLedger = { registry: this.imageRegistry, states: new Map() };
+    }
+    return this._swapLedger.states;
+  };
+
+  /** Forget every recorded swap (a stored version or a fresh archive replaced the state). @private */
+  proto._resetSwapLedger = function () {
+    this._swapLedger = null;
+  };
+
+  /**
+   * The blob URL the document holds for a picture right now.
+   * @param {Object} entry - registry entry
+   * @returns {string|null}
+   * @private
+   */
+  proto._currentSwapUrl = function (entry) {
+    if (!entry) return null;
+    if (entry.source === "user-upload" || entry.status === "user-added") {
+      return entry.originalUrl || null;
+    }
+    return this.imageBlobUrlMap.get(entry.originalUrl) || entry.originalUrl || null;
+  };
+
+  /**
+   * Everything the swap changes for one picture, as it is now.
+   * @param {string} imageId
+   * @returns {Object|null} null when the picture is not in the registry
+   * @private
+   */
+  proto._captureSwapState = function (imageId) {
+    const entry = this.imageRegistry?.getImage(imageId);
+    if (!entry) return null;
+    const named = this.imageFilenameMap?.[imageId];
+    return {
+      blobUrl: this._currentSwapUrl(entry),
+      blob: entry.blob instanceof Blob ? entry.blob : null,
+      dataUri: entry.dataUri || null,
+      mimeType: entry.mimeType,
+      fileSize: entry.fileSize,
+      dimensions: entry.dimensions || null,
+      digest: this._swapDigests?.[imageId] || null,
+      filenameEntry: named ? { ...named } : null,
+    };
+  };
+
+  /** Record a state in the ledger, replacing an earlier record of the same blob URL. @private */
+  proto._recordSwapState = function (imageId, state) {
+    if (!state || !state.blobUrl) return;
+    const ledger = this._swapLedgerMap();
+    const states = ledger.get(imageId) || [];
+    const at = states.findIndex((s) => s.blobUrl === state.blobUrl);
+    if (at >= 0) states[at] = state;
+    else states.push(state);
+    ledger.set(imageId, states);
+    // Released with the session (file-registration revokes objectURLs), never at swap time.
+    const url = state.blobUrl;
+    if (url.startsWith("blob:") && !this.objectURLs.includes(url)) {
+      this.objectURLs.push(url);
+    }
+  };
+
+  /**
+   * The file-name entry a swap leaves behind: the same name, with the extension
+   * of the new bytes when the old extension names a different type (Arm B).
+   * A picked file is never re-encoded: its own type wins.
+   * @param {string} imageId
+   * @param {string} mimeType - type of the new bytes
+   * @returns {Object|null}
+   * @private
+   */
+  proto._filenameEntryForSwap = function (imageId, mimeType) {
+    const current = this.imageFilenameMap?.[imageId];
+    if (!current) return null;
+    const kept = { ...current };
+    const ext = SWAP_EXTENSIONS[mimeType];
+    if (!FI9E_RENAME || !current.filename || !ext) return kept;
+
+    const found = /\.([A-Za-z0-9]+)$/.exec(current.filename);
+    const currentExt = found ? found[1].toLowerCase().replace("jpeg", "jpg") : "";
+    if (currentExt === ext) return kept;
+
+    const base = found ? current.filename.slice(0, -found[0].length) : current.filename;
+    const taken = new Set(
+      Object.entries(this.imageFilenameMap)
+        .filter(([otherId]) => otherId !== imageId)
+        .map(([, other]) => other?.filename)
+        .filter(Boolean),
+    );
+    let name = `${base}.${ext}`;
+    for (let n = 2; taken.has(name); n++) name = `${base}-${n}.${ext}`;
+    kept.filename = name;
+    return kept;
+  };
+
+  /**
+   * Put one picture into a recorded state: registry, blob map, file-name map,
+   * the Cache API and the display layer. The one function both a swap and a
+   * reconcile use, so the two cannot drift. Does not touch the document text,
+   * the undo stacks or the card.
+   * @param {string} imageId
+   * @param {Object} state - from _captureSwapState / a swap
+   * @param {string|null} previousUrl - the URL the document held before
+   * @private
+   */
+  proto._applySwapState = function (imageId, state, previousUrl) {
+    const entry = this.imageRegistry.getImage(imageId);
+    const user = entry.source === "user-upload" || entry.status === "user-added";
+    const previousName = this.imageFilenameMap?.[imageId]?.filename || null;
+
+    const replaceData = {
+      blob: state.blob,
+      dataUri: state.dataUri,
+      mimeType: state.mimeType,
+      fileSize: state.fileSize,
+      dimensions: state.dimensions,
+    };
+    // A user-added picture's originalUrl IS the blob URL in the document.
+    if (user) replaceData.originalUrl = state.blobUrl;
+    this.imageRegistry.replaceImage(imageId, replaceData);
+    this._invalidateEncode(imageId);
+
+    // An OCR picture keeps its CDN URL as originalUrl; the map points it at the blob.
+    if (!user) this.imageBlobUrlMap.set(entry.originalUrl, state.blobUrl);
+
+    if (this.imageFilenameMap && state.filenameEntry) {
+      this.imageFilenameMap[imageId] = { ...state.filenameEntry };
+    }
+
+    if (previousUrl && previousUrl !== state.blobUrl && this.isDisplayCollapsed && this.displayLayer) {
+      this.displayLayer.updateUrl(previousUrl, state.blobUrl);
+    }
+
+    // The Cache API: drop the old name's entry, cache the bytes under the new one.
+    const nextName = this.imageFilenameMap?.[imageId]?.filename || null;
+    this._removeCachedImage(imageId, previousName);
+    this._cacheImage(imageId, nextName, state.blob);
+
+    this._swapDigests = { ...(this._swapDigests || {}) };
+    if (state.digest) {
+      this._swapDigests[imageId] = state.digest;
+      this._cacheSwapImage(imageId, state.digest, state.blob);
+    } else {
+      delete this._swapDigests[imageId];
+    }
+  };
+
+  /**
+   * After an undo or a redo: for every swapped picture, find which recorded
+   * state the document's text now holds, and put the picture back to that
+   * state. Pushes no undo step. A no-op when no swap has been made.
+   * @returns {boolean} true when at least one picture was put back
+   * @private
+   */
+  proto._reconcileSwapLedger = function () {
+    const ledger = this._swapLedgerMap();
+    const mmd = this.restoredSession?.currentMMD;
+    if (ledger.size === 0 || typeof mmd !== "string" || !this.imageRegistry) {
+      return false;
+    }
+
+    let changed = false;
+    for (const [imageId, states] of ledger) {
+      const entry = this.imageRegistry.getImage(imageId);
+      if (!entry) continue;
+
+      const held = this._currentSwapUrl(entry);
+      const target = states.find((s) => s.blobUrl && mmd.includes(s.blobUrl));
+      if (!target || target.blobUrl === held) continue;
+
+      // Refresh the record of the state being left (the manager adds the new
+      // file's display name to the map after the swap returns).
+      const leaving = this._captureSwapState(imageId);
+      if (leaving) this._recordSwapState(imageId, leaving);
+
+      this._applySwapState(imageId, target, held);
+      changed = true;
+    }
+
+    if (changed) {
+      const manager = window.MathPixImageManagerUI?.getInstance?.();
+      if (manager && typeof manager.refresh === "function") manager.refresh();
+      logInfo("FI-9e: swapped pictures put back to match the document after undo/redo");
+    }
+    return changed;
+  };
+
+  // =========================================================================
   // PHASE 8H.1: IMAGE MANAGEMENT — SWAP / ADD / DELETE
   // =========================================================================
 
@@ -1696,32 +1912,43 @@
       oldBlobUrl = entry.originalUrl;
     }
 
+    // FI-9e: record the picture as it is before the swap (the state an undo
+    // brings back). The old bytes are read now, while the old blob URL is alive.
+    let before = this._captureSwapState(imageId); /*FI9E_LEDGER_BEFORE*/
+    if (before && !before.blob && before.blobUrl) {
+      try {
+        before.blob = await (await fetch(before.blobUrl)).blob();
+      } catch (fetchError) {
+        logWarn(`swapImage: could not read the old picture for ${imageId}`, fetchError);
+      }
+    }
+
+    // VS-3e: the same bytes under a key that names the swap, so two stored
+    // versions that swap one picture differently each keep their own. The
+    // digest is the marker the snapshot records; it must be known before the
+    // auto-save below reads the snapshot.
+    const swapDigest = await this._digestBlob(fileData.blob);
+
     // Push undo
     this.pushToUndoStack(this.restoredSession.currentMMD);
 
-    // Update registry — keep originalUrl as CDN URL for OCR images
-    const replaceData = {
+    // FI-9e: the swap's own state, and the file-name entry it leaves (Arm B:
+    // the extension follows the new bytes' type).
+    const after = {
+      blobUrl: fileData.blobUrl,
       blob: fileData.blob,
       dataUri: fileData.dataUri,
       mimeType: fileData.mimeType,
       fileSize: fileData.fileSize,
       dimensions: fileData.dimensions,
+      digest: swapDigest,
+      filenameEntry: this._filenameEntryForSwap(imageId, fileData.mimeType),
     };
 
-    // For user-added images, update the originalUrl to the new blob URL
-    if (entry.source === "user-upload" || entry.status === "user-added") {
-      replaceData.originalUrl = fileData.blobUrl;
-    }
-
-    this.imageRegistry.replaceImage(imageId, replaceData);
-    // Convert-size encode cache: the bytes for this image id changed, so its
-    // memoised dataURI is stale. Evict it; the next estimate re-encodes.
-    this._invalidateEncode(imageId);
-
-    // Update blob map for OCR images (overwrites old mapping)
-    if (entry.source !== "user-upload" && entry.status !== "user-added") {
-      this.imageBlobUrlMap.set(entry.originalUrl, fileData.blobUrl);
-    }
+    // Registry, blob map, file-name map, cache, swap digest and display layer:
+    // one function, shared with the undo/redo reconcile. (Phase 9 Feature 2 cache
+    // update and the convert-size encode eviction live inside it.)
+    this._applySwapState(imageId, after, oldBlobUrl);
 
     // Replace in working MMD
     if (oldBlobUrl && this.restoredSession?.currentMMD) {
@@ -1732,39 +1959,18 @@
         );
     }
 
-    // Update display layer if collapsed
-    if (this.isDisplayCollapsed && this.displayLayer) {
-      this.displayLayer.updateUrl(oldBlobUrl, fileData.blobUrl);
-    }
-
     // Refresh textarea/code/preview display
     this.loadMMDContent(
       this.restoredSession.currentMMD,
       this.restoredSession.originalMMD,
     );
 
-    // Revoke old blob URL
-    if (oldBlobUrl && oldBlobUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(oldBlobUrl);
-    }
-
-    // Phase 9 Feature 2: Update cache — remove old, cache new
-    const swapFilename = this.imageFilenameMap?.[imageId]?.filename || null;
-    this._removeCachedImage(imageId, swapFilename);
-    this._cacheImage(imageId, swapFilename, fileData.blob);
-
-    // VS-3e: the same bytes under a key that names the swap, so two stored
-    // versions that swap one picture differently each keep their own. The
-    // digest is the marker the snapshot records; it must be set before the
-    // auto-save below reads the snapshot.
-    const swapDigest = await this._digestBlob(fileData.blob);
-    this._swapDigests = { ...(this._swapDigests || {}) };
-    if (swapDigest) {
-      this._swapDigests[imageId] = swapDigest;
-      this._cacheSwapImage(imageId, swapDigest, fileData.blob);
-    } else {
-      delete this._swapDigests[imageId];
-    }
+    // FI-9e: the old blob URL is NOT revoked here any more. An undo puts the
+    // document back on it, so it stays alive until the session closes (it is
+    // among objectURLs, which file-registration revokes).
+    /*FI9E_NO_REVOKE*/
+    this._recordSwapState(imageId, before);
+    this._recordSwapState(imageId, after);
 
     // Trigger auto-save
     this.updateSessionStatus("modified");
@@ -2375,6 +2581,7 @@
       this._archiveImageUrls = nextStore;
       // The ZIP original holds no swap, so no marker (and reads no swap key).
       this._swapDigests = {};
+      this._resetSwapLedger?.();
 
       // Free what the old state held and the archive state does not use.
       const inUse = new Set(nextMap.values());
@@ -2665,6 +2872,11 @@
           downloaded: true,
           status: stored.status || entry.status,
         };
+      } else if (swapped && stored?.filename && baseFilenames[id]) {
+        // FI-9e: a swap can change the extension (a PNG over a JPEG), and the
+        // stored name is the one the bytes belong under. The archive's name
+        // still finds the original bytes (archiveName, below).
+        nextFilenames[id] = { ...baseFilenames[id], filename: stored.filename };
       } else if (baseFilenames[id]) {
         nextFilenames[id] = baseFilenames[id];
       }
@@ -2741,6 +2953,8 @@
 
     this.imageFilenameMap = nextFilenames;
     this._swapDigests = nextSwaps;
+    // Guarded: the registry-mirror suite calls this method on a stub without the helper.
+    this._resetSwapLedger?.();
     this.imageBlobUrlMap.clear();
     for (const [cdnUrl, blobUrl] of nextMap) {
       this.imageBlobUrlMap.set(cdnUrl, blobUrl);
@@ -2823,6 +3037,7 @@
       }
     }
     this._swapDigests = {};
+    this._resetSwapLedger?.();
     return ids.length;
   };
 

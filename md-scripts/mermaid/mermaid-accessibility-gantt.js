@@ -372,6 +372,33 @@
   }
 
   /**
+   * Whether a date sits exactly on LOCAL midnight: hours, minutes, seconds and
+   * milliseconds all zero (item 194 build 1, ruling GR1). Read with local
+   * getters, never toISOString.
+   * @param {Date} date - The date
+   * @returns {boolean} True at local midnight
+   */
+  function isLocalMidnight(date) {
+    return (
+      date.getHours() === 0 &&
+      date.getMinutes() === 0 &&
+      date.getSeconds() === 0 &&
+      date.getMilliseconds() === 0
+    );
+  }
+
+  /**
+   * A time of day on the 24-hour clock, HH:mm, two digits each; seconds are
+   * never shown (ruling GR3).
+   * @param {Date} date - The date
+   * @returns {string} The time, such as 09:00
+   */
+  function formatClockTime(date) {
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+
+  /**
    * A date rendered in the author's own declared `dateFormat`, so an `excludes`
    * entry naming a specific day can be compared against it.
    *
@@ -614,6 +641,16 @@
     if (!task.startDate || !task.endDate) return null;
     if (task.isMilestone) return task.startDate;
 
+    // RULING GR1 (item 194 build 1, 21 November 2026). Convention C assumed
+    // every task ends at local midnight. A task whose delivered end is AWAY
+    // from midnight (a 36-hour task ends at 12:00 on its second day) ends on
+    // that end's own calendar day, so `endDate - 1` would name a day too early.
+    // No exclusion walk here: weekend handling is unchanged (GR7).
+    if (!isLocalMidnight(task.endDate)) {
+      const ownDay = addDays(task.endDate, 0);
+      return compareDays(ownDay, task.startDate) < 0 ? task.startDate : ownDay;
+    }
+
     let candidate = addDays(task.endDate, -1);
     let steps = 0;
     while (
@@ -631,6 +668,31 @@
     return compareDays(candidate, task.startDate) < 0
       ? task.startDate
       : candidate;
+  }
+
+  /**
+   * The clock times a task's sentence and table row show (rulings GR2, GR3).
+   *
+   * Null unless the delivered start OR the delivered end is away from local
+   * midnight; when either needs a time both ends carry one. The clock end day
+   * is the delivered end's OWN calendar day, so a task ending at 00:00 reads
+   * "to 00:00 on 6 January", which is why this is not the GR1 narrated end day.
+   * Computed once, in narrateTasks, so the sentence and the row cannot differ.
+   *
+   * @param {Object} task - One delivered task
+   * @returns {Object|null} { start, end, startDay, endDay }
+   */
+  function taskClock(task) {
+    if (task.isMilestone || !task.startDate || !task.endDate) return null;
+    if (isLocalMidnight(task.startDate) && isLocalMidnight(task.endDate)) {
+      return null;
+    }
+    return {
+      start: formatClockTime(task.startDate),
+      end: formatClockTime(task.endDate),
+      startDay: task.startDate,
+      endDay: task.endDate,
+    };
   }
 
   /**
@@ -744,6 +806,9 @@
         nameOrdinal: shared ? ordinalWord(position) : null,
         start: start,
         end: end,
+        // Rulings GR2 to GR5: clock times, only where a start or end is away
+        // from local midnight.
+        clock: taskClock(task),
         // RULE G17 (30 August 2026, sweep finding F2). ONE flag, computed once,
         // read by every surface that could otherwise dereference a null date.
         // `narratedEndDate` already returns null when either delivered date is
@@ -1053,6 +1118,20 @@
           task.start
         )} to ${formatBritishDate(task.end)}`;
 
+    // RULING GR4 (item 194 build 1): the clock forms, which replace the date
+    // forms above for a task whose start or end is away from midnight.
+    if (task.clock) {
+      const c = task.clock;
+      sentence =
+        compareDays(c.startDay, c.endDay) === 0
+          ? `${name} runs from ${c.start} to ${c.end} on ${formatBritishDate(
+              c.startDay
+            )}`
+          : `${name} runs from ${c.start} on ${formatBritishDate(
+              c.startDay
+            )} to ${c.end} on ${formatBritishDate(c.endDay)}`;
+    }
+
     if (task.duration.text) sentence += `, lasting ${task.duration.text}`;
     if (list) sentence += `, starting after ${list}`;
 
@@ -1334,8 +1413,22 @@
       // RULE G17: an unresolved row keeps its Task header and says so in every
       // other cell, rather than showing three empty cells a reader cannot tell
       // from a dropped value.
-      cells.push(task.resolved ? formatBritishDate(task.start) : NOT_RESOLVED);
-      cells.push(task.resolved ? formatBritishDate(task.end) : NOT_RESOLVED);
+      // RULING GR5: a cell with a time reads "5 January 2026, 09:00".
+      const clock = task.resolved ? task.clock : null;
+      cells.push(
+        !task.resolved
+          ? NOT_RESOLVED
+          : clock
+          ? `${formatBritishDate(clock.startDay)}, ${clock.start}`
+          : formatBritishDate(task.start)
+      );
+      cells.push(
+        !task.resolved
+          ? NOT_RESOLVED
+          : clock
+          ? `${formatBritishDate(clock.endDay)}, ${clock.end}`
+          : formatBritishDate(task.end)
+      );
       cells.push(task.resolved ? task.duration.tableText : NOT_RESOLVED);
       if (hasStatus) cells.push(statusCell(task));
 

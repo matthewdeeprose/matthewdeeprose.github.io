@@ -607,7 +607,7 @@ const MarkdownEditor = (function () {
         let taskText = token.attrGet("data-task-text") || "";
 
         const statusText = isChecked ? "Completed" : "Not completed";
-        const statusIcon = isChecked ? "✅" : "⭕";
+        const statusIcon = isChecked ? TASK_ICON_CHECKED : TASK_ICON_EMPTY;
         const completedClass = isChecked ? " task-completed" : "";
 
         // Handle empty tasks gracefully
@@ -620,8 +620,7 @@ const MarkdownEditor = (function () {
         return `<li class="task-list-item semantic-task${completedClass}${emptyClass}" role="listitem">
           <span class="task-status" 
                 role="img" 
-                aria-label="${ariaLabel}"
-                title="${statusText}">
+                aria-label="${ariaLabel}">
             <span class="status-icon" aria-hidden="true">${statusIcon}</span>
             <span class="status-text sr-only">${statusText}:</span>
           </span>
@@ -860,6 +859,23 @@ const MarkdownEditor = (function () {
       return "</th>";
     };
 
+    // MRC-92: the slug is built from the heading's TeX, not its %%MATHBLOCK_n%% placeholder.
+    // MRC-94: one function, shared by the anchor plugin and the contents (toc) plugin.
+    const editorHeadingSlugify = function (s) {
+      const slug = String(headingTextWithTex(s))
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^\w\-]+/g, "")
+        .replace(/\-\-+/g, "-")
+        .replace(/^-+/, "")
+        .replace(/-+$/, "");
+      // A heading that is only maths with no letters in its TeX still needs an id.
+      return slug === "" && HEADING_MATHS_PLACEHOLDER.test(String(s))
+        ? HEADING_MATHS_FALLBACK_ID
+        : slug;
+    };
+
     // Plugin initialisation with error handling
     const plugins = [
       { name: "sub", plugin: window.markdownitSub },
@@ -897,22 +913,15 @@ const MarkdownEditor = (function () {
                 space: true,
                 ariaHidden: false,
               }),
-              slugify: function (s) {
-                return String(s)
-                  .trim()
-                  .toLowerCase()
-                  .replace(/\s+/g, "-")
-                  .replace(/[^\w\-]+/g, "")
-                  .replace(/\-\-+/g, "-")
-                  .replace(/^-+/, "")
-                  .replace(/-+$/, "");
-              },
+              slugify: editorHeadingSlugify,
             });
           } else if (name === "toc") {
             md.use(plugin, {
               containerClass: "toc",
               listType: "ul",
               level: [1, 2, 3],
+              // MRC-94: the contents links use the same slug as the heading ids, so each link reaches its heading.
+              slugify: editorHeadingSlugify,
             });
           } else if (name === "attrs") {
             md.use(plugin, {
@@ -949,6 +958,14 @@ const MarkdownEditor = (function () {
 
     return md;
   }
+
+  // MRC-99: the semantic task list's status icons. Inlined, not read from the icon library at render time, so the icon
+  // survives into an html and a SCORM export with no script and renders on pages that do not load icon-library.js.
+  // Copied from icon-library.js (checkboxChecked, checkboxEmpty) with the attributes getIcon adds. Keep in step with the library.
+  const TASK_ICON_CHECKED =
+    '<svg aria-hidden="true" class="icon" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m2.5.5h10c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2h-10c-1.1045695 0-2-.8954305-2-2v-10c0-1.1045695.8954305-2 2-2z"/><path d="m4.5 7.5 2 2 4-4"/></g></svg>';
+  const TASK_ICON_EMPTY =
+    '<svg aria-hidden="true" class="icon" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><path d="m2.5.5h10c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2h-10c-1.1045695 0-2-.8954305-2-2v-10c0-1.1045695.8954305-2 2-2z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"/></svg>';
 
   // Fences that are drawn from their source text. The HTML-level maths restore
   // never reaches inside them, so they need the typed maths put back before
@@ -1359,6 +1376,64 @@ const MarkdownEditor = (function () {
   // \(...\) inline and \[...\] display maths; may span lines.
   const BRACKET_MATH_PATTERN = /\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]/g;
 
+  // MRC-92: heading ids from the TeX. The anchor plugin slugs a heading's text while maths is
+  // still a %%MATHBLOCK_n%% placeholder, and n depends on how much maths comes earlier, so an
+  // equation added above a heading changed its id. The render's map is visible to the slug for
+  // one md.render call only (set just before it, cleared in finally), so it cannot leak.
+  const HEADING_MATHS_PLACEHOLDER = /%%MATHBLOCK_\d+%%/;
+  const HEADING_MATHS_PLACEHOLDERS = /%%MATHBLOCK_\d+%%/g;
+  const HEADING_MATHS_FALLBACK_ID = "maths";
+  const HEADING_MATHS_DELIMITERS = Object.freeze([
+    ["$$", "$$"],
+    ["\\(", "\\)"],
+    ["\\[", "\\]"],
+    ["$", "$"],
+  ]);
+  let headingMathMap = null;
+
+  /**
+   * Replace each maths placeholder in a heading's text with its TeX, delimiters removed.
+   * Text with no placeholder, or a slug called outside a render, comes back unchanged.
+   * @param {string} text - Heading text as the anchor plugin sees it
+   * @returns {string}
+   */
+  function headingTextWithTex(text) {
+    const value = String(text);
+    if (!headingMathMap) return value;
+
+    return value.replace(HEADING_MATHS_PLACEHOLDERS, (placeholder) => {
+      const original = headingMathMap.get(placeholder);
+      if (typeof original !== "string") return placeholder;
+
+      const pair = HEADING_MATHS_DELIMITERS.find(
+        ([open, close]) =>
+          original.length >= open.length + close.length &&
+          original.startsWith(open) &&
+          original.endsWith(close)
+      );
+      return pair
+        ? original.slice(pair[0].length, original.length - pair[1].length)
+        : original;
+    });
+  }
+
+  /**
+   * Run md.render with the render's maths map visible to the heading slug, then clear it.
+   * @param {Object} md - markdown-it instance
+   * @param {string} protectedText - Text with maths swapped for placeholders
+   * @param {Map} mathMap - Placeholders to original maths
+   * @returns {string} HTML
+   */
+  function renderWithHeadingMaths(md, protectedText, mathMap) {
+    headingMathMap = mathMap;
+    try {
+      // mathMap goes in as env so the fence renderer can restore maths in charts and diagrams
+      return md.render(protectedText, { mathMap });
+    } finally {
+      headingMathMap = null;
+    }
+  }
+
   /**
    * Protect math blocks from markdown-it processing
    * Prevents plugins like markdown-it-sup from corrupting LaTeX syntax
@@ -1450,7 +1525,7 @@ const MarkdownEditor = (function () {
   const CORE_EDITOR_OPTIONS = Object.freeze({
     anchorStyle: "inside",
     figureRole: false,
-    tocSlugMatchesAnchor: false,
+    tocSlugMatchesAnchor: true, // MRC-94: contents links reach their headings, as on the loader pages
     longInlineMathScrolls: false,
     containerInit: [],
     mermaidDefaults: { width: 70, height: 100, lockAspectRatio: false },
@@ -1533,8 +1608,7 @@ const MarkdownEditor = (function () {
         // Protect math blocks from markdown-it plugins (especially sup)
         const { text: protectedText, mathMap } =
           protectMathBlocks(markdownText);
-        // mathMap goes in as env so the fence renderer can restore maths in charts and diagrams
-        let htmlResult = md.render(protectedText, { mathMap });
+        let htmlResult = renderWithHeadingMaths(md, protectedText, mathMap);
 
         // Restore math blocks after markdown processing
         htmlResult = restoreMathBlocks(htmlResult, mathMap);

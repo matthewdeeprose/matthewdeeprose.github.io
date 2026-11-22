@@ -72,6 +72,12 @@
   const FIGURE_BEGIN = "\\begin{figure}";
   const FIGURE_END = "\\end{figure}";
   const CAPTION_SETUP_LINE = "\\captionsetup{labelformat=empty}";
+  // M-10cd-2: the unmarked list item written before a figure block that would
+  // otherwise sit in an open item after a nested list has closed.
+  const EMPTY_LIST_ITEM_LINE = "\\item[]";
+  const LIST_ITEM_LINE_PATTERN = /^\\item(?:\[|\s|$)/;
+  const LIST_BEGIN_LINE_PATTERN = /^\\begin\{(?:itemize|enumerate)\}/;
+  const LIST_END_LINE_PATTERN = /^\\end\{(?:itemize|enumerate)\}/;
 
   const DEFAULT_OPTIONS = Object.freeze({
     suppressFigureNumbering: true,
@@ -533,6 +539,42 @@
   }
 
   /**
+   * M-10cd-2: true when the picture line sits in an open list item AFTER a
+   * nested list has closed (the shape in which the library shows the figure
+   * block as raw text). Walks upward from the picture: a list end raises the
+   * depth and its begin lowers it; text lines are walked past. At depth zero an
+   * `\item` is the open item (true only if a nested list closed on the way, so
+   * a picture straight after its own `\item` is left alone), and a list begin
+   * is the top of the list with no item open (false: left out on purpose). The
+   * top of the text means the picture is outside any list (false).
+   * @private
+   * @param {Array<string>} lines
+   * @param {number} idx - index of the picture line
+   * @returns {boolean}
+   */
+  function _isAfterNestedListInOpenItem(lines, idx) {
+    let depth = 0;
+    let nestedListClosed = false;
+    for (let i = idx - 1; i >= 0; i--) {
+      const trimmed = lines[i].trim();
+      if (LIST_END_LINE_PATTERN.test(trimmed)) {
+        depth++;
+        nestedListClosed = true;
+        continue;
+      }
+      if (LIST_BEGIN_LINE_PATTERN.test(trimmed)) {
+        if (depth === 0) return false;
+        depth--;
+        continue;
+      }
+      if (depth === 0 && LIST_ITEM_LINE_PATTERN.test(trimmed)) {
+        return nestedListClosed;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Wrap a bare image line into a figure environment. Returns an object with the
    * updated lines array plus the new `\includegraphics` line we just inserted
    * (so the caller can refresh `entry.mmdReference`). Returns null if the line
@@ -574,9 +616,17 @@
     // reflected verbatim, not reconstructed from a template.
     const newMmdReference = figureBlock[1];
 
-    lines.splice(idx, 1, ...figureBlock);
+    // M-10cd-2: start a new unmarked list item first, so the block is not
+    // left as raw text inside an open item after a nested list. The block
+    // itself is unchanged, so newMmdReference above is still its own line.
+    const startsNewItem = _isAfterNestedListInOpenItem(lines, idx);
+    const blockLines = startsNewItem
+      ? [EMPTY_LIST_ITEM_LINE, ...figureBlock]
+      : figureBlock;
+
+    lines.splice(idx, 1, ...blockLines);
     let insertStart = idx;
-    let insertEnd = idx + figureBlock.length - 1;
+    let insertEnd = idx + blockLines.length - 1;
 
     if (insertStart > 0 && lines[insertStart - 1].trim() !== "") {
       lines.splice(insertStart, 0, "");

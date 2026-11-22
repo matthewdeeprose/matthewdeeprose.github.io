@@ -23,6 +23,21 @@ export function resolveJSZip(opts = {}) {
 }
 
 /**
+ * Turn a string into UTF-8 bytes before it is handed to JSZip.file(). RA-149, found by MRC-101c.
+ *
+ * JSZip cuts a STRING into 16,384-unit blocks and UTF-8-encodes each block on its own, so an
+ * astral character (an emoji, a maths italic letter) whose two UTF-16 halves straddle a block
+ * edge, high half at index 16,383 of a block, is written as two broken halves (ED A0 BE ED B7 B9
+ * in a browser, EF BF BD EF BF BD under Node). JSZip stores bytes as given, so encoding the whole
+ * string here, in one piece, cannot split a pair. A non-string passes through unchanged.
+ * @param {string|Uint8Array|ArrayBuffer|Blob|Buffer} content
+ * @returns {Uint8Array|*} UTF-8 bytes for a string, the argument itself otherwise
+ */
+export function utf8ZipData(content) {
+  return typeof content === "string" ? new TextEncoder().encode(content) : content;
+}
+
+/**
  * Bundle the MathJax es5 assets into a zip so the package renders maths fully
  * offline. Asset keys are relative to config.LOCAL_MATHJAX_DIR (e.g.
  * "es5/tex-chtml.js"); values may be strings or Uint8Array/Buffer (fonts).
@@ -43,7 +58,7 @@ export function bundleLocalMathjax(zip, assets, config) {
   const entries = [];
   for (const [rel, content] of Object.entries(assets)) {
     const path = `${config.LOCAL_MATHJAX_DIR}/${rel}`;
-    zip.file(path, content);
+    zip.file(path, utf8ZipData(content));
     entries.push(path);
   }
   return entries;
@@ -333,7 +348,7 @@ export function bundleAssets(zip, assets, config) {
       throw new Error(`scorm-builder: duplicate asset path "${path}".`);
     }
     seen.add(path.toLowerCase());
-    zip.file(path, content);
+    zip.file(path, utf8ZipData(content));
     entries.push(path);
   }
   return entries;

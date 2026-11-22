@@ -9,7 +9,7 @@
  * READ-ONLY. The render is parsed with DOMParser, so nothing is inserted into the page, no image loads, and the
  * editor, the live preview and the four stores are never touched. It does not call the preview's
  * _preprocessForPreview (which writes the preview's own figure-alt map); it uses the preview's pure
- * _stripFigureAltOptions and the same one-line captionsetup removal.
+ * _stripFigureAltOptions and the same captionsetup removal (every form except labelformat=empty, M-10ca).
  *
  * Node types (and no others in this version):
  *   block:  heading (level, rank), paragraph, list, table, figure, code, blockquote, unknown
@@ -80,7 +80,10 @@
   const MATH_WRAPPER_SELECTOR = "span.math-inline, span.math-block";
   const MATH_BLOCK_CLASS = "math-block";
   const WARNING_URL_CHARS = 80;
-  const CAPTIONSETUP_PATTERN = /\\captionsetup\{[^}]*\}\n?/g;
+  // M-10ca: same rule as the preview. Every \captionsetup{...} line is removed except labelformat=empty
+  // (alone or with labelsep=none), which the library handles by printing no "Figure N:" label.
+  const CAPTIONSETUP_PATTERN =
+    /\\captionsetup\{(?!\s*labelformat\s*=\s*empty\s*(?:,\s*labelsep\s*=\s*none\s*)?\})[^}]*\}\n?/g;
 
   const HEADING_TAGS = Object.freeze(["h1", "h2", "h3", "h4", "h5", "h6"]);
   const CONTAINER_TAGS = Object.freeze(["div", "section", "article", "main", "header", "footer"]);

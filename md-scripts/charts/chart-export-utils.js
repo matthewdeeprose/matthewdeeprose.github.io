@@ -115,6 +115,17 @@ window.ChartExportUtils = (function () {
     canvasHeightAttr: 400,
   });
 
+  /**
+   * MRC-91: the size a chart is drawn at when the live page gave it none (a chart
+   * in a tab panel that was never shown has a 0 x 0 instance). It reuses the
+   * canvas size attributes above, which is the same 3:2 shape as a shown chart
+   * (696 x 464 at MRC-90's viewport) without tying the picture to one viewport.
+   */
+  const UNSHOWN_CHART_SIZE = Object.freeze({
+    width: CHART_EXPORT.canvasWidthAttr,
+    height: CHART_EXPORT.canvasHeightAttr,
+  });
+
   /** Chart types whose data is points, not one value per category. */
   const POINT_CHART_TYPES = Object.freeze(["scatter", "bubble"]);
 
@@ -274,11 +285,11 @@ html:not([data-theme="dark"]) img.${CHART_EXPORT.imageClass}[${EXPORT_MODE_ATTRI
    * `finally`. Never throws.
    *
    * @param {HTMLElement} container - The live `.chart-container`
-   * @param {HTMLCanvasElement} liveCanvas - Its canvas (for the size)
+   * @param {{width: number, height: number}} size - The size to draw at, in pixels
    * @param {string} mode - The mode to paint for (SITE_MODES)
    * @returns {string|null} A PNG data URL, or null (after logging)
    */
-  function renderOtherMode(container, liveCanvas, mode) {
+  function renderOtherMode(container, size, mode) {
     const controls = window.ChartControls;
     let host = null;
     let chart = null;
@@ -310,8 +321,8 @@ html:not([data-theme="dark"]) img.${CHART_EXPORT.imageClass}[${EXPORT_MODE_ATTRI
       host.style.position = "absolute";
       host.style.left = `${CHART_EXPORT.hostOffsetPx}px`;
       host.style.top = "0";
-      host.style.width = `${liveCanvas.clientWidth}px`;
-      host.style.height = `${liveCanvas.clientHeight}px`;
+      host.style.width = `${size.width}px`;
+      host.style.height = `${size.height}px`;
       const canvas = document.createElement("canvas");
       canvas.width = CHART_EXPORT.canvasWidthAttr;
       canvas.height = CHART_EXPORT.canvasHeightAttr;
@@ -450,19 +461,35 @@ html:not([data-theme="dark"]) img.${CHART_EXPORT.imageClass}[${EXPORT_MODE_ATTRI
           const chart = canvas && window.Chart.getChart(canvas);
           if (!chart) return null;
 
-          const primary = paintOverGround(
-            chart.canvas,
-            resolveLiveGround(canvas, primaryMode)
-          );
-          const second = renderOtherMode(container, canvas, secondMode);
-          const images = [{ mode: primaryMode, src: primary }];
+          // MRC-91: a chart the live page never gave a size (its tab panel was
+          // never shown) has nothing to read a picture from, so BOTH pictures
+          // are drawn off-screen from its source at a fixed size.
+          const hasLiveSize = chart.width > 0 && chart.height > 0;
+          const width = hasLiveSize ? Math.round(chart.width) : UNSHOWN_CHART_SIZE.width;
+          const height = hasLiveSize ? Math.round(chart.height) : UNSHOWN_CHART_SIZE.height;
+          // Option 2: a chart hidden again keeps its instance size though its
+          // canvas has no client box, so the second picture is sized from it.
+          const size = { width, height };
+
+          const images = [];
+          if (hasLiveSize) {
+            images.push({
+              mode: primaryMode,
+              src: paintOverGround(chart.canvas, resolveLiveGround(canvas, primaryMode)),
+            });
+          } else {
+            const first = renderOtherMode(container, size, primaryMode);
+            if (!first) return null;
+            images.push({ mode: primaryMode, src: first });
+          }
+          const second = renderOtherMode(container, size, secondMode);
           if (second) images.push({ mode: secondMode, src: second });
 
           return {
             containerId: container.id,
             alt: canvas.getAttribute("aria-label") || "",
-            width: Math.round(chart.width),
-            height: Math.round(chart.height),
+            width,
+            height,
             images,
             tableHtml: buildDataTableHtml(chart),
           };

@@ -243,6 +243,20 @@
   // `id : description`, read only to know which names a description line holds.
   const DESCRIPTION_LINE_PATTERN = /^([^\s:]+)\s*:\s*\S/;
 
+  // Item 188 SA4: the whole words that file a state under Error or Completion.
+  // The plain inflections of the old stems (error, fail, complet, done,
+  // finish, success) and nothing wider; `successor` is deliberately not here
+  // and is left to item 159.
+  const ERROR_STATE_WORDS = Object.freeze([
+    "error", "errors", "fail", "fails", "failed", "failing", "failure",
+    "failures",
+  ]);
+  const COMPLETION_STATE_WORDS = Object.freeze([
+    "complete", "completed", "completes", "completing", "completion", "done",
+    "finish", "finished", "finishes", "finishing", "success", "successful",
+    "successfully",
+  ]);
+
   /**
    * Clean state name to handle quoted strings and special formats
    * @param {string} stateName - The raw state name from the diagram
@@ -404,7 +418,9 @@
     const words = label.split(/\s+/);
     if (
       words.length >= 2 &&
-      words[words.length - 1].toLowerCase().endsWith("s")
+      words[words.length - 1].toLowerCase().endsWith("s") &&
+      // Item 188 SA5: `time: 5s` is a duration, not subject plus verb.
+      !/\d/.test(words[words.length - 1])
     ) {
       logDebug("[Mermaid Accessibility] Transition label arm (b):", label);
       return ` when the ${inSpan(LABEL_CASE.LOWER_FIRST)}`;
@@ -795,7 +811,11 @@
 
     const stateTransitions = {};
     const initialStates = [];
+    // Item 188 SA3b: start markers inside a composite, in declaration order.
+    const innerInitialStates = [];
     const finalStates = [];
+    // Item 188 SA3c: end markers inside a composite, kept apart the same way.
+    const innerFinalStates = [];
     const allStates = new Set();
     const compositeStates = {};
     // id -> author-facing display name, populated only by `state "Name" as id`
@@ -811,6 +831,10 @@
     const emptyNames = {};
     // Synthetic ids of the empty-named choice points, in declaration order.
     const unlabelledChoiceIds = [];
+
+    // Item 188 SA3: how many composites the line being read sits inside. A
+    // `[*]` inside one belongs to that composite, not to the whole diagram.
+    let compositeDepth = 0;
 
     // Parse line by line
     const lines = code.split("\n");
@@ -869,11 +893,18 @@
         }
       }
 
+      // Item 188 SA3: a lone `}` closes a composite.
+      if (trimmedLine === "}") compositeDepth = Math.max(0, compositeDepth - 1);
+
       // Handle composite state definitions - state StateName { ... }
       if (trimmedLine.match(/^state\s+"?[^"{}]+"?\s*{/)) {
         const match = trimmedLine.match(/^state\s+"?([^"{}]+)"?\s*{/);
         if (match) {
-          const compositeName = cleanStateName(match[1]);
+          // Item 188 SA1: the greedy capture takes the space before `{`, which
+          // made `Active ` a second state beside `Active`. Trim at the capture.
+          // Item 188 SA3: the composite's body is one level deeper.
+          compositeDepth += 1;
+          const compositeName = cleanStateName(match[1].trim());
           compositeStates[compositeName] = true;
           allStates.add(compositeName);
           logDebug(
@@ -1026,13 +1057,19 @@
 
         // Check for initial state
         if (sourceState === "[*]") {
-          initialStates.push(targetState);
+          // Item 188 SA3b: inner starts are kept apart; they stand in only
+          // when the diagram has no start marker of its own (see below).
+          if (compositeDepth === 0) initialStates.push(targetState);
+          else innerInitialStates.push(targetState);
           logDebug("[Mermaid Accessibility] Found initial state:", targetState);
         }
 
         // Check for final state
         if (targetState === "[*]") {
-          finalStates.push(sourceState);
+          // Item 188 SA3c: inner ends stand in only when no end marker sits
+          // at depth 0 (see below).
+          if (compositeDepth === 0) finalStates.push(sourceState);
+          else innerFinalStates.push(sourceState);
           logDebug("[Mermaid Accessibility] Found final state:", sourceState);
         }
 
@@ -1057,6 +1094,12 @@
 
     // Name the unlabelled choice points: numbered in declaration order when
     // there are two or more, so the reader can tell them apart.
+    // Item 188 SA3b: a diagram whose only start markers sit inside a
+    // composite keeps them as its starts, as it always has.
+    if (initialStates.length === 0) initialStates.push(...innerInitialStates);
+    // Item 188 SA3c: the same fallback for end markers.
+    if (finalStates.length === 0) finalStates.push(...innerFinalStates);
+
     unlabelledChoiceIds.forEach((choiceId, index) => {
       displayNames[choiceId] =
         unlabelledChoiceIds.length > 1
@@ -1296,8 +1339,11 @@
       overview += `This diagram shows a process that begins in the <span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, initialState))}</span> state${initialEdgePhrase(parsedData, initialState)}`;
 
       // Try to describe the first few transitions
-      const outgoingFromInitial =
-        parsedData.stateTransitions[initialState] || [];
+      // Item 188 SA2: an edge to the end marker is not "the way on", and the
+      // next level would read every `[*] -->` edge in the source. Skip it.
+      const outgoingFromInitial = (
+        parsedData.stateTransitions[initialState] || []
+      ).filter((tr) => tr.target !== "[*]");
       if (outgoingFromInitial.length > 0) {
         const firstTransition = outgoingFromInitial[0];
 
@@ -1620,20 +1666,22 @@
       // rather than Operational. Only the tested STRING changed — the keyword
       // sets are untouched, and the groups, the categorised Set and every
       // downstream lookup still hold ids.
-      const stateName = displayNameFor(parsedData, state).toLowerCase();
 
       // Check if this is an error state
-      if (stateName.includes("error") || stateName.includes("fail")) {
+      // Item 188 SA4: match whole words, not substrings (`Abandoned`,
+      // `Undone`, `Confail`, `Successor` are not completion or error states).
+      // Words split at non-letters and at a lower-to-upper hump.
+      const nameWords = displayNameFor(parsedData, state)
+        .replace(/([a-z])([A-Z])/g, "$1 $2")
+        .toLowerCase()
+        .split(/[^\p{L}\p{N}]+/u)
+        .filter(Boolean);
+      if (nameWords.some((w) => ERROR_STATE_WORDS.includes(w))) {
         errorStates.push(state);
         categorisedStates.add(state);
       }
       // Check if this is a completion state
-      else if (
-        stateName.includes("complet") ||
-        stateName.includes("done") ||
-        stateName.includes("finish") ||
-        stateName.includes("success")
-      ) {
+      else if (nameWords.some((w) => COMPLETION_STATE_WORDS.includes(w))) {
         completionStates.push(state);
         categorisedStates.add(state);
       }

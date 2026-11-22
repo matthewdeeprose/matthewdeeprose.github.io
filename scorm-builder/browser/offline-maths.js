@@ -50,7 +50,9 @@ export const OFFLINE_MATHS_HEAD_LISTENER =
   "if(t&&t.id==='MathJax-script'){s.err=true;if(typeof s.onError==='function')s.onError();}},true);})();</script>";
 
 // How the export's MathJax config states its display alignment (generators/mathjax-config.js: `chtml: { displayAlign: 'left'… }`).
-const DISPLAY_ALIGN = /chtml: \{ displayAlign: '(left|center|right)'/;
+// The scale (MRC-93, RA-140) follows it when present, and is handed to the SVG output too: a duplicate `svg:` key in the
+// config itself would silently replace this one, so the config states it once, for CHTML, and the frame copies it.
+const DISPLAY_ALIGN = /chtml: \{ displayAlign: '(left|center|right)'(?:, scale: ([0-9.]+))?/;
 
 // The same delimiters the export's MathJax config uses; only used to decide whether a document has maths.
 const MATHS_PROBE = /\$\$[\s\S]+?\$\$|\$[^$\n]+?\$|\\\([\s\S]+?\\\)|\\\[[\s\S]+?\\\]|\\begin\{[A-Za-z*]+\}/;
@@ -107,7 +109,7 @@ export function prepareFrameHtml(html, loaderUrl) {
   let swapped = html.replace(loaderUrl, () => svgUrl);
   // The export aligns display equations through its CHTML options; the SVG output has no such key and would centre
   // them, so the same alignment is handed to it. Without the CHTML option (an export built another way) nothing is added.
-  swapped = swapped.replace(DISPLAY_ALIGN, (whole, align) => `svg: { displayAlign: '${align}' }, ${whole}`);
+  swapped = swapped.replace(DISPLAY_ALIGN, (whole, align, scale) => `svg: { displayAlign: '${align}'${scale ? `, scale: ${scale}` : ""} }, ${whole}`);
   const at = swapped.indexOf("<head>") + "<head>".length;
   return swapped.slice(0, at) + "\n<script>" + FRAME_SHIM + "</script>" + swapped.slice(at);
 }

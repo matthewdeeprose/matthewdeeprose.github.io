@@ -11,7 +11,7 @@
 import { buildDocument } from "./builder.js";
 import { resolveConfig } from "../scorm/config.js";
 import { generateHtmlFilename } from "../scorm/filename.js";
-import { resolveJSZip, bundleLocalMathjax, auditMathjaxAssets } from "../util/zip-helpers.js";
+import { resolveJSZip, utf8ZipData, bundleLocalMathjax, auditMathjaxAssets } from "../util/zip-helpers.js";
 import { shouldRunOfflineMaths, addOfflineMaths } from "../browser/offline-maths.js";
 
 // Companion `assets` are a SCORM-only feature (they must be declared in the
@@ -91,7 +91,7 @@ export async function buildStandalonePackage(options = {}) {
   }
 
   const zip = new JSZip();
-  zip.file("index.html", html);
+  zip.file("index.html", utf8ZipData(html)); // bytes, not a string: RA-149, see utf8ZipData
   const entries = ["index.html", ...bundleLocalMathjax(zip, options.mathjaxAssets, config)];
 
   const outputType = options.outputType || (typeof Blob !== "undefined" ? "blob" : "nodebuffer");

@@ -98,6 +98,10 @@ export function siMacrosSource() {
   );
 }
 
+// MRC-93 (RA-140): the app page draws maths at scale 1.1 (tools.html, chtml: { scale: 1.1 }); an export with no scale drew it at
+// 0.91 of that, relative to its text. The stored-SVG frame (browser/offline-maths.js) reads this value back out of the config.
+const MATHS_SCALE = 1.1;
+
 export function renderMathJaxHead(opts = {}) {
   const config = resolveConfig(opts.config);
   const src = opts.mathjaxMode === "local" ? config.LOCAL_MATHJAX_PATH : config.CDN_MATHJAX_URL;
@@ -278,7 +282,7 @@ window.MathJax = {
     }
   },
   loader: { load: ['ui/menu', ${a11yLoad}].concat(mjxExplorer ? ['a11y/explorer'] : []) },
-  chtml: { displayAlign: 'left'${chtmlAdaptive} }
+  chtml: { displayAlign: 'left', scale: ${MATHS_SCALE}${chtmlAdaptive} }
 };
 window.MathJax.options.sre = { domain: (function(){ try { var d = localStorage.getItem('user-maths-speech'); return d === 'mathspeak' || d === 'clearspeak' ? d : ${speechDefaultJson}; } catch (e) { return ${speechDefaultJson}; } })(), style: 'default' };
 

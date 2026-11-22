@@ -2894,6 +2894,57 @@ li.process-step .step-number {
   font-weight: bold;
 }
 
+/* CD-63r, narrow screens only (SC 1.4.10 Reflow, 320 CSS px). Everything
+   here sits inside one viewport media query, so the desktop look is exactly
+   as it was. Five levels used to step about 59px each (the generic list rules
+   stacked on the tree's own), and the boxes round the tree are wide, which left
+   the text column one word wide and let labels run past their boxes. Here
+   the tree indents once per level at a small step, the boxes round it shrink,
+   and a long word breaks inside its box. Each level still draws its own left
+   border, so the shape of the tree is kept. A viewport query is used so
+   browser zoom reaches it too. */
+@media (max-width: 30em) {
+  .mermaid-description:has(.mindmap-description) {
+    padding: 0.5rem;
+  }
+
+  .mermaid-description:has(.mindmap-description) .mermaid-detailed-description {
+    padding: 0.25rem;
+  }
+
+  .mindmap-section {
+    padding: 0.5rem;
+  }
+
+  ul.mindmap-hierarchy,
+  .mindmap-hierarchy ul {
+    margin-left: 0;
+    padding-left: 0;
+  }
+
+  .mindmap-hierarchy ul {
+    padding-left: 0.75rem;
+  }
+
+  /* lists holding level 4 and deeper nodes: no further indent */
+  .mindmap-hierarchy ul.mindmap-children ul.mindmap-children ul.mindmap-children {
+    padding-left: 0;
+  }
+
+  /* not the icon or hexagon nodes: they set their own side padding for a
+     drawn icon or edge */
+  .mindmap-node:not(.has-icon, .mindmap-node-hexagon) {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+
+  .mindmap-node-text {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+  }
+}
+
 /* Short description styles */
 .diagram-root-node {
   font-weight: bold;

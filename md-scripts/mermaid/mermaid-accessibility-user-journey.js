@@ -140,9 +140,11 @@ const MermaidAccessibilityUserJourney = (function () {
     // Parse journey structure
     const journey = parseUserJourney(code);
 
-    // Default title if not found
-    const title = journey.title || "User Journey";
-    logDebug(`Journey title: ${title}`);
+    // JY5 (item 189 build 3, CD-44b J7): no fallback title. With no title in
+    // the source the short tiers carry no "titled ..." clause at all, because
+    // the picture draws no title either.
+    const title = journey.title;
+    logDebug(`Journey title: ${title || "(none)"}`);
 
     // Count tasks
     let totalTasks = 0;
@@ -167,19 +169,23 @@ const MermaidAccessibilityUserJourney = (function () {
     logDebug(`Actors involved: ${actors.join(", ")}`);
 
     // Determine score description
+    // JY2: scores read as typed (journey.minScoreText / maxScoreText).
     let scoreDescription = "";
     if (journey.minScore !== journey.maxScore) {
-      scoreDescription = ` with satisfaction scores ranging from ${journey.minScore} to ${journey.maxScore}`;
+      scoreDescription = ` with satisfaction scores ranging from ${journey.minScoreText} to ${journey.maxScoreText}`;
     } else if (journey.minScore > 0) {
-      scoreDescription = ` with a satisfaction score of ${journey.minScore}`;
+      scoreDescription = ` with a satisfaction score of ${journey.minScoreText}`;
     }
 
     logDebug(`Score description: ${scoreDescription}`);
 
     // Build HTML description
-    let htmlDescription = `A user journey diagram titled "<span class="diagram-title">${Common.escapeHtml(
-      title
-    )}</span>"`;
+    let htmlDescription = `A user journey diagram`;
+    if (title) {
+      htmlDescription += ` titled "<span class="diagram-title">${Common.escapeHtml(
+        title
+      )}</span>"`;
+    }
     htmlDescription += ` showing <span class="diagram-count">${totalTasks}</span> ${taskNoun}`;
     htmlDescription += ` across <span class="diagram-count">${journey.sections.length}</span> ${sectionNoun}`;
 
@@ -199,7 +205,8 @@ const MermaidAccessibilityUserJourney = (function () {
     htmlDescription += `<span class="diagram-scores">${scoreDescription}</span>.`;
 
     // Plain text version
-    let plainTextDescription = `A user journey diagram titled "${title}"`;
+    let plainTextDescription = `A user journey diagram`;
+    if (title) plainTextDescription += ` titled "${title}"`;
     plainTextDescription += ` showing ${totalTasks} ${taskNoun}`;
     plainTextDescription += ` across ${journey.sections.length} ${sectionNoun}`;
 
@@ -245,6 +252,8 @@ const MermaidAccessibilityUserJourney = (function () {
       actors: new Set(),
       minScore: Infinity,
       maxScore: -Infinity,
+      minScoreText: "0",
+      maxScoreText: "0",
     };
 
     // Split the code into lines
@@ -284,23 +293,41 @@ const MermaidAccessibilityUserJourney = (function () {
 
       // Extract task (only if we're in a section)
       if (currentSection) {
-        const taskMatch = line.match(/^\s*(.+?):\s*(\d+):\s*(.+)$/);
+        // JY1: the actor list is optional ("Task: 3" is a task with no actors).
+        // JY2: the score may carry a decimal ("3.5"), read as typed.
+        const taskMatch = line.match(
+          /^\s*(.+?):\s*(\d+(?:\.\d+)?)\s*(?::\s*(.*))?$/
+        );
         if (taskMatch) {
           const taskName = taskMatch[1].trim();
-          const score = parseInt(taskMatch[2], 10);
-          const actorsList = taskMatch[3]
-            .split(",")
-            .map((actor) => actor.trim());
+          const scoreText = taskMatch[2];
+          const score = Number(scoreText);
+
+          // JY3: an actor is counted once per task, however often it is listed.
+          const actorsList = [
+            ...new Set(
+              (taskMatch[3] || "")
+                .split(",")
+                .map((actor) => actor.trim())
+                .filter((actor) => actor)
+            ),
+          ];
 
           logDebug(
-            `Task found: "${taskName}" with score ${score} and actors [${actorsList.join(
+            `Task found: "${taskName}" with score ${scoreText} and actors [${actorsList.join(
               ", "
             )}]`
           );
 
-          // Update journey stats
-          journey.minScore = Math.min(journey.minScore, score);
-          journey.maxScore = Math.max(journey.maxScore, score);
+          // Update journey stats (the text of each extreme is kept as typed)
+          if (score < journey.minScore) {
+            journey.minScore = score;
+            journey.minScoreText = scoreText;
+          }
+          if (score > journey.maxScore) {
+            journey.maxScore = score;
+            journey.maxScoreText = scoreText;
+          }
 
           // Add actors to the set
           actorsList.forEach((actor) => journey.actors.add(actor));
@@ -309,6 +336,7 @@ const MermaidAccessibilityUserJourney = (function () {
           currentSection.tasks.push({
             name: taskName,
             score: score,
+            scoreText: scoreText,
             actors: actorsList,
           });
         }
@@ -370,12 +398,12 @@ const MermaidAccessibilityUserJourney = (function () {
 
     // Score range description
     if (journey.minScore !== journey.maxScore) {
-      description += ` Tasks are rated on a satisfaction scale from ${journey.minScore} (lowest) to ${journey.maxScore} (highest).`;
+      description += ` Tasks are rated on a satisfaction scale from ${journey.minScoreText} (lowest) to ${journey.maxScoreText} (highest).`;
       logDebug(
         `Score range described: ${journey.minScore} to ${journey.maxScore}`
       );
     } else if (journey.maxScore > 0) {
-      description += ` All tasks have a satisfaction rating of ${journey.maxScore}.`;
+      description += ` All tasks have a satisfaction rating of ${journey.maxScoreText}.`;
       logDebug(`Uniform score described: ${journey.maxScore}`);
     }
 
@@ -425,17 +453,22 @@ const MermaidAccessibilityUserJourney = (function () {
             <ul class="task-details">
               <li class="task-detail">
                 <span class="detail-label">Satisfaction:</span> 
-                <span class="score-value score-${task.score}">${
-          task.score
+                <span class="score-value score-${task.scoreText}">${
+          task.scoreText
         }</span>
                 ${generateSatisfactionIndicator(task.score, journey.maxScore)}
-              </li>
+              </li>${
+                // JY1: a task with no actors has no actors line at all.
+                task.actors.length === 0
+                  ? ""
+                  : `
               <li class="task-detail">
                 <span class="detail-label">Actors:</span> 
                 <span class="actor-list">${formatActorsList(
                   task.actors.map((a) => Common.escapeHtml(a))
                 )}</span>
-              </li>
+              </li>`
+              }
             </ul>
           </li>`;
       });
@@ -452,7 +485,6 @@ const MermaidAccessibilityUserJourney = (function () {
     description += `<section class="mermaid-section journey-visual">
         <h4 class="mermaid-section-heading">Visual Representation</h4>
         <p>In the diagram, each task is represented as a step within its section. 
-        Tasks are colour-coded according to their satisfaction score, with higher scores typically shown in deeper/brighter colours.
         The actors involved in each task are listed alongside the task name.</p>
       </section>`;
 
@@ -523,7 +555,7 @@ const MermaidAccessibilityUserJourney = (function () {
           <strong class="insight-title">High Satisfaction:</strong> 
           ${highScoreTasks.length} task${
         highScoreTasks.length !== 1 ? "s" : ""
-      } received the highest score (${journey.maxScore}): 
+      } received the highest score (${journey.maxScoreText}): 
           <ul class="insight-details">
             ${highScoreTasks
               .map(
@@ -547,7 +579,7 @@ const MermaidAccessibilityUserJourney = (function () {
           <strong class="insight-title">Areas for Improvement:</strong> 
           ${lowScoreTasks.length} task${
         lowScoreTasks.length !== 1 ? "s" : ""
-      } received the lowest score (${journey.minScore}): 
+      } received the lowest score (${journey.minScoreText}): 
           <ul class="insight-details">
             ${lowScoreTasks
               .map(

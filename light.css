@@ -6244,6 +6244,24 @@ button[disabled],
   background-color: #fefef3 !important;
 }
 
+/* Make an image (FI-6). image-maker/image-maker.css is layout only and declares no
+   colour. Make is HELD busy with aria-disabled (BusyControl) and Cancel is aria-disabled
+   while idle, so both take the inactive look of the rule above; :disabled never matches. */
+#image-maker-make[aria-disabled="true"],
+#image-maker-cancel[aria-disabled="true"] {
+  pointer-events: none !important;
+  color: #00131d !important;
+  border: dotted 2px !important;
+  background-color: #fefef3 !important;
+  background-image: none;
+}
+
+#image-maker-app .image-maker-group,
+#image-maker-app .image-maker-card,
+#image-maker-app .image-maker-drop-zone {
+  border-color: #495961;
+}
+
 /* Infographic */
 #infoGraphicBox {
   border: 1px solid #00131d;

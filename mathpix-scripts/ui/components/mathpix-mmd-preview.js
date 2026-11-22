@@ -144,6 +144,27 @@ const SI_MATH_ENVIRONMENT_PATTERN =
 // The library keeps the TeX of each equation in a hidden <latex> element; that is the copy put back.
 const SI_HIDDEN_LATEX_PATTERN = /(<latex\b[^>]*>)([\s\S]*?)(<\/latex>)/g;
 
+// M-10ca: every \captionsetup{...} line is removed before rendering EXCEPT the two forms that mean
+// "print the caption, no 'Figure N:' label" (labelformat=empty, alone or with labelsep=none). The
+// lookahead skips those two; the library prints no label for them and shows no raw text (M-10by).
+const CAPTIONSETUP_STRIP_PATTERN =
+  /\\captionsetup\{(?!\s*labelformat\s*=\s*empty\s*(?:,\s*labelsep\s*=\s*none\s*)?\})[^}]*\}\n?/g;
+
+// M-10cc: a `%% AI: ...` note (own line or line end) reaches the rendered Preview as plain text.
+// render() marks each one in its own span and, when there is at least one, adds a "Show AI notes"
+// check box. The pattern is the enhancer's own (an escaped \%% is not a note) and runs to the end of
+// the line. Nothing here touches renderToString, an export or the stored text.
+const AI_NOTE_PATTERN = /(?<!\\)%%\s*AI:[ \t]*([^\n]*)/g;
+const AI_NOTE_PREFIX = "AI note: ";
+const AI_NOTE_CLASS = "mmd-ai-note";
+const AI_NOTE_BLOCK_CLASS = "mmd-ai-note-block";
+const AI_NOTES_HIDDEN_CLASS = "mmd-ai-notes-hidden";
+const AI_NOTES_CONTROL_CLASS = "mmd-ai-notes-control";
+const AI_NOTES_LABEL_TEXT = "Show AI notes";
+// A text node inside any of these is code or maths, never a note.
+const AI_NOTE_SKIP_SELECTOR =
+  "pre, code, script, style, mathml, asciimath, latex, mjx-container, .mmd-ai-note";
+
 /**
  * @class MathPixMMDPreview
  * @description CDN Loader and Preview Renderer for MathPix Markdown
@@ -1101,8 +1122,11 @@ class MathPixMMDPreview {
    * the `src` attribute instead of the actual CDN URL. Stripping the alt
    * option entirely lets the library parse the URL correctly.
    *
-   * Also strips `\captionsetup{...}` lines, which the CDN library cannot
-   * parse and would otherwise appear as visible text.
+   * Also strips `\captionsetup{...}` lines, except `labelformat=empty` (alone
+   * or with `labelsep=none`). M-10by measured that the library handles that
+   * one: it prints no "Figure N:" label, keeps the caption text and shows no
+   * raw setup text. Keeping it makes the preview agree with the SCORM export
+   * and removes the false figure numbers the library otherwise prints.
    *
    * Controlled by `FEATURES.PREVIEW_PREPROCESS_FIGURES` config flag.
    *
@@ -1131,8 +1155,8 @@ class MathPixMMDPreview {
     const figureCount = content.length - figureResult.length !== 0 ? 1 : 0;
     processed = figureResult;
 
-    // Remove \captionsetup{...} lines — LaTeX formatting the CDN library cannot handle
-    const captionResult = processed.replace(/\\captionsetup\{[^}]*\}\n?/g, "");
+    // Remove other \captionsetup{...} lines; labelformat=empty is kept (M-10ca)
+    const captionResult = processed.replace(CAPTIONSETUP_STRIP_PATTERN, "");
     const captionCount = processed.length - captionResult.length !== 0 ? 1 : 0;
     processed = captionResult;
 
@@ -1298,6 +1322,88 @@ class MathPixMMDPreview {
       restored,
     });
     return restored;
+  }
+
+  /**
+   * M-10cc: mark every `%% AI: ...` note in the rendered Preview and, when there is at least
+   * one, put a native "Show AI notes (N)" check box first in the target. Unticking hides the
+   * notes in the Preview only (display: none, so a screen reader skips them too); the stored text,
+   * the Code view and every export are untouched. A note inside code or maths is not wrapped or
+   * counted. Safe to call on a freshly rendered target: render() clears it first, so the box is
+   * rebuilt rather than duplicated.
+   *
+   * @param {HTMLElement} targetElement - The preview DOM element
+   * @returns {number} How many notes were marked
+   * @private
+   */
+  _applyAiNotes(targetElement) {
+    if (!targetElement) return 0;
+
+    targetElement.classList.remove(AI_NOTES_HIDDEN_CLASS);
+
+    const doc = targetElement.ownerDocument;
+    const candidates = [];
+    const walker = doc.createTreeWalker(targetElement, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.nodeValue.includes("%%")) continue;
+      if (node.parentElement && node.parentElement.closest(AI_NOTE_SKIP_SELECTOR)) continue;
+      candidates.push(node);
+    }
+
+    let count = 0;
+    for (const node of candidates) {
+      const text = node.nodeValue;
+      const fragment = doc.createDocumentFragment();
+      let cursor = 0;
+      let marked = 0;
+      AI_NOTE_PATTERN.lastIndex = 0;
+      for (let m = AI_NOTE_PATTERN.exec(text); m; m = AI_NOTE_PATTERN.exec(text)) {
+        if (m.index > cursor) fragment.appendChild(doc.createTextNode(text.slice(cursor, m.index)));
+        const span = doc.createElement("span");
+        span.className = AI_NOTE_CLASS;
+        span.textContent = AI_NOTE_PREFIX + m[1];
+        fragment.appendChild(span);
+        cursor = m.index + m[0].length;
+        marked++;
+      }
+      if (marked === 0) continue;
+      if (cursor < text.length) fragment.appendChild(doc.createTextNode(text.slice(cursor)));
+
+      const parent = node.parentElement;
+      node.replaceWith(fragment);
+      count += marked;
+
+      // A block holding only its note is hidden whole, so the working closes up.
+      if (
+        parent &&
+        parent !== targetElement &&
+        /^(DIV|P)$/.test(parent.tagName) &&
+        parent.querySelector(`.${AI_NOTE_CLASS}`) &&
+        parent.textContent.trim() === parent.querySelector(`.${AI_NOTE_CLASS}`).textContent.trim() &&
+        parent.querySelectorAll(`.${AI_NOTE_CLASS}`).length === 1
+      ) {
+        parent.classList.add(AI_NOTE_BLOCK_CLASS);
+      }
+    }
+
+    if (count === 0) return 0;
+
+    const control = doc.createElement("div");
+    control.className = AI_NOTES_CONTROL_CLASS;
+    const label = doc.createElement("label");
+    const checkbox = doc.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = true;
+    label.appendChild(checkbox);
+    label.appendChild(doc.createTextNode(` ${AI_NOTES_LABEL_TEXT} (${count})`));
+    control.appendChild(label);
+    checkbox.addEventListener("change", () => {
+      targetElement.classList.toggle(AI_NOTES_HIDDEN_CLASS, !checkbox.checked);
+    });
+    targetElement.insertBefore(control, targetElement.firstChild);
+
+    logDebug("[MathPixMMDPreview] AI notes marked", { count });
+    return count;
   }
 
   /**
@@ -2041,6 +2147,9 @@ class MathPixMMDPreview {
 
       // PN-2: bare text divs become paragraphs, before MathJax reconciliation
       MathPixMMDPreview.promoteParagraphs(targetElement);
+
+      // M-10cc: mark `%% AI:` notes and add the "Show AI notes" check box when there are any
+      this._applyAiNotes(targetElement);
 
       // Check if CDN already rendered math (look for mjx-container elements)
       const hasRenderedMath = targetElement.querySelector("mjx-container");

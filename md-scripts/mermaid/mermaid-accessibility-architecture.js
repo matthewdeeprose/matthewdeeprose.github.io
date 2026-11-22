@@ -147,10 +147,12 @@ const MermaidAccessibilityArchitecture = (function () {
 
       // Only include title if it's explicitly provided
       if (title) {
+        // AR4: Mermaid accepts a body title and does not draw it (measured
+        // 21 November 2026), so the clause says where the title lives.
         htmlDescription += ` titled "<span class="diagram-title">${Common.escapeHtml(
           title
-        )}</span>"`;
-        plainTextDescription += ` titled "${title}"`;
+        )}</span>" ${TITLE_NOT_DRAWN_NOTE}`;
+        plainTextDescription += ` titled "${title}" ${TITLE_NOT_DRAWN_NOTE}`;
       }
 
       // Add counts of key elements with proper singular/plural forms
@@ -451,6 +453,57 @@ const MermaidAccessibilityArchitecture = (function () {
       : element.title;
   }
 
+  // ITEM 189 BUILD 4 (AR1 to AR4). Each pattern below is anchored to the start
+  // of its line, because a statement keyword inside a label or a title is text.
+  /** AR2: a YAML frontmatter block at the very start of the source. */
+  const FRONTMATTER_PATTERN =
+    /^\s*---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/;
+  /** AR2: a comment line (the init directive is removed before this runs). */
+  const COMMENT_LINE_PATTERN = /^%%/;
+  /** AR2: the single-line accessibility fields. */
+  const ACC_LINE_PATTERN = /^acc(?:Title|Descr)\s*:/;
+  /** AR2: the opening line of an accDescr { ... } block. */
+  const ACC_DESCR_BLOCK_PATTERN = /^accDescr\s*\{/;
+  /**
+   * AR1/AR3: one edge. Groups: source id, source side, left arrow, label,
+   * right arrow, target side, target id. The spaces round the dashes are
+   * optional; a label is written -[label]-.
+   */
+  /**
+   * AR7: what an id may hold. Measured in the shipped bundle (21 November
+   * 2026): letters, digits, underscore and hyphen, the hyphen BETWEEN word
+   * characters (`a-1`, `a--1`, `2b`); a leading or trailing hyphen, a dot, a
+   * non-ASCII letter and a colon are refused by Mermaid itself.
+   */
+  const ID = String.raw`\w+(?:-+\w+)*`;
+  const EDGE_PATTERN = new RegExp(
+    String.raw`^(${ID})(?:\{group\})?:([TBLR])\s*(<?)(?:-+|-\[([^\]]*)\]-)(>?)\s*([TBLR]):(${ID})(?:\{group\})?`
+  );
+  const GROUP_PATTERN = new RegExp(
+    String.raw`^group\s+(${ID})(?:\(([^)]+)\))?(?:\[([^\]]+)\])?\s*(?:in\s+(${ID}))?`
+  );
+  const SERVICE_PATTERN = new RegExp(
+    String.raw`^service\s+(${ID})(?:\(([^)]+)\))?(?:\[([^\]]+)\])?\s*(?:in\s+(${ID}))?`
+  );
+  const JUNCTION_PATTERN = new RegExp(
+    String.raw`^junction\s+(${ID})(?:\s+in\s+(${ID}))?`
+  );
+  /** AR4: the standing disclosure of a body title Mermaid accepts and does not draw. */
+  const TITLE_NOT_DRAWN_NOTE = "(written in the code, not drawn in the picture)";
+
+  /**
+   * The text of an edge label as the picture prints it: the label, with one
+   * pair of surrounding double quotes removed (measured: -["quoted"]- draws
+   * quoted).
+   * @param {string|undefined} rawLabel - Text between [ and ] on the edge
+   * @returns {string|null} The label, or null when the edge has none
+   */
+  function readEdgeLabel(rawLabel) {
+    if (typeof rawLabel !== "string") return null;
+    const trimmed = rawLabel.trim().replace(/^"([\s\S]*)"$/, "$1");
+    return trimmed === "" ? null : trimmed;
+  }
+
   /**
    * Parse architecture diagram structure from mermaid code
    * @param {string} code - The mermaid code
@@ -474,21 +527,44 @@ const MermaidAccessibilityArchitecture = (function () {
     };
 
     try {
-      // Clean the code
-      const cleanCode = code.replace(/%%\{init:[\s\S]*?\}%%/g, "").trim();
+      // Clean the code. ITEM 189 BUILD 4, AR2: a YAML frontmatter block at the
+      // start of the source is dropped first, then the init directive.
+      const cleanCode = code
+        .replace(FRONTMATTER_PATTERN, "")
+        .replace(/%%\{init:[\s\S]*?\}%%/g, "")
+        .trim();
 
-      // Skip the 'architecture-beta' declaration if present
+      // Skip the 'architecture-beta' declaration if present. AR2: a line whose
+      // first characters are %% is a comment, and an accTitle: line, an
+      // accDescr: line and an accDescr { ... } block are accessibility fields,
+      // not statements, so none of them is read as one.
+      let inAccDescrBlock = false;
       const lines = cleanCode
         .split("\n")
         .map((line) => line.trim())
-        .filter((line) => line && !line.match(/^architecture-beta$/i));
+        .filter((line) => {
+          if (!line || line.match(/^architecture-beta$/i)) return false;
+          if (inAccDescrBlock) {
+            inAccDescrBlock = !line.includes("}");
+            return false;
+          }
+          if (COMMENT_LINE_PATTERN.test(line)) return false;
+          if (ACC_LINE_PATTERN.test(line)) return false;
+          if (ACC_DESCR_BLOCK_PATTERN.test(line)) {
+            inAccDescrBlock = !line.includes("}");
+            return false;
+          }
+          return true;
+        });
 
       logDebug(`Processing ${lines.length} lines of mermaid code`);
 
-      // First pass: Extract groups, services, and junctions
+      // First pass: Extract groups, services, and junctions. AR1: every
+      // statement pattern is anchored to the start of its (trimmed) line, so a
+      // word inside a label or title never starts a statement.
       for (const line of lines) {
         // Extract title if present
-        const titleMatch = line.match(/title\s+([^\n]+)/i);
+        const titleMatch = line.match(/^title\s+([^\n]+)/i);
         if (titleMatch) {
           result.title = titleMatch[1].trim();
           logDebug(`Found title: ${result.title}`);
@@ -496,9 +572,7 @@ const MermaidAccessibilityArchitecture = (function () {
         }
 
         // Extract groups
-        const groupMatch = line.match(
-          /group\s+(\w+)(?:\(([^)]+)\))?(?:\[([^\]]+)\])?\s*(?:in\s+(\w+))?/
-        );
+        const groupMatch = line.match(GROUP_PATTERN);
         if (groupMatch) {
           const [_, id, icon, title, parentId] = groupMatch;
           const group = {
@@ -517,9 +591,7 @@ const MermaidAccessibilityArchitecture = (function () {
         }
 
         // Extract services
-        const serviceMatch = line.match(
-          /service\s+(\w+)(?:\(([^)]+)\))?(?:\[([^\]]+)\])?\s*(?:in\s+(\w+))?/
-        );
+        const serviceMatch = line.match(SERVICE_PATTERN);
         if (serviceMatch) {
           const [_, id, icon, title, parentId] = serviceMatch;
           const service = {
@@ -537,7 +609,7 @@ const MermaidAccessibilityArchitecture = (function () {
         }
 
         // Extract junctions
-        const junctionMatch = line.match(/junction\s+(\w+)(?:\s+in\s+(\w+))?/);
+        const junctionMatch = line.match(JUNCTION_PATTERN);
         if (junctionMatch) {
           const [_, id, parentId] = junctionMatch;
           const junction = {
@@ -552,20 +624,30 @@ const MermaidAccessibilityArchitecture = (function () {
         }
 
         // Extract edges
-        const edgeMatch = line.match(
-          /(\w+)(?:\{group\})?:([TBLR])\s+(<?-+>?)\s+([TBLR]):(\w+)(?:\{group\})?/
-        );
+        // AR1/AR3: anchored, and read with or without spaces round its dashes,
+        // with an optional -[label]- body. Measured spellings are in
+        // .claude/mermaid-harness/scratch/item189-build-4-architecture/.
+        const edgeMatch = line.match(EDGE_PATTERN);
         if (edgeMatch) {
-          const [_, sourceId, sourceSide, connection, targetSide, targetId] =
-            edgeMatch;
+          const [
+            _,
+            sourceId,
+            sourceSide,
+            leftArrow,
+            edgeLabel,
+            rightArrow,
+            targetSide,
+            targetId,
+          ] = edgeMatch;
 
           const edge = {
             sourceId,
             sourceSide,
             targetId,
             targetSide,
-            hasLeftArrow: connection.startsWith("<"),
-            hasRightArrow: connection.endsWith(">"),
+            hasLeftArrow: leftArrow === "<",
+            hasRightArrow: rightArrow === ">",
+            label: readEdgeLabel(edgeLabel),
             sourceIsGroup: line.includes(`${sourceId}{group}`),
             targetIsGroup: line.includes(`${targetId}{group}`),
           };
@@ -678,7 +760,7 @@ const MermaidAccessibilityArchitecture = (function () {
       if (title) {
         overviewContent += ` titled "<span class="diagram-title">${Common.escapeHtml(
           title
-        )}</span>"`;
+        )}</span>" ${TITLE_NOT_DRAWN_NOTE}`;
       }
 
       overviewContent += ` contains <span class="diagram-count">${stats.elementCount}</span>`;
@@ -1144,6 +1226,10 @@ const MermaidAccessibilityArchitecture = (function () {
           content += ` (from ${getDirectionDescription(
             edge.sourceSide
           )} to ${getDirectionDescription(edge.targetSide)})`;
+          // AR3: a labelled edge adds its label at the end of the sentence.
+          if (edge.label) {
+            content += `, labelled "${Common.escapeHtml(edge.label)}"`;
+          }
           content += `</li>`;
         }
       });

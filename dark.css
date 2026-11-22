@@ -4181,6 +4181,11 @@ body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
   color: #00131d;
 }
 
+/* MRC-99b: the SVG tick uses currentColor, so give it the dark text colour on the olive row (8.08:1). */
+.task-list-item.task-completed .status-icon {
+  color: #00131d;
+}
+
 /* Incomplete tasks - colours */
 .task-list-item:not(.task-completed) {
   border-left-color: #fcbc00;
@@ -6839,6 +6844,22 @@ lite-youtube {
 
 lite-youtube > .lty-playbtn {
   border: none !important;
+}
+
+/* Make an image (FI-6). The dark counterpart of the same block in light.css: Make held
+   busy and idle Cancel take the inactive look of the rule above. */
+#image-maker-make[aria-disabled="true"],
+#image-maker-cancel[aria-disabled="true"] {
+  pointer-events: none !important;
+  color: #758d9a !important;
+  border: dotted 2px #e1e8ec !important;
+  background-image: none;
+}
+
+#image-maker-app .image-maker-group,
+#image-maker-app .image-maker-card,
+#image-maker-app .image-maker-drop-zone {
+  border-color: #758d9a;
 }
 
 /* Infographic */

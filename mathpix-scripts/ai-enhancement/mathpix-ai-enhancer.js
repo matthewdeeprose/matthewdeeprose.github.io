@@ -1445,6 +1445,197 @@
     };
   }
 
+  // ==========================================================================
+  // M-10cg: a long division's fraction stack becomes underlined rows
+  // ==========================================================================
+  // MathPix writes the ruled lines of a long division as a stack of fractions
+  // whose bar stands for the rule, so a screen reader says "fraction" for each
+  // row. After the correction, code (not the model) rewrites exactly those
+  // rows. The rule is M-10cf's: inside `aligned`, outside a code fence, a row
+  // holding `\div` with an `=` after it, then directly under it two or more
+  // rows that each START with \frac{N}{D} where N starts minus-bracket. Each
+  // such row becomes `\underline{N} \\` and then `D`; every other byte is
+  // copied through. A block with a fused row is refused whole.
+
+  const LONGDIV_STATEMENT = /(\\div\b|÷)[^=]*=/;
+  const LONGDIV_BEGIN = /\\begin\{aligned\}/g;
+  const LONGDIV_END = /\\end\{aligned\}/g;
+  const LONGDIV_FENCE = /^\s*(```|~~~)/;
+  const LONGDIV_MINUS_BRACKET = /^\s*-\s*(\\left\s*)?\(/;
+  const LONGDIV_CLOSES_BRACKET = /(\\right\s*[).]|\))\s*$/;
+  const LONGDIV_FRAC_START = /^(\s*&?\s*)\\frac\s*\{/;
+  const LONGDIV_LONE_REST = /^\s*(\\\\)?\s*(%%.*)?$/;
+  const LONGDIV_MIN_ROWS = 2;
+  const LONGDIV_REWRITTEN_NOTE =
+    "Long division: each fraction bar that stood for a ruled line is now an underline. Check the rows against the page.";
+  const LONGDIV_REFUSED_NOTE =
+    "Long division: the rows could not be rewritten safely and still read as fractions. Check them against the page.";
+
+  /** Index of the brace closing the one at `open`, or -1. */
+  function longDivCloseBrace(s, open) {
+    let depth = 0;
+    for (let i = open; i < s.length; i++) {
+      const c = s[i];
+      if (c === "\\") {
+        i++;
+        continue;
+      }
+      if (c === "{") depth++;
+      else if (c === "}") {
+        depth--;
+        if (depth === 0) return i;
+      }
+    }
+    return -1;
+  }
+
+  /** Split into { body, eol } keeping each line's own ending. */
+  function longDivSplitKeep(text) {
+    const out = [];
+    const re = /([^\r\n]*)(\r\n|\n|\r|$)/g;
+    let m;
+    while ((m = re.exec(text))) {
+      if (m[0] === "" && m.index >= text.length) break;
+      out.push({ body: m[1], eol: m[2] });
+      if (m[2] === "") break;
+    }
+    return out;
+  }
+
+  /** A line that STARTS with \frac{N}{D}: { prefix, num, den, rest, lone } or null. */
+  function longDivParseFracStart(body) {
+    const m = body.match(LONGDIV_FRAC_START);
+    if (!m) return null;
+    const numOpen = m[0].length - 1;
+    const numClose = longDivCloseBrace(body, numOpen);
+    if (numClose < 0) return null;
+    let j = numClose + 1;
+    while (/\s/.test(body[j] || "")) j++;
+    if (body[j] !== "{") return null;
+    const denClose = longDivCloseBrace(body, j);
+    if (denClose < 0) return null;
+    const rest = body.slice(denClose + 1);
+    return {
+      prefix: m[1],
+      num: body.slice(numOpen + 1, numClose),
+      den: body.slice(j + 1, denClose),
+      rest,
+      lone: LONGDIV_LONE_REST.test(rest),
+    };
+  }
+
+  /** The stacks in `lines`: [{ divLine, rows, fused }] (0-based line indexes). */
+  function longDivFindStacks(lines) {
+    const stacks = [];
+    const countOf = (s, re) => (s.match(re) || []).length;
+    const depthAfter = new Array(lines.length);
+    const inFence = new Array(lines.length);
+    let depth = 0;
+    let fenced = false;
+    for (let i = 0; i < lines.length; i++) {
+      const body = lines[i].body;
+      if (LONGDIV_FENCE.test(body)) {
+        inFence[i] = true;
+        fenced = !fenced;
+        depthAfter[i] = depth;
+        continue;
+      }
+      inFence[i] = fenced;
+      if (!fenced) {
+        depth += countOf(body, LONGDIV_BEGIN) - countOf(body, LONGDIV_END);
+      }
+      if (depth < 0) depth = 0;
+      depthAfter[i] = depth;
+    }
+    for (let i = 0; i < lines.length; i++) {
+      if (inFence[i] || depthAfter[i] <= 0) continue;
+      if (!LONGDIV_STATEMENT.test(lines[i].body.replace(/%%.*$/, ""))) continue;
+      // The statement row never starts with a fraction.
+      if (longDivParseFracStart(lines[i].body)) continue;
+      const rows = [];
+      let fused = false;
+      let k = i + 1;
+      while (k < lines.length && !inFence[k] && depthAfter[k] > 0) {
+        const r = longDivParseFracStart(lines[k].body);
+        if (!r || !LONGDIV_MINUS_BRACKET.test(r.num)) break;
+        const clean =
+          r.lone && LONGDIV_CLOSES_BRACKET.test(r.num) && !/\\frac/.test(r.den);
+        if (!clean) fused = true;
+        rows.push(k);
+        k++;
+      }
+      if (rows.length >= LONGDIV_MIN_ROWS) {
+        stacks.push({ divLine: i, rows, fused });
+      }
+    }
+    return stacks;
+  }
+
+  /**
+   * Rewrite each long division's fraction stack as underlined rows. Pure.
+   * A block holding a fused row is refused whole and left as written.
+   *
+   * @param {string} text
+   * @returns {{ text: string, rewritten: number[], refused: number[],
+   *   rewrittenAt: Array<{ inputLine: number, outputLine: number, row: string }>,
+   *   refusedAt: Array<{ inputLine: number, outputLine: number, row: string }> }}
+   *   `rewritten` and `refused` hold each division's first line (1-based, in
+   *   the input); `...At` also gives the line in the returned text.
+   */
+  function rewriteLongDivisionStacks(text) {
+    const unchanged = {
+      text,
+      rewritten: [],
+      refused: [],
+      rewrittenAt: [],
+      refusedAt: [],
+    };
+    if (typeof text !== "string" || !/\\frac/.test(text)) return unchanged;
+    if (!LONGDIV_STATEMENT.test(text)) return unchanged;
+
+    const lines = longDivSplitKeep(text);
+    const stacks = longDivFindStacks(lines);
+    if (stacks.length === 0) return unchanged;
+
+    const eolDefault = (text.match(/\r\n|\n|\r/) || ["\n"])[0];
+    const replace = new Map();
+    const divisionRows = new Map(); // division line index -> "rewritten" | "refused"
+    for (const stack of stacks) {
+      if (stack.fused) {
+        divisionRows.set(stack.divLine, "refused");
+        continue;
+      }
+      divisionRows.set(stack.divLine, "rewritten");
+      for (const idx of stack.rows) {
+        const r = longDivParseFracStart(lines[idx].body);
+        const eol = lines[idx].eol || eolDefault;
+        replace.set(idx, [
+          { body: r.prefix + "\\underline{" + r.num + "} \\\\", eol },
+          { body: r.prefix + r.den + r.rest, eol: lines[idx].eol },
+        ]);
+      }
+    }
+
+    const out = [];
+    const result = { ...unchanged, rewritten: [], refused: [], rewrittenAt: [], refusedAt: [] };
+    lines.forEach((l, i) => {
+      const kind = divisionRows.get(i);
+      if (kind) {
+        result[kind].push(i + 1);
+        result[kind + "At"].push({
+          inputLine: i + 1,
+          outputLine: out.length + 1,
+          row: l.body,
+        });
+      }
+      if (replace.has(i)) replace.get(i).forEach((x) => out.push(x));
+      else out.push(l);
+    });
+    result.text =
+      replace.size === 0 ? text : out.map((l) => l.body + l.eol).join("");
+    return result;
+  }
+
   class MathPixAIEnhancer {
     /**
      * Create a new MathPixAIEnhancer instance
@@ -5334,6 +5525,40 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
     }
 
     /**
+     * M-10cg: rewrite each long division's fraction stack in the corrected
+     * text and tell the checker through the uncertainty panel (one entry per
+     * division, in the shape extractUncertaintyMetadata() writes). A refused
+     * division leaves its text as written and adds the "could not be
+     * rewritten" entry. Silent: no announcement and no toast.
+     */
+    applyLongDivisionRewrite() {
+      if (!this.enhancedMMD) return;
+
+      const result = rewriteLongDivisionStacks(this.enhancedMMD);
+      if (result.rewrittenAt.length === 0 && result.refusedAt.length === 0) {
+        return;
+      }
+
+      this.enhancedMMD = result.text;
+      const entries = [
+        ...result.rewrittenAt.map((d) => ({
+          lineNumber: d.outputLine,
+          comment: LONGDIV_REWRITTEN_NOTE,
+          contextLine: d.row,
+        })),
+        ...result.refusedAt.map((d) => ({
+          lineNumber: d.outputLine,
+          comment: LONGDIV_REFUSED_NOTE,
+          contextLine: d.row,
+        })),
+      ].sort((a, b) => a.lineNumber - b.lineNumber);
+      this.uncertaintyMetadata = [...(this.uncertaintyMetadata || []), ...entries];
+      logInfo(
+        `Long division: ${result.rewritten.length} rewritten, ${result.refused.length} refused`,
+      );
+    }
+
+    /**
      * Build the uncertainty annotations panel HTML for the results view. (Phase 7.5L, L.7)
      *
      * Shows a collapsible panel with a count badge and each annotation
@@ -6962,6 +7187,11 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         // Phase 7.5L: Extract %% AI: uncertainty annotations into structured
         // metadata and remove them from the MMD output (before validation)
         this.extractUncertaintyMetadata();
+
+        // M-10cg: a long division's fraction stack becomes underlined rows,
+        // after the notes are lifted (so none are in the text) and before
+        // validation. Each division adds one entry to the notes panel.
+        this.applyLongDivisionRewrite();
 
         // Phase 7.5F: Run output validation checks
         this.validationWarnings = this.validateEnhancement(
@@ -9305,6 +9535,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
   // M-10bj-2: the added-mark warning's message, for the rows.
   MathPixAIEnhancer.ADDED_MARK_MESSAGE = ADDED_MARK_MESSAGE;
   MathPixAIEnhancer.restoreDescriptionBodies = restoreDescriptionBodies;
+  MathPixAIEnhancer.rewriteLongDivisionStacks = rewriteLongDivisionStacks;
   MathPixAIEnhancer.composeDescriptionsLostLine = composeDescriptionsLostLine;
 
   /** The stop reasons that mean truncation, so a guard row can pin them. */

@@ -157,6 +157,8 @@ const MermaidViewControls = (function () {
   // and zoom reach the whole diagram — so it is never a stop there.
   const SCROLL_BOX_LABEL = "Diagram, scrolls sideways";
   const SCROLL_BOX_ROLE = "group";
+  // CE2: equals TOLERANCE_PX in EXPORT_SCROLL_SCRIPT (mermaid-export-utils.js);
+  // change them together.
   const SCROLL_OVERFLOW_TOLERANCE_PX = 1;
 
   // Parcel 9e, Matthew's two rulings of 28 September 2026 (item 94). (A) On

@@ -1198,6 +1198,42 @@
     };
   }
 
+  // ── normaliseImagesReply ────────────────────────────────────────────────
+  /**
+   * An images-API reply (`{ data: [ { b64_json } ] }`, as the Foundry FLUX
+   * route returns) as the SAME structured result normaliseMessage returns, so
+   * one renderer serves both. Every entry is kept, in order. An entry with no
+   * string `b64_json` is skipped and COUNTED in `skipped`, never dropped
+   * silently.
+   *
+   * @param {Object} json - the parsed reply
+   * @param {{mimeType?: string}} [options] - defaults to image/png
+   * @returns {{text: string, images: Object[], audio: Object|null,
+   *            reasoning: string, refusal: string|null, toolCalls: Object|null,
+   *            skipped: number}}
+   */
+  function normaliseImagesReply(json, options) {
+    const out = Object.assign(emptyResult(), { skipped: 0 });
+    if (!json || typeof json !== "object" || !Array.isArray(json.data)) return out;
+
+    const mimeType =
+      options && typeof options.mimeType === "string" && options.mimeType
+        ? options.mimeType
+        : "image/png";
+
+    json.data.forEach(function (entry) {
+      if (!entry || typeof entry.b64_json !== "string" || entry.b64_json === "") {
+        out.skipped += 1;
+        return;
+      }
+      out.images.push({
+        type: "image_url",
+        image_url: { url: "data:" + mimeType + ";base64," + entry.b64_json },
+      });
+    });
+    return out;
+  }
+
   // ── reduceStreamDelta ───────────────────────────────────────────────────
   /**
    * Fold one streaming delta into an accumulator. PURE: returns a NEW
@@ -1432,6 +1468,7 @@
     TAIL_WINDOW_SECONDS,
     DEFAULT_TAIL_QUIET_RATIO,
     normaliseMessage,
+    normaliseImagesReply,
     reduceStreamDelta,
     emptyResult,
     extractDeltaChoice,

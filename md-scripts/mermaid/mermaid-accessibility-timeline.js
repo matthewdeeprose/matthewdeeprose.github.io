@@ -60,7 +60,7 @@
 
     // Extract title and calculate time range
     const title = timelineData.title || "Timeline";
-    const timeRange = calculateTimeRange(timelineData);
+    const timeRange = calculateSpanRange(timelineData);
     const eventCount = countEvents(timelineData);
     const sectionCount = timelineData.sections
       ? timelineData.sections.length
@@ -221,6 +221,95 @@
     return event === EMPTY_EVENT ? EMPTY_EVENT_PHRASE : Common.escapeHtml(event);
   }
 
+  // ITEM 189, BUILD 1 (21 November 2026), TL1: "lines Mermaid reads and does
+  // not draw are not periods or events." Mermaid's own timeline grammar
+  // (11.17.2, read from the shipped chunk) takes a YAML frontmatter block, a
+  // comment (a line starting `%` and not `%{`, so every `%%` line), an
+  // `accTitle:` or `accDescr:` line and an `accDescr { ... }` block as
+  // not-diagram text: none of them reaches the picture. This reader used to
+  // match any of them as a period named by the text before its first colon
+  // (`%% Note: remember` read as a period "%% Note"). They are dropped, not
+  // blanked, and nothing else changes. Called once, from parseTimeline.
+  const FRONTMATTER_FENCE = "---";
+  // ITEM 189, BUILD 1b, TL1b: "the pre-pass drops exactly the comment forms
+  // Mermaid drops, no more." Read from the lexer and probed on Mermaid's own
+  // db (11.17.2): a line starting `%` and not `%{`, a line starting `#`, and a
+  // line whose first character (not `}`) is followed by `%%` are whole-line
+  // comments. A `%%`, `%` or `#` after other text is NOT a comment in an event,
+  // a title or a section name (the text stays, comment and all), and `%{` is
+  // not a comment. So only the start of the line is tested.
+  const COMMENT_OPEN = "%";
+  const COMMENT_NOT_BEFORE = "{";
+  const COMMENT_HASH = "#";
+  const COMMENT_GLUED = /^[^}]%%/;
+  const ACC_LINE = /^acc(?:Title|Descr)\s*:/i;
+  const ACC_DESCR_BLOCK_OPEN = /^accDescr\s*\{/i;
+
+  /**
+   * Whether a trimmed line is a whole-line comment to Mermaid's timeline lexer.
+   * @param {string} trimmed - One source line, trimmed
+   * @returns {boolean} True for the three whole-line comment forms only
+   */
+  function isCommentLine(trimmed) {
+    if (trimmed.startsWith(COMMENT_HASH)) return true;
+    if (trimmed.startsWith(COMMENT_OPEN)) {
+      return !trimmed.startsWith(COMMENT_OPEN + COMMENT_NOT_BEFORE);
+    }
+    return COMMENT_GLUED.test(trimmed);
+  }
+
+  /**
+   * Drop the lines the timeline grammar reads and the picture does not draw.
+   * @param {string} code - The mermaid source with the init directive removed
+   * @returns {string} The source without those lines, line breaks as they were
+   */
+  function dropUndrawnLines(code) {
+    const lines = code.split("\n");
+    let first = 0;
+
+    // A frontmatter block counts only at the start of the source, and only
+    // when its closing fence exists; an unclosed one is left as typed.
+    while (first < lines.length && lines[first].trim() === "") first++;
+    if (first < lines.length && lines[first].trim() === FRONTMATTER_FENCE) {
+      for (let close = first + 1; close < lines.length; close++) {
+        if (lines[close].trim() === FRONTMATTER_FENCE) {
+          lines.splice(0, close + 1);
+          break;
+        }
+      }
+    }
+
+    const kept = [];
+    let inDescrBlock = false;
+
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+
+      if (inDescrBlock) {
+        inDescrBlock = !trimmed.includes("}");
+        return;
+      }
+      if (isCommentLine(trimmed) || ACC_LINE.test(trimmed)) return;
+      if (ACC_DESCR_BLOCK_OPEN.test(trimmed)) {
+        inDescrBlock = !trimmed.includes("}");
+        return;
+      }
+      kept.push(line);
+    });
+
+    return kept.join("\n");
+  }
+
+  // ITEM 189, BUILD 1, TL2: "a period line splits into events the way
+  // Mermaid splits it." In the shipped grammar an event begins at a colon
+  // FOLLOWED BY WHITESPACE and runs to the next such colon or the end of the
+  // line; a colon with no whitespace after it stays in the text. So
+  // `2020 : One : Two : Three` is one period with three events. The text
+  // handed in is everything after the line's FIRST colon, which is always the
+  // first event's colon (the period is what precedes it); a colon at the very
+  // end of that text begins an empty event, as it always has here.
+  const EVENT_SEPARATOR = /:(?=\s|$)/;
+
   /**
    * Parse timeline structure from mermaid code
    * @param {string} code - The mermaid code
@@ -243,7 +332,7 @@
     const cleanCode = code.replace(/%%\{init:[\s\S]*?\}%%/g, "").trim();
 
     // Split into lines and process each line
-    const lines = cleanCode
+    const lines = dropUndrawnLines(cleanCode)
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line);
@@ -282,13 +371,15 @@
       const eventMatch = line.match(/^([^:]+)?:(.*)$/);
       if (eventMatch) {
         const timePeriod = eventMatch[1] ? eventMatch[1].trim() : null;
-        const eventText = readEventText(eventMatch[2].trim());
+        const eventTexts = eventMatch[2]
+          .split(EVENT_SEPARATOR)
+          .map((text) => readEventText(text.trim()));
 
         if (timePeriod) {
           // This is a new time period
           const eventObj = {
             time: timePeriod,
-            events: [eventText],
+            events: eventTexts,
           };
 
           if (currentSection) {
@@ -299,11 +390,11 @@
         } else if (currentSection && currentSection.events.length > 0) {
           // This is a continuation of the previous time period in a section
           currentSection.events[currentSection.events.length - 1].events.push(
-            eventText
+            ...eventTexts
           );
         } else if (result.events.length > 0) {
           // This is a continuation of the previous time period without sections
-          result.events[result.events.length - 1].events.push(eventText);
+          result.events[result.events.length - 1].events.push(...eventTexts);
         }
 
         isTimelineHeader = false; // We've reached the event content
@@ -441,6 +532,75 @@
     return DATE_LIKE_PERIOD_PATTERNS.some((pattern) => pattern.test(trimmed));
   }
 
+  // ITEM 189, BUILD 1, TL4: a run of dates reads as chronological only when
+  // the labels never go backwards. The sort key is [year, month, day] with 0
+  // for a part the label does not give; a year-less month name has year null.
+  const MONTH_NUMBERS = Object.freeze({
+    jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+    jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+  });
+  const MONTH_ABBREVIATION_LENGTH = 3;
+
+  /**
+   * The sort key for a label that reads as a date
+   * @param {string} label - The author's period label
+   * @returns {Array|null} [year, month, day], or null when not date-like
+   */
+  function dateSortKey(label) {
+    if (!isDateLikePeriod(label)) return null;
+
+    const trimmed = label.trim();
+    const iso = trimmed.match(/^([12]\d{3})-(\d{2})(?:-(\d{2}))?$/);
+    if (iso) return [Number(iso[1]), Number(iso[2]), Number(iso[3] || 0)];
+
+    const year = trimmed.match(/^([12]\d{3})/);
+    if (year) return [Number(year[1]), 0, 0];
+
+    const month = trimmed.match(/^([a-z]+)(?:\s+([12]\d{3}))?$/i);
+    const monthNumber =
+      MONTH_NUMBERS[month[1].slice(0, MONTH_ABBREVIATION_LENGTH).toLowerCase()];
+    return [month[2] ? Number(month[2]) : null, monthNumber, 0];
+  }
+
+  /**
+   * Compare two sort keys, stopping at the first part either label leaves out
+   * @param {Array} a - Earlier label's key
+   * @param {Array} b - Later label's key
+   * @returns {number|null} Negative, zero or positive; null when one label
+   *   names a year and the other does not, so the two cannot be ordered
+   */
+  function compareDateKeys(a, b) {
+    if ((a[0] === null) !== (b[0] === null)) return null;
+
+    for (let part = 0; part < a.length; part++) {
+      const left = a[part] || 0;
+      const right = b[part] || 0;
+      if (left === 0 || right === 0) return 0;
+      if (left !== right) return left - right;
+    }
+    return 0;
+  }
+
+  /**
+   * Whether the periods are a run of two or more dates that never go
+   * backwards. A pair that cannot be ordered does not count as a run: a wrong
+   * chronology claim tells the reader something false.
+   * @param {Array} periods - The time-period objects in document order
+   * @returns {boolean} True only for a demonstrable forward run
+   */
+  function readsAsChronology(periods) {
+    if (periods.length < 2) return false;
+
+    const keys = periods.map((period) => dateSortKey(period.time));
+    if (keys.some((key) => key === null)) return false;
+
+    return keys.every((key, index) => {
+      if (index === 0) return true;
+      const order = compareDateKeys(keys[index - 1], key);
+      return order !== null && order <= 0;
+    });
+  }
+
   /**
    * Collect every time period in document order, across sections or without them
    * @param {Object} timelineData - Parsed timeline data
@@ -478,6 +638,28 @@
       start: firstEvent.time,
       end: lastEvent.time,
     };
+  }
+
+  /**
+   * The range the "spanning from FIRST to LAST" clause may name. ONE period,
+   * date or not, has no span to claim (ITEM 189, BUILD 1b, TL6b: it used to
+   * read "from Phase one to Phase one"). Labels that are all dates but do not
+   * read as a forward run (they go backwards) have none either; labels that
+   * are not all dates keep today's wording, which names the first and last as
+   * listed.
+   * @param {Object} timelineData - Parsed timeline data
+   * @returns {Object|null} Start and end labels, or null for no span clause
+   */
+  function calculateSpanRange(timelineData) {
+    const periods = collectTimePeriods(timelineData);
+    if (periods.length === 1) return null;
+
+    const allDates =
+      periods.length > 0 &&
+      periods.every((period) => isDateLikePeriod(period.time));
+
+    if (allDates && !readsAsChronology(periods)) return null;
+    return calculateTimeRange(timelineData);
   }
 
   /**
@@ -522,7 +704,7 @@
 
     // Add title and overview section
     const title = timelineData.title || "Timeline";
-    const timeRange = calculateTimeRange(timelineData);
+    const timeRange = calculateSpanRange(timelineData);
     const eventCount = countEvents(timelineData);
     const sectionCount = timelineData.sections
       ? timelineData.sections.length
@@ -640,15 +822,18 @@
 
     // Add the closing insight. Whether it may claim CHRONOLOGY depends on the
     // period labels: Mermaid accepts any string there, so a timeline of
-    // "Phase one" and "Phase two" has an order but no time order. An empty
-    // set satisfies `every` vacuously and keeps the original wording, which
-    // preserves the no-periods fallbacks below exactly as they were.
+    // "Phase one" and "Phase two" has an order but no time order. ITEM 189,
+    // BUILD 1: it claims chronology only for a run of two or more dates that
+    // never go backwards (TL4); a timeline with no periods has no insight at
+    // all (TL5, the empty set used to satisfy the old `every` vacuously); and
+    // ONE period, date or not, gets the single-period wording (TL6).
     const periods = collectTimePeriods(timelineData);
-    const everyPeriodIsDateLike = periods.every((period) =>
-      isDateLikePeriod(period.time)
-    );
 
-    if (everyPeriodIsDateLike) {
+    if (periods.length === 0) {
+      return description;
+    }
+
+    if (readsAsChronology(periods)) {
       description += `<section class="timeline-section timeline-insights">
         <h4 class="timeline-section-heading">Chronological Progression</h4>
         <p>The timeline progresses chronologically from ${Common.escapeHtml(
@@ -668,13 +853,16 @@
     } else {
       // Order without chronology. The labels are the author's, escaped once
       // here and unquoted, exactly as the chronological branch treats them.
+      // The first and last AS LISTED are named here even for dates that go
+      // backwards, where the span clause above is deliberately left out.
+      const listedRange = calculateTimeRange(timelineData);
       description += `<section class="timeline-section timeline-insights">
         <h4 class="timeline-section-heading">Period Sequence</h4>
         <p>The timeline presents ${
           periods.length
         } periods in the order listed, from ${Common.escapeHtml(
-        timeRange?.start || "the beginning"
-      )} to ${Common.escapeHtml(timeRange?.end || "the end")}.</p>
+        listedRange?.start || "the beginning"
+      )} to ${Common.escapeHtml(listedRange?.end || "the end")}.</p>
       </section>`;
     }
 

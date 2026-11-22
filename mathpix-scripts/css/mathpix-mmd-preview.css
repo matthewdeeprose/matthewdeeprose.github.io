@@ -1720,3 +1720,38 @@ button:has(.icon:only-child) .icon,
   outline: 0rem solid transparent !important;
   border: 0.2rem solid transparent !important;
 }
+
+/* ==========================================================================
+   M-10cc: "Show AI notes" check box and the marked notes.
+   The note takes the surrounding text colour, so its contrast is the Preview's own in light, dark
+   and forced colours; the cue is the border on the leading edge plus the words "AI note:".
+   ========================================================================== */
+
+.mmd-ai-notes-control {
+  margin: 0 0 1rem;
+}
+
+.mmd-ai-notes-control label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: 100%;
+  cursor: pointer;
+}
+
+.mmd-ai-note {
+  padding-inline-start: 0.6rem;
+  border-inline-start: 0.3rem solid currentColor;
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.mmd-ai-note-block > .mmd-ai-note {
+  display: block;
+}
+
+.mmd-ai-notes-hidden .mmd-ai-note-block,
+.mmd-ai-notes-hidden .mmd-ai-note {
+  display: none;
+}

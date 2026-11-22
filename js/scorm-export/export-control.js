@@ -27,8 +27,10 @@
  *   - Semantic first: a real `<button>`, a `<fieldset>`/`<legend>` radiogroup, a
  *     `<details>`/`<summary>` disclosure. ARIA only fills the gaps (`role="status"`).
  *   - Progress and outcome are announced via a polite `role="status"` live region.
- *   - The button is disabled for the duration of an export to prevent re-entry;
- *     its label restores afterwards.
+ *   - The button is marked `aria-disabled="true"` for the duration of an export and
+ *     a busy flag blocks re-entry. It is never given the `disabled` property:
+ *     disabling the focused control drops keyboard focus to `<body>` (MRC-104).
+ *     Its label restores afterwards.
  *   - `idPrefix` keeps ids/`name`s unique so the control can mount more than once
  *     on a page without duplicate-id or radio-cross-talk bugs.
  */
@@ -65,6 +67,20 @@ const TARGET_ACTION_LABEL = Object.freeze({
 // autoload asset takes the WHOLE page's maths down, not just the chemistry.
 const TARGET_ORDER = ["scorm", "html"];
 
+// The busy marker the button carries while an export runs (see onClick).
+const BUSY_ATTRIBUTE = "aria-disabled";
+const BUSY_VALUE = "true";
+
+// The app theme the control is drawn in (MRC-105b). The attribute is set on the root
+// and the CSS below keys its colours off the two values.
+const APP_THEME_ATTRIBUTE = "data-scex-app";
+const APP_THEME = Object.freeze({ LIGHT: "light", DARK: "dark" });
+const DARK_QUERY = "(prefers-color-scheme: dark)";
+// The app's two theme sheet links. The toggle points BOTH at one file; with no saved
+// choice they differ and the OS decides.
+const THEME_LINK_IDS = Object.freeze(["lightCSS", "darkCSS"]);
+const DARK_SHEET_PATTERN = /dark\.css/;
+
 // --- self-injected, namespaced styling -------------------------------------
 // The control carries its own styling so it is robust in any host: every rule is
 // scoped under `.scorm-export-control` (it cannot leak out, and host rules cannot
@@ -80,6 +96,10 @@ const CONTROL_CSS = `
   --scex-bg: #ffffff;
   --scex-border: #595f6a;
   --scex-accent: #0b57d0;
+  --scex-btn-bg: transparent;
+  --scex-gap: 0.4rem;
+  --scex-icon-size: 1.3rem;
+  --scex-chevron-size: 1.75rem;
   color-scheme: light dark;
   box-sizing: border-box;
   display: flex;
@@ -112,7 +132,7 @@ const CONTROL_CSS = `
   padding: 0.4rem 1rem;
   border: 2px solid var(--scex-fg);
   border-radius: 6px;
-  background: transparent;
+  background: var(--scex-btn-bg);
   color: var(--scex-fg);
   font: inherit;
   font-weight: 600;
@@ -121,7 +141,16 @@ const CONTROL_CSS = `
 .scorm-export-control .scorm-export-button:hover {
   background: color-mix(in srgb, var(--scex-accent) 14%, transparent);
 }
-.scorm-export-control .scorm-export-button:disabled { opacity: 0.6; cursor: default; }
+.scorm-export-control .scorm-export-button:disabled,
+.scorm-export-control .scorm-export-button[${BUSY_ATTRIBUTE}="${BUSY_VALUE}"] { opacity: 0.6; cursor: default; }
+/* A busy button can hold keyboard focus, and opacity would fade its focus ring with
+   it (2.98:1 in the light theme, MRC-104). So while focused it dims its text and
+   border by colour instead, and the ring keeps its full strength. */
+.scorm-export-control .scorm-export-button[${BUSY_ATTRIBUTE}="${BUSY_VALUE}"]:focus-visible {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--scex-fg) 60%, transparent);
+  color: color-mix(in srgb, var(--scex-fg) 60%, transparent);
+}
 .scorm-export-control .scorm-export-button:focus-visible {
   outline: 3px solid var(--scex-accent);
   outline-offset: 2px;
@@ -177,6 +206,66 @@ const CONTROL_CSS = `
   min-height: 1.4em;
   color: var(--scex-fg);
 }
+
+/* MRC-105b: the control follows the APP's theme, not only the OS's. The attribute is
+   set from the app's theme sheet links (see appTheme); the colours are the app's own. */
+.scorm-export-control[${APP_THEME_ATTRIBUTE}] {
+  gap: var(--scex-gap);
+  padding: 0.75rem 1rem;
+  border-radius: 0.4rem;
+  background: transparent;
+}
+.scorm-export-control[${APP_THEME_ATTRIBUTE}="${APP_THEME.LIGHT}"] {
+  color-scheme: light;
+  --scex-fg: #00131d;
+  --scex-border: #5a6b75;
+  --scex-accent: #005c84;
+  --scex-btn-bg: #eceef0;
+}
+.scorm-export-control[${APP_THEME_ATTRIBUTE}="${APP_THEME.DARK}"] {
+  color-scheme: dark;
+  --scex-fg: #e1e8ec;
+  --scex-border: #8d9aa3;
+  --scex-accent: #c1d100;
+  --scex-btn-bg: #231f20;
+}
+.scorm-export-control[${APP_THEME_ATTRIBUTE}] .scorm-export-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.scorm-export-control[${APP_THEME_ATTRIBUTE}] .scorm-export-button:hover {
+  background: color-mix(in srgb, var(--scex-accent) 18%, var(--scex-btn-bg));
+}
+/* The app's global rules put margin above and below the button and the details block;
+   the control's own gap already spaces them. */
+.scorm-export-control[${APP_THEME_ATTRIBUTE}] .scorm-export-button,
+.scorm-export-control[${APP_THEME_ATTRIBUTE}] .scorm-export-options { margin: 0; }
+.scorm-export-control[${APP_THEME_ATTRIBUTE}] .scorm-export-options > summary { gap: var(--scex-gap); }
+.scorm-export-control[${APP_THEME_ATTRIBUTE}] .scex-chevron {
+  display: inline-flex;
+  flex: none;
+  width: var(--scex-chevron-size);
+  height: var(--scex-chevron-size);
+  transition: transform 0.15s;
+}
+.scorm-export-control[${APP_THEME_ATTRIBUTE}] .scex-chevron svg { width: 100%; height: 100%; }
+/* The library's chevron is a thin stroke inside a large canvas; thicken it so the cue reads. */
+.scorm-export-control[${APP_THEME_ATTRIBUTE}] .scex-chevron svg path { stroke-width: 1.6; }
+.scorm-export-control[${APP_THEME_ATTRIBUTE}] details[open] > summary .scex-chevron { transform: rotate(90deg); }
+/* An empty status line takes no height and no gap above it; it stays in the page, so the live region is unchanged. */
+.scorm-export-control[${APP_THEME_ATTRIBUTE}] .scorm-export-status:empty { min-height: 0; margin: calc(var(--scex-gap) * -1) 0 0; }
+.scorm-export-control[${APP_THEME_ATTRIBUTE}] .scex-title { margin: 0; font-weight: 700; font-size: 1.1em; }
+.scorm-export-control[${APP_THEME_ATTRIBUTE}] .scex-btn-icon {
+  display: inline-flex;
+  flex: none;
+  width: var(--scex-icon-size);
+  height: var(--scex-icon-size);
+}
+.scorm-export-control[${APP_THEME_ATTRIBUTE}] .scex-btn-icon svg { width: 100%; height: 100%; }
+/* A host page without the icon library leaves both icon spans empty; they then take no room. */
+.scorm-export-control[${APP_THEME_ATTRIBUTE}] .scex-btn-icon:empty,
+.scorm-export-control[${APP_THEME_ATTRIBUTE}] .scex-chevron:empty { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .scorm-export-control * { transition: none !important; }
 }
@@ -189,6 +278,28 @@ function ensureStyles(doc) {
   style.id = STYLE_ID;
   style.textContent = CONTROL_CSS;
   doc.head.appendChild(style);
+}
+
+// Which app theme to draw in. The toggle points BOTH sheet links at one file; with no
+// saved choice they differ and the OS decides. With no links at all (a host that is not
+// the app) the OS decides too, as the control did before MRC-105b.
+function appTheme(doc) {
+  const isDark = (link) => !!link && DARK_SHEET_PATTERN.test(link.getAttribute("href") || "");
+  const [light, dark] = THEME_LINK_IDS.map((id) => doc.getElementById(id));
+  if (light && dark) {
+    if (isDark(light) && isDark(dark)) return APP_THEME.DARK;
+    if (!isDark(light) && !isDark(dark)) return APP_THEME.LIGHT;
+  }
+  return doc.defaultView.matchMedia(DARK_QUERY).matches ? APP_THEME.DARK : APP_THEME.LIGHT;
+}
+
+// Icon-library span (aria-hidden); populated by the library once the control is in the page.
+function iconSpan(doc, name, className) {
+  const span = doc.createElement("span");
+  span.className = className;
+  span.setAttribute("aria-hidden", "true");
+  span.setAttribute("data-icon", name);
+  return span;
 }
 
 let instanceSeq = 0;
@@ -260,10 +371,21 @@ export function mountExportControl(opts = {}) {
   button.className = `scorm-export-button${opts.buttonClass ? " " + opts.buttonClass : ""}`;
   button.setAttribute("aria-describedby", statusId);
 
+  // The icon is decorative (aria-hidden); the label span carries the accessible name and
+  // is the only thing the label code below rewrites.
+  const buttonLabel = doc.createElement("span");
+  button.append(iconSpan(doc, "download", "scex-btn-icon"), buttonLabel);
+
+  // A <p>, not a heading: the mounts sit at different heading levels.
+  const title = doc.createElement("p");
+  title.className = "scex-title";
+  title.textContent = "Export this document";
+
   const details = doc.createElement("details");
   details.className = "scorm-export-options";
   const summary = doc.createElement("summary");
   summary.textContent = "Export options";
+  summary.prepend(iconSpan(doc, "chevronRight", "scex-chevron"));
   details.appendChild(summary);
 
   const fieldset = doc.createElement("fieldset");
@@ -302,8 +424,21 @@ export function mountExportControl(opts = {}) {
   status.setAttribute("role", "status");
   status.setAttribute("aria-live", "polite");
 
-  root.append(button, details, status);
+  root.append(title, button, details, status);
   container.appendChild(root);
+  if (window.IconLibrary && window.IconLibrary.populateIcons) window.IconLibrary.populateIcons(root);
+
+  // Follow the app's theme: set it now, and again whenever the app's toggle repoints the
+  // sheet links or (with no saved choice) the OS scheme changes.
+  const syncTheme = () => root.setAttribute(APP_THEME_ATTRIBUTE, appTheme(doc));
+  syncTheme();
+  const themeWatch = new MutationObserver(syncTheme);
+  for (const id of THEME_LINK_IDS) {
+    const link = doc.getElementById(id);
+    if (link) themeWatch.observe(link, { attributes: true, attributeFilter: ["href"] });
+  }
+  const darkQuery = doc.defaultView.matchMedia(DARK_QUERY);
+  darkQuery.addEventListener("change", syncTheme);
 
   // --- behaviour -------------------------------------------------------------
   const selectedTarget = () => {
@@ -313,7 +448,7 @@ export function mountExportControl(opts = {}) {
 
   const syncButtonLabel = () => {
     const t = selectedTarget();
-    button.textContent = TARGET_ACTION_LABEL[t] || "Export";
+    buttonLabel.textContent = TARGET_ACTION_LABEL[t] || "Export";
   };
   syncButtonLabel();
 
@@ -324,15 +459,26 @@ export function mountExportControl(opts = {}) {
     status.textContent = msg;
   };
 
+  // True while an export runs. The button stays focusable for the whole export, so
+  // this flag, not the `disabled` property, is what blocks a second press.
+  let busy = false;
+
   const onClick = async () => {
+    // Re-entry guard: a press while an export is running starts nothing.
+    if (busy) return;
+
     const target = selectedTarget();
-    // Disable BEFORE awaiting getContent: the getter may run for several seconds, and
-    // re-entry during it would start a second export. `finally` re-enables on every
-    // path, including a getter that throws — which is why the await lives inside the
-    // try. Outside it, an async getter's rejection would be unhandled, the status
-    // region would keep its last message, and the button would stay disabled forever.
-    const restore = button.textContent;
-    button.disabled = true;
+    // Mark busy BEFORE awaiting getContent: the getter may run for several seconds, and
+    // re-entry during it would start a second export. `finally` clears the markers on
+    // every path, including a getter that throws — which is why the await lives inside
+    // the try. Outside it, an async getter's rejection would be unhandled, the status
+    // region would keep its last message, and the button would stay busy forever.
+    //
+    // The marker is aria-disabled, never `button.disabled = true`: disabling the
+    // focused button drops keyboard focus to <body> and nothing brings it back.
+    const restore = buttonLabel.textContent;
+    busy = true;
+    button.setAttribute(BUSY_ATTRIBUTE, BUSY_VALUE);
     setStatus(`Preparing ${EXPORT_TARGETS[target]}…`);
     try {
       // `target` lets a getter prepare the HTML export differently from SCORM
@@ -362,13 +508,16 @@ export function mountExportControl(opts = {}) {
       setStatus(`Export failed: ${message}`);
       logError("export failed", err);
     } finally {
-      button.disabled = false;
-      button.textContent = restore;
+      busy = false;
+      button.removeAttribute(BUSY_ATTRIBUTE);
+      buttonLabel.textContent = restore;
     }
   };
   button.addEventListener("click", onClick);
 
   const destroy = () => {
+    themeWatch.disconnect();
+    darkQuery.removeEventListener("change", syncTheme);
     button.removeEventListener("click", onClick);
     fieldset.removeEventListener("change", onFormatChange);
     root.remove();

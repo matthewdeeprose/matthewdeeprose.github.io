@@ -309,13 +309,3 @@ span.currency {
     padding: 0;
   }
 }
-
-/* Hide the SCORM / standalone HTML export control in Markdown Editor mode
-   until every Markdown feature we support survives the export (owner's
-   ruling, 12 November 2026; tracked in docs/mrc-roadmap.md). display: none
-   also takes it out of the tab order and the accessibility tree. Scoped to
-   this mode's output section, so the TikZ Studio and results-panel mounts
-   are untouched. Delete this rule to bring the control back. */
-.output-section > .scorm-export-control {
-  display: none;
-}

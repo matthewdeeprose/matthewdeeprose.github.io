@@ -101,7 +101,12 @@ const STATIC_EXPORT = Object.freeze({
   // Chart containers: the chart step (chart-export-utils.js) has already run on
   // this copy, so a container with a picture is one it exported.
   chartContainerSelector: ".chart-container",
-  chartControlsSelector: ".chart-view-controls",
+  // MRC-91: the toolbar is `.chart-controls` in a rendered figure (MRC-83 named only
+  // `.chart-view-controls`); the description panel's six copy/download buttons sit
+  // in `.chart-export-controls`, inside the panel `chart-description-<container id>`.
+  chartControlsSelector: ".chart-view-controls, .chart-controls",
+  chartDescriptionControlsSelector: ".chart-export-controls",
+  chartDescriptionIdPrefix: "chart-description-",
   chartCanvasSelector: "canvas",
   chartPictureSelector: "img.chart-export-image",
   diagramContainerSelector: ".mermaid-container",
@@ -109,6 +114,10 @@ const STATIC_EXPORT = Object.freeze({
   mathContainerSelector: "mjx-container",
   mathIndexAttribute: "data-math-index",
   htmlTarget: "html",
+  // MRC-101: the editor's own contents list (the `[toc]` marker) and the headings
+  // the builder's contents list (`nav#toc`, levels 1 to 3) is built from.
+  editorContentsSelector: "nav.toc",
+  outlineHeadingSelector: ":is(h1, h2, h3)[id]",
 });
 
 /** The delimiters MATHS_PROBE (scorm-builder) and MathJax both accept. */
@@ -243,6 +252,12 @@ html pre[class*="language-"] .token.italic {
     font-weight: bold;
   }
 }
+/* MRC-101: the heading anchors are hidden in the SCORM file only. The builder puts
+   class="scorm-runtime" on <body> there and nowhere else, so a copy saved from a
+   SCORM package (which has the rule but not the class) keeps its anchors. */
+.scorm-runtime .header-anchor {
+  display: none;
+}
 </style>`;
 
 // ---------------------------------------------------------------------------
@@ -341,8 +356,9 @@ async function typesetSourceTables(tables, fixMaths) {
  * HTML holds typeset containers instead. So each equation outside a sortable
  * table is replaced by the author's own TeX, taken from MathJax's math items on
  * the live page, so the builder typesets it itself. MRC-89: this applies to the
- * SCORM target as well, as MathPix's SCORM export does (its builder bundles
- * MathJax and typesets the TeX at run time), so both tools give the same
+ * SCORM target as well, as MathPix's SCORM export does (its builder links
+ * MathJax from the CDN unless mathjaxMode is "local", and typesets the TeX at
+ * run time), so both tools give the same
  * equation markup. Equations in a sortable table are handled by the table step,
  * from the markdown source.
  *
@@ -657,8 +673,18 @@ function makeChartsWithoutPicturesStatic(content) {
   content.querySelectorAll(STATIC_EXPORT.chartContainerSelector).forEach((container) => {
     if (container.closest(STATIC_EXPORT.diagramContainerSelector)) return;
     if (container.querySelector(STATIC_EXPORT.chartPictureSelector)) return;
+    // The figure's own toolbar (inside the container) and the description
+    // panel's copy and download buttons (beside the figure) cannot work here.
     container
       .querySelectorAll(STATIC_EXPORT.chartControlsSelector)
+      .forEach((controls) => controls.remove());
+    const scope = container.closest("figure")?.parentNode || container.parentNode;
+    const panelId = `${STATIC_EXPORT.chartDescriptionIdPrefix}${container.id}`;
+    const panel = container.id
+      ? scope?.querySelector(`[id="${panelId.replace(/"/g, '\\"')}"]`)
+      : null;
+    panel
+      ?.querySelectorAll(STATIC_EXPORT.chartDescriptionControlsSelector)
       .forEach((controls) => controls.remove());
     container.querySelectorAll(STATIC_EXPORT.chartCanvasSelector).forEach((canvas) => {
       const note = document.createElement("p");
@@ -668,6 +694,35 @@ function makeChartsWithoutPicturesStatic(content) {
     done++;
   });
   return done;
+}
+
+// ---------------------------------------------------------------------------
+// 5. The editor's own contents list is dropped (the page has the builder's)
+// ---------------------------------------------------------------------------
+
+/**
+ * MRC-101: the builder puts its own contents list (`nav#toc`) on every exported
+ * page, so the editor's `[toc]` list, which sits at the top of the reading
+ * column, would repeat it. Remove the editor's list from the export copy, but
+ * only when the builder's list will have an entry: a heading of level 1 to 3
+ * outside figures, tables and the like. With none, the page keeps its list.
+ * Only a list directly in the copy is removed, never one nested in hand-written
+ * markup. The preview and the loader pages do not run this step.
+ *
+ * @returns {number} How many lists were removed
+ */
+function dropEditorContentsList(content) {
+  const hasOutline = Array.from(
+    content.querySelectorAll(STATIC_EXPORT.outlineHeadingSelector)
+  ).some((heading) => !heading.closest(STATIC_EXPORT.outlineExcludedSelector));
+  if (!hasOutline) return 0;
+  let removed = 0;
+  Array.from(content.children).forEach((child) => {
+    if (!child.matches(STATIC_EXPORT.editorContentsSelector)) return;
+    child.remove();
+    removed++;
+  });
+  return removed;
 }
 
 // ---------------------------------------------------------------------------
@@ -704,8 +759,9 @@ export async function makeExportStatic(html, options = {}) {
     const tables = await makeTablesStatic(content, options);
     const copyButtons = makeCodeStatic(content);
     const bareCharts = makeChartsWithoutPicturesStatic(content);
+    const contentsLists = dropEditorContentsList(content);
     logInfo(
-      `[Static Export] ${tabs} tab sets, ${tables} tables, ${copyButtons} copy buttons, ${bareCharts} charts without a picture made static, ${maths.restored} equations restored to TeX`
+      `[Static Export] ${tabs} tab sets, ${tables} tables, ${copyButtons} copy buttons, ${bareCharts} charts without a picture made static, ${maths.restored} equations restored to TeX, ${contentsLists} editor contents lists dropped`
     );
     logDebug("[Static Export] Done");
     return template.innerHTML;

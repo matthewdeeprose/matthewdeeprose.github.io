@@ -515,6 +515,34 @@
       : `"${escapeText(boundary.label)}"`;
   }
 
+  /**
+   * Does this diagram draw nothing? - rule C14, item 195 build 1 (21 November
+   * 2026).
+   *
+   * Mermaid's c4 db seeds its own outer boundary with the alias `global`. An
+   * author boundary with that EXACT alias (case-sensitive) finds and reuses it,
+   * and the db then re-parents it onto itself, so the delivered entry carries
+   * `parentBoundary` `"global"` in place of `""`. The renderer starts from the
+   * boundaries whose parent is `""`, finds none, and the whole picture is blank
+   * (measured: docs/mermaid-item-195-measure-1-2026-11-17.md). THE TEST IS ON
+   * THE DELIVERY, never on the source: a capital `Global` and an element aliased
+   * `global` never produce this entry, so they are not this case (ruling C4B3).
+   *
+   * ONE FUNCTION, ONE TEST - `measure` asks it and nothing else does.
+   *
+   * @param {Array} boundaries - The delivered boundaries
+   * @returns {boolean} Whether a boundary aliased `global` is re-parented
+   */
+  function drawsNothingBecauseOfGlobalAlias(boundaries) {
+    return boundaries.some(
+      (b) =>
+        b &&
+        b.alias === SYNTHETIC_ROOT_ALIAS &&
+        typeof b.parentBoundary === "string" &&
+        b.parentBoundary !== ""
+    );
+  }
+
   // ---------------------------------------------------------------------
   // Facts: everything counted once, from the delivery
   // ---------------------------------------------------------------------
@@ -606,6 +634,8 @@
       others: authorBoundaries.length - deploymentNodes.length,
       families,
       sharedLabels,
+      // C14: the picture is blank, whatever else was delivered.
+      blank: drawsNothingBecauseOfGlobalAlias(boundaries),
     };
   }
 
@@ -681,6 +711,12 @@
       // The quotation marks are this module's own furniture; only what is
       // between them is author text.
       sentence += ` titled "${escape(facts.title)}"`;
+    }
+
+    // C14 (ruling C4B2): a picture that draws nothing says so, and why. The
+    // title clause above has already placed the title after "diagram".
+    if (facts.blank) {
+      return `${sentence} that draws nothing: a boundary uses the alias "${SYNTHETIC_ROOT_ALIAS}", which Mermaid keeps for its own outer boundary.`;
     }
 
     if (facts.N === 0) {
@@ -1306,6 +1342,22 @@
 
     const diagram = await readC4(code);
     const facts = measure(diagram);
+
+    // C14 (ruling C4B2): one paragraph, nothing listed as drawn. The title, if
+    // any, sits after "diagram" as in the short; it is escaped at its site.
+    // The Overview heading stays above the paragraph, as in CR9's zero-element
+    // form: the corpus contract (`detailed-has-heading`, `heading-start-level`)
+    // requires a heading in every detailed tier.
+    if (facts.blank) {
+      const kindWord = DIAGRAM_WORD[facts.diagramType];
+      if (!kindWord) {
+        throw new Error(
+          `C4 STOP: getC4Type() delivered "${facts.diagramType}", which is outside C1's five kinds`
+        );
+      }
+      const titled = has(facts.title) ? ` titled "${escapeText(facts.title)}"` : "";
+      return `<h4>Overview</h4>\n<p>This C4 ${kindWord} diagram${titled} draws nothing. A boundary uses the alias "${SYNTHETIC_ROOT_ALIAS}", which Mermaid keeps for its own outer boundary, so nothing written in the code is drawn in the picture.</p>`;
+    }
 
     const parts = ["<h4>Overview</h4>", `<p>${buildOverviewSentence(facts)}</p>`];
 

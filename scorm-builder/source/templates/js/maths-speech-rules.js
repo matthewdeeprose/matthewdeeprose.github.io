@@ -8,7 +8,8 @@
 //   MathsSpeechRules.forSpeech(math, domain)    -> { mathml, labels }
 //   MathsSpeechRules.restoreLabels(speech, labels, domain) -> speech  (the bracket and equivalence words too, ClearSpeak only)
 //
-// Only ClearSpeak is repaired. Any other domain (MathSpeak) is passed through exactly as written.
+// ClearSpeak gets every repair below. Any other domain (MathSpeak) gets exactly one, the drop of the upright marker on a
+// single-character identifier (RA-138), so it no longer says "normal" before an upright letter; the rest is as MathJax wrote it.
 
 window.MathsSpeechRules = (function () {
     // Maths speech (ClearSpeak): the MathML namespace for elements we add, the two capital
@@ -73,8 +74,16 @@ window.MathsSpeechRules = (function () {
         "close bracket": "close square bracket",
         "is identical to": "is equivalent to",
         "is not identical to": "is not equivalent to",
+        "is an element of": "an element of",
+        "is not an element of": "not an element of",
     });
-    const SPEECH_WORDS_PATTERN = /\b(?:open paren|close paren|open bracket|close bracket|is identical to|is not identical to)\b/g;
+    const SPEECH_WORDS_PATTERN = /\b(?:open paren|close paren|open bracket|close bracket|is identical to|is not identical to|is an element of|is not an element of)\b/g;
+    // Register 63 F7, RA-146 measured and RA-147 built: ClearSpeak says ∈ "an element of" and ∉ "not an element of", the words a
+    // student asked for on 18 November 2026 (SRE's own preferences all keep an "is" or another word). A typed note (\text{...}) that
+    // says "is an element of" is the author's own words and is kept: the phrase goes into the MathML as a letters-only placeholder
+    // and is put back AFTER the speech words are rewritten.
+    const TYPED_MEMBERSHIP_PHRASE = /\bis (?:not )?an element of\b/g;
+    const TYPED_MEMBERSHIP_TOKEN = "typedphrase";
     const CLEARSPEAK_DOMAIN = "clearspeak";
     // A typed note inside a formula (\text{...}): SRE reads the word "Tr" as the function trace, and speaks the full stop of an
     // abbreviation and of the end of the note. "Tr" becomes the two letters; a full stop after a letter that comes before a
@@ -84,6 +93,18 @@ window.MathsSpeechRules = (function () {
     const TRACE_SPELLED = "T r";
     const STOP_AFTER_LETTER = /(?<=[A-Za-z])\.(?=[\s )]|$)/g;
     const STOP_ENDING_NOTE = /\.(?=[\s ]*$)/;
+    function protectTypedMembershipPhrases(root, labels) {
+        Array.from(root.querySelectorAll("mtext")).forEach((note) => {
+            const protectedText = note.textContent.replace(TYPED_MEMBERSHIP_PHRASE, (phrase) => {
+                const letters = labels.filter((l) => l.token.startsWith(TYPED_MEMBERSHIP_TOKEN)).length.toString(26).replace(/[0-9a-p]/g, (d) => String.fromCharCode(97 + parseInt(d, 26)));
+                const token = TYPED_MEMBERSHIP_TOKEN + letters;
+                labels.push({ token, spoken: phrase });
+                return token;
+            });
+            if (protectedText !== note.textContent) note.textContent = protectedText;
+        });
+    }
+
     // Only an aligned display (displaystyle) loses the "blank" of an empty first cell; a matrix or a plain array keeps it.
     const ALIGNED_DISPLAY = "displaystyle";
     // Chemistry (RA-68). An export's MathML puts an upright element symbol (H, O, N, Na) next to a script or another symbol with no
@@ -373,8 +394,21 @@ window.MathsSpeechRules = (function () {
         });
     }
 
-    // The MathML handed to the Speech Rule Engine. MathSpeak is passed through as
-    // MathJax wrote it. ClearSpeak first has twelve things put right on a COPY (the
+    // RA-138 (register 71, ruling R31): MathSpeak gets that one step and no other. It is the only repair that reaches MathSpeak; the
+    // rest (the "not" sign, the chemistry "times" and so on) are ClearSpeak repairs and stay off here. Like forSpeech's ClearSpeak
+    // path, any failure falls back to the original MathML.
+    function forMathSpeak(math) {
+        try {
+            const copy = math.cloneNode(true);
+            dropUprightMarkerOnSingleCharacters(copy);
+            return { mathml: copy.outerHTML, labels: [] };
+        } catch (e) {
+            return { mathml: math.outerHTML, labels: [] };
+        }
+    }
+
+    // The MathML handed to the Speech Rule Engine. MathSpeak gets a copy with one change, the word "normal" before a single
+    // upright letter (RA-138), and is otherwise as MathJax wrote it. ClearSpeak first has twelve things put right on a COPY (the
     // page's own MathML is never touched), because its defaults lose content a
     // listener needs: a visible equation number or tag, the name "delta" (it says
     // "triangle"), floor and ceiling brackets around a single symbol, a
@@ -390,7 +424,7 @@ window.MathsSpeechRules = (function () {
     // original MathML is used, so speech is never lost to this. Returns the MathML
     // and the equation labels that were added to it (see restoreLabels).
     function forSpeech(math, domain) {
-        if (domain !== "clearspeak") return { mathml: math.outerHTML, labels: [] };
+        if (domain !== "clearspeak") return forMathSpeak(math);
         try {
             const copy = math.cloneNode(true);
             nameCapitalDelta(copy);
@@ -403,6 +437,7 @@ window.MathsSpeechRules = (function () {
             speakSlantedComparisons(copy);
             speakTraceInNotes(copy);
             speakNoteFullStops(copy);
+            protectTypedMembershipPhrases(copy, labels);
             dropEmptyAlignedCells(copy);
             speakImplicationArrows(copy);
             speakAndSigns(copy, labels);
@@ -422,13 +457,14 @@ window.MathsSpeechRules = (function () {
     // sign (SPEECH_WORDS). That happens only when the caller names the domain and it is ClearSpeak, so a caller that passes
     // none, and every MathSpeak reading, gets the speech back with the labels restored and nothing else changed.
     function restoreLabels(speech, labels, domain) {
+        // RA-147: the speech words are rewritten BEFORE the labels go back, so a typed note's own words are never rewritten.
+        if (domain === CLEARSPEAK_DOMAIN) speech = speech.replace(SPEECH_WORDS_PATTERN, (word) => SPEECH_WORDS[word]);
         labels.forEach(({ token, spoken, attachLeft }) => {
             // An "attachLeft" label (the pause round "and", RA-120) also takes the space before its placeholder, so its comma
             // sits on the word before it. The token is letters only, so it is safe inside a pattern.
             speech = attachLeft ? speech.replace(new RegExp("\\s*" + token), () => spoken) : speech.replace(token, () => spoken);
         });
-        if (domain !== CLEARSPEAK_DOMAIN) return speech;
-        return speech.replace(SPEECH_WORDS_PATTERN, (word) => SPEECH_WORDS[word]);
+        return speech;
     }
 
     return Object.freeze({ forSpeech, restoreLabels });
