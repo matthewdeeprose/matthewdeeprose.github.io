@@ -49,7 +49,7 @@
 
 .mermaid-export-feedback.error {
   background-color: #fdecea;
-  color: #d32f2f;
+  color: #b71c1c; /* 5.74:1 on #fdecea; #d32f2f was 4.35:1 */
 }
 
 /* =================
@@ -2057,8 +2057,10 @@ h6.comment-category {
   font-weight: 600;
 }
 
+/* Same weight as the rest of the step line. It was 100, which a font with a
+   real hairline face (Roboto Thin on phones) draws too faint to read. */
 .diagram-action {
-  font-weight: 100;
+  font-weight: inherit;
 }
 
 .diagram-node {

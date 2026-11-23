@@ -173,6 +173,32 @@
     " Written without detected text, because text detection had not finished.";
 
   // ============================================================================
+  // LAYOUT CHECK AND FIX REQUEST (IDQ H-202)
+  // ============================================================================
+  // After a cloud description arrives, the free layout checker looks for slips a
+  // text-only request can fix. Only for the models whose repair was measured
+  // (H-200 tested Sonnet 5.5 alone): for any other model the check still runs and
+  // its fires are logged, and nothing is sent. The fixed text replaces the
+  // original only if every keep-or-discard check in the module passes; otherwise
+  // the original stays. Nothing here speaks: the stage line is not a live region,
+  // #imgdesc-output is aria-live="off", and the run's one success line is
+  // unchanged.
+  const LAYOUT_REPAIR_MODELS = Object.freeze(["anthropic/claude-sonnet-5.5"]);
+  const LAYOUT_FIX_CONTAINER_ID = "imgdesc-layout-fix-output";
+  // Why a layout check ended without replacing the description (logged, and kept
+  // on lastLayoutCheck for the test drive).
+  const LAYOUT_OUTCOME = Object.freeze({
+    NO_CHECKER: "NO_CHECKER",
+    CLEAN: "CLEAN",
+    MODEL_NOT_MEASURED: "MODEL_NOT_MEASURED",
+    PROMPT_UNUSABLE: "PROMPT_UNUSABLE",
+    NOTHING_REPAIRABLE: "NOTHING_REPAIRABLE",
+    REQUEST_FAILED: "REQUEST_FAILED",
+    DISCARDED: "DISCARDED",
+    KEPT: "KEPT",
+  });
+
+  // ============================================================================
   // IMAGE-STRIP TELEMETRY (Layer 2 — log-only observability, never user-facing)
   // ============================================================================
   // The Foundry v1 surface can silently strip an image (HTTP 200, text-scale
@@ -271,6 +297,14 @@
       message:
         "Model is reasoning before it writes — this can take a few minutes for advanced models...",
       icon: "hourglass",
+      weight: 0,
+    },
+    // Shown only while the layout-fix request is out (H-202). weight: 0, like
+    // REASONING, so it shares the percentage of the stage before it and shifts
+    // nothing after it. Not in GENERATING_STAGES: no pulse, no keep-alive line.
+    CHECKING_LAYOUT: {
+      message: "Checking the layout...",
+      icon: "check",
       weight: 0,
     },
     VERIFYING: {
@@ -2516,6 +2550,18 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         embed?.getAbortController?.()?.abort();
       }
 
+      // The layout-fix request (H-202), if one is out, is stopped the same way
+      // and the same quiet way. Nothing is replaced: the run reads the cancel
+      // through its own signal and leaves the page alone.
+      const fixEmbed = this.layoutFixEmbedInstance;
+      if (fixEmbed) {
+        if (fixEmbed.isStreaming) {
+          fixEmbed.cancelStreaming("User cancelled");
+        } else {
+          fixEmbed.getAbortController?.()?.abort();
+        }
+      }
+
       // Hide progress (don't show completion time for cancellation). This
       // releases the holds now, but since parcel 43c it does NOT move focus or
       // hide the area here: it leaves Cancel visible and focused and registers
@@ -3055,6 +3101,21 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           logWarn("Reply cut off at the length limit — showing it as incomplete");
         }
 
+        // H-202: check the layout of the description, and for a measured model
+        // send one text-only fix request when a slip is found. Never on a
+        // cut-off reply or a cancelled run. The kept-or-original text is in
+        // lastRawOutput and on screen before anything below reads either.
+        this.lastLayoutCheck = null;
+        let layoutFix = null;
+        if (!replyCutOff && !runSignal.aborted) {
+          layoutFix = await this._checkAndFixLayout({
+            embed,
+            modelId: modelInUse,
+            runSignal,
+          });
+          this.lastLayoutCheck = layoutFix;
+        }
+
         // Reasoning Disclosure: show the model's own summary of its reasoning,
         // when it returned one. response.reasoning is populated by core on both
         // the streaming and reduced-motion paths. Reasoning models only; the
@@ -3194,7 +3255,11 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           useStreaming: useStreaming,
           compression: embed.currentFileAnalysis?.compressionMetrics,
           response: response,
-          estimatedCost: this.calculateEstimatedCost(response),
+          // The figure includes the layout-fix request's own tokens when one was
+          // sent (H-202). Same wording and format; only the number can differ.
+          estimatedCost: this.calculateEstimatedCost(
+            this._withLayoutFixUsage(response, layoutFix),
+          ),
         });
 
         // Update verification debug info
@@ -4402,6 +4467,218 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         embed.configureReasoning(this._reasoningBeforeDeclared);
         this._reasoningBeforeDeclared = null;
       }
+    },
+
+    /**
+     * Check the layout of a finished cloud description and, for a measured model
+     * only, send ONE text-only fix request when a repairable slip is found (H-202).
+     *
+     * Keeps the fixed text only when the module's judgeFix passes every check;
+     * otherwise the original stays. A failed or thrown request is non-fatal: the
+     * original stays. A cancel while the request is out rethrows AbortError so
+     * the run ends as any cancelled run does, with nothing replaced.
+     *
+     * On a keep, the main embed re-renders the output through its own
+     * maths-protected path (processMarkdownWithFallback, injectContent) and
+     * lastRawOutput becomes the fixed text, before the rest of the pipeline.
+     * Nothing is announced and no toast is raised here.
+     *
+     * @param {Object} options
+     * @param {OpenRouterEmbed} options.embed - The main embed (it renders the output)
+     * @param {string} options.modelId - The model the description was sent to
+     * @param {AbortSignal} options.runSignal - This run's own signal
+     * @returns {Promise<{ outcome: string, fired: string[], sent: boolean, kept: boolean, failedCheck: string|null, usage: Object|null }>}
+     */
+    async _checkAndFixLayout({ embed, modelId, runSignal }) {
+      const result = {
+        outcome: LAYOUT_OUTCOME.CLEAN,
+        fired: [],
+        sent: false,
+        kept: false,
+        failedCheck: null,
+        usage: null,
+      };
+      const checker = window.ImageDescriberStructureCheck;
+      if (!checker) {
+        logWarn("Layout checker is not loaded; the description is shown as it came");
+        result.outcome = LAYOUT_OUTCOME.NO_CHECKER;
+        return result;
+      }
+
+      const original = this.lastRawOutput;
+      let fired;
+      try {
+        fired = checker.check(original).fired;
+      } catch (error) {
+        logWarn("Layout check threw; the description is shown as it came", error);
+        result.outcome = LAYOUT_OUTCOME.NO_CHECKER;
+        return result;
+      }
+      result.fired = fired.map((f) => f.rule);
+      if (fired.length === 0) return result;
+      logInfo("Layout check fired", result.fired, "model:", modelId);
+
+      if (!LAYOUT_REPAIR_MODELS.includes(modelId)) {
+        logInfo("Layout repair not measured for this model; nothing sent", modelId);
+        result.outcome = LAYOUT_OUTCOME.MODEL_NOT_MEASURED;
+        return result;
+      }
+
+      // The prompt's month sentence is cut out by code. If the prompt no longer
+      // has exactly one such sentence, skip the fix rather than send a guess.
+      let request;
+      try {
+        await window.promptsLoaded;
+        request = checker.buildRepairRequest(
+          original,
+          fired,
+          checker.monthSentence(window.PROMPT_IMAGE_DESCRIPTION),
+        );
+      } catch (error) {
+        logWarn("Layout fix skipped: the request could not be built", error);
+        result.outcome = LAYOUT_OUTCOME.PROMPT_UNUSABLE;
+        return result;
+      }
+      if (request === null) {
+        logInfo("Layout check found only report-only slips; nothing sent", result.fired);
+        result.outcome = LAYOUT_OUTCOME.NOTHING_REPAIRABLE;
+        return result;
+      }
+
+      // One text-only request. The stage line is not a live region and speaks nothing.
+      this.showProgress("CHECKING_LAYOUT");
+      let fixEmbed = null;
+      let reply = null;
+      try {
+        fixEmbed = this.getOrCreateLayoutFixEmbed({ mainEmbed: embed, modelId });
+        fixEmbed.systemPrompt = request.system;
+        result.sent = true;
+        reply = await fixEmbed.sendStreamingRequest({ userPrompt: request.user });
+      } catch (error) {
+        if (runSignal.aborted) throw new DOMException("Aborted", "AbortError");
+        logWarn("Layout fix request failed; the original is kept", error);
+        result.outcome = LAYOUT_OUTCOME.REQUEST_FAILED;
+        return result;
+      } finally {
+        if (this.layoutFixEmbedInstance === fixEmbed) {
+          this.layoutFixEmbedInstance = null;
+        }
+      }
+
+      if (runSignal.aborted || reply?.cancelled) {
+        throw new DOMException("Aborted", "AbortError");
+      }
+      result.usage = reply?.metadata?.tokens || null;
+
+      const verdict = checker.judgeFix({
+        original,
+        fixed: reply?.text,
+        finishReason: reply?.finishReason,
+        fired,
+      });
+      if (!verdict.keep) {
+        logInfo("Layout fix discarded; the original is kept. Failed check:", verdict.failed);
+        result.outcome = LAYOUT_OUTCOME.DISCARDED;
+        result.failedCheck = verdict.failed;
+        return result;
+      }
+
+      // Keep: the same maths-protected render the description itself went through
+      // (H-191). Focus stays where it was; the embed's final inject would move it.
+      const focusBefore = document.activeElement;
+      embed.injectContent(embed.processMarkdownWithFallback(reply.text));
+      const output = this.elements.output;
+      if (
+        focusBefore &&
+        focusBefore !== document.body &&
+        focusBefore !== output &&
+        focusBefore.isConnected &&
+        typeof focusBefore.focus === "function"
+      ) {
+        focusBefore.focus();
+      }
+      this.lastRawOutput = reply.text;
+      result.kept = true;
+      result.outcome = LAYOUT_OUTCOME.KEPT;
+      logInfo("Layout fix kept");
+      return result;
+    },
+
+    /**
+     * Build the embed for the layout-fix request (H-202): the same model and
+     * provider route as the description, no file attached, no toasts, no retry
+     * (a failed fix is non-fatal and a retry cue would be a new spoken line).
+     * The token limit and any reasoning setting are copied from the main embed,
+     * so the request carries exactly what the product sends that model. Not
+     * _applyOutputBudget: that keeps controller-level reasoning state which two
+     * embeds would corrupt.
+     * @param {Object} options
+     * @param {OpenRouterEmbed} options.mainEmbed
+     * @param {string} options.modelId
+     * @returns {OpenRouterEmbed}
+     */
+    getOrCreateLayoutFixEmbed({ mainEmbed, modelId }) {
+      if (!window.OpenRouterEmbed) {
+        throw new Error("OpenRouterEmbed not available for the layout fix.");
+      }
+      const cfg = this._controllerConfig || {};
+      const fixEmbed = new window.OpenRouterEmbed({
+        containerId: LAYOUT_FIX_CONTAINER_ID,
+        announceContainer: false,
+        // The fix writes into a hidden container, so nothing visible moves.
+        // Under reduced motion the embed's non-streaming fallback goes through
+        // the shared request handler, which says "Sending request to API..."
+        // a second time; false keeps the request the same under both motion
+        // settings. Precedent: md-scripts/charts/graph-builder-image.js.
+        respectReducedMotion: false,
+        model: modelId,
+        temperature: cfg.temperature,
+        max_tokens: mainEmbed.max_tokens,
+        showNotifications: false,
+        showStreamingProgress: false,
+        enableCompression: false,
+        providers: FOUNDRY_SURFACE_IDS.reduce(function (map, id) {
+          map[id] = { proxyUrl: readFoundryProxyUrl() };
+          return map;
+        }, {}),
+      });
+
+      const reasoning =
+        typeof mainEmbed.getReasoningConfig === "function"
+          ? mainEmbed.getReasoningConfig()
+          : null;
+      if (reasoning && reasoning.enabled === true) {
+        fixEmbed.configureReasoning({ enabled: true, effort: reasoning.effort });
+      }
+
+      this.layoutFixEmbedInstance = fixEmbed;
+      return fixEmbed;
+    },
+
+    /**
+     * The response with the layout-fix request's tokens added, for the cost
+     * figure in the debug panel. Unchanged when no fix was sent or either side
+     * carries no token counts (a figure never guessed).
+     * @param {Object} response - The description's response
+     * @param {Object|null} layoutFix - _checkAndFixLayout's result
+     * @returns {Object}
+     */
+    _withLayoutFixUsage(response, layoutFix) {
+      const main = response?.metadata?.tokens;
+      const fix = layoutFix?.usage;
+      if (!main || !fix) return response;
+      const prompt = (t) => t.prompt || t.prompt_tokens || 0;
+      const completion = (t) => t.completion || t.completion_tokens || 0;
+      return {
+        ...response,
+        metadata: {
+          ...response.metadata,
+          tokens: {
+            prompt: prompt(main) + prompt(fix),
+            completion: completion(main) + completion(fix),
+          },
+        },
+      };
     },
 
     /**

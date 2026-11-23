@@ -169,6 +169,8 @@
     SWAP_FALLBACK_LINE: "Image replaced.",
     CONFIRM_TITLE: "Make this image?",
     NO_PREVIEW: "No preview available.",
+    TIKZ_COPIED: "TikZ code copied.",
+    TIKZ_COPY_FAILED: "The TikZ code could not be copied.",
   });
 
   // The lines clearMaking may take down: the one spoken line of a press, on either route.
@@ -637,6 +639,7 @@
           <div class="image-recreate-actions">
             <button type="button" id="${ID_PREFIX}use" class="image-manager-btn">Use this picture</button>
             <button type="button" id="${ID_PREFIX}again" class="image-manager-btn">Try again</button>
+            <button type="button" id="${ID_PREFIX}copy-tikz" class="image-manager-btn" hidden>Copy TikZ code</button>
           </div>
         </section>
         </div>
@@ -721,8 +724,32 @@
     return new Promise((resolve) => window.setTimeout(resolve, ANNOUNCE_AFTER_CLOSE_DELAY_MS));
   }
 
+  /** FI-15: keep (or drop) the TikZ code of the shown result; the Copy button is there only while there is code. */
+  function setDrawSource(s, source) {
+    s.drawSource = typeof source === "string" && source.trim() ? source : null;
+    const button = byId("copy-tikz");
+    if (button) button.hidden = !s.drawSource;
+  }
+
+  /** FI-15: copy the shown drawing's TikZ code. One toast line says what happened; nothing else speaks. */
+  async function onCopyTikz() {
+    const s = session;
+    if (!s || !s.drawSource) return;
+    let copied = false;
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+        await navigator.clipboard.writeText(s.drawSource);
+        copied = true;
+      }
+    } catch (error) {
+      logWarn("The TikZ code could not be copied:", error);
+    }
+    if (copied) say("notifySuccess", TEXT.TIKZ_COPIED);
+    else say("notifyError", TEXT.TIKZ_COPY_FAILED, { duration: 0 });
+  }
+
   /** Put the outcome of a press on screen and move focus to "New picture" (both routes). */
-  async function showResult(s, outcome, costText) {
+  async function showResult(s, outcome, costText, drawSource) {
     byId("busy").hidden = true;
     s.result = outcome;
     const image = outcome.images[0];
@@ -732,6 +759,7 @@
     const sizeText = size ? `${size.width} × ${size.height} pixels` : "size not known";
     byId("result-img").src = image.image_url.url;
     byId("result-meta").textContent = `${sizeText}. Cost: ${costText}.`;
+    setDrawSource(s, drawSource);
     byId("result").hidden = false;
     byId("result-heading").focus();
   }
@@ -780,6 +808,7 @@
     byId("busy").textContent = TEXT.DRAWING;
     setRunning(true);
     byId("result").hidden = true;
+    setDrawSource(s, null);
     // Spoken once, here, for the whole press: no line per try. No auto-hide; clearMaking takes it
     // down when the press ends.
     say("notifyInfo", TEXT.DRAWING, { duration: 0 });
@@ -849,7 +878,7 @@
     }
 
     const costText = estimate === null ? (s.provider === PROVIDER.OPENROUTER ? COST_NOT_REPORTED_TEXT : FOUNDRY_CREDIT_TEXT) : drawResultCostText(estimate);
-    await showResult(s, { ok: true, images: [image] }, costText);
+    await showResult(s, { ok: true, images: [image] }, costText, outcome.source);
   }
 
   async function onMake() {
@@ -895,6 +924,7 @@
     byId("busy").textContent = TEXT.MAKING;
     setRunning(true);
     byId("result").hidden = true;
+    setDrawSource(s, null);
     // Spoken once, here. No auto-hide (the info default is 4,000 ms, shorter than a real send):
     // clearMaking takes it down when the request ends.
     say("notifyInfo", TEXT.MAKING, { duration: 0 });
@@ -1034,6 +1064,7 @@
     const s = session;
     if (!s) return;
     session = null;
+    s.drawSource = null;
     window.removeEventListener(PROVIDER_CHANGED_EVENT, s.onProviderChanged);
     if (s.controller) s.controller.abort();
     if (!s.used) return;
@@ -1088,6 +1119,7 @@
       used: false,
       closingLine: "",
       result: null,
+      drawSource: null,
       onProviderChanged: null,
       // FI-10: the tries of a drawing press, and the current picture read once for the Drawing
       // route (null when it cannot be).
@@ -1137,8 +1169,10 @@
         byId("make").addEventListener("click", onMake);
         byId("cancel").addEventListener("click", onCancel);
         byId("use").addEventListener("click", onUse);
+        byId("copy-tikz").addEventListener("click", onCopyTikz);
         byId("again").addEventListener("click", () => {
           byId("result").hidden = true;
+          setDrawSource(s, null);
           byId("prompt").focus();
         });
         // Focus is left where the modal manager puts it: on the dialog, which names the task.

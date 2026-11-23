@@ -573,6 +573,13 @@
         tab: liveEl(this.elements.tabContext, "resume-tab-context"),
         panel: liveEl(this.elements.panelContext, "resume-panel-context"),
       },
+      // QZ-7: Quiz tab. Resume-only, like Context and AI: the upload group has
+      // no counterpart, and the reset loop above hides this panel when any
+      // sibling activates.
+      quiz: {
+        tab: liveEl(this.elements.tabQuiz, "resume-tab-quiz"),
+        panel: liveEl(this.elements.panelQuiz, "resume-panel-quiz"),
+      },
       // S6-3a: AI tab. Resume-only, like Context: the upload group has no
       // counterpart, and the container-selector reset loop above hides this
       // panel when any sibling activates.

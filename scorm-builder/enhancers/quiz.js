@@ -30,6 +30,7 @@
 // (id/for/name/data-*, plain-string labels) still goes through escapeXML.
 
 import { escapeXML } from "../util/escape-xml.js";
+import { convertDelimited } from "./tex-label.js";
 
 // One inline authored question. [\s\S]*? is non-greedy so adjacent blocks don't
 // merge. `data-quiz-question` may carry a value or stand alone.
@@ -91,6 +92,30 @@ function entryFieldset(q, groupClass, innerHtml) {
 // at the call site.
 function detag(rich) {
   return inlineRich(rich).replace(/<[^>]+>/g, "").trim();
+}
+
+// A name for a control whose visible label holds delimited TeX (RA-155, register 79). Chromium
+// takes no name from inside the <math> MathJax writes, so a radio, checkbox or matching select
+// whose label is maths has an empty or half name. The same three delimiters convertDelimited
+// converts decide it; a lone $…$ is not delimited TeX here, exactly as in tex-label.js. The
+// runtime (quiz-runtime.js) replaces this Unicode text with the equations' speech once MathJax
+// has run; this is the name that stands with no MathJax, no network, or assistive MathML off.
+// Content with no TeX gets no aria-label at all.
+const DELIMITED_TEX = /\$\$[\s\S]+?\$\$|\\\([\s\S]+?\\\)|\\\[[\s\S]+?\\\]/;
+const NAMED_ENTITIES = { lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", amp: "&" };
+
+// detag leaves entities as authored ("&lt;"); the name needs the characters they stand for.
+function decodeEntities(text) {
+  return text.replace(/&(?:#(\d+)|#x([0-9a-f]+)|([a-z]+));/gi, (whole, dec, hex, named) => {
+    if (named) return Object.prototype.hasOwnProperty.call(NAMED_ENTITIES, named.toLowerCase()) ? NAMED_ENTITIES[named.toLowerCase()] : whole;
+    const code = dec ? Number(dec) : parseInt(hex, 16);
+    return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : whole;
+  });
+}
+
+function mathsNameAttr(rich) {
+  const plain = decodeEntities(detag(rich));
+  return DELIMITED_TEX.test(plain) ? ` aria-label="${escapeXML(convertDelimited(plain))}"` : "";
 }
 
 // Envelope shape check shared by every type, then dispatch to the per-type
@@ -323,7 +348,7 @@ function renderChoiceGroup(q, inputType, opts) {
       // multiple-answer; harmless/unused on single-answer radios and likert).
       return (
         `<div class="quiz-option">` +
-        `<input type="${inputType}" name="${name}" id="${optId}" value="${escapeXML(opt.id)}" data-part="${escapeXML(opt.id)}">` +
+        `<input type="${inputType}" name="${name}" id="${optId}" value="${escapeXML(opt.id)}" data-part="${escapeXML(opt.id)}"${mathsNameAttr(opt.content)}>` +
         `<label for="${optId}">${inlineRich(opt.content)}</label>` +
         `</div>`
       );
@@ -442,7 +467,7 @@ function renderMatching(q) {
       return (
         `<div class="quiz-match-row">` +
         `<label for="${selectId}">${inlineRich(p.content)}</label>` +
-        `<select class="quiz-match-select" id="${selectId}" data-prompt="${escapeXML(p.id)}" data-part="${escapeXML(p.id)}">` +
+        `<select class="quiz-match-select" id="${selectId}" data-prompt="${escapeXML(p.id)}" data-part="${escapeXML(p.id)}"${mathsNameAttr(p.content)}>` +
         `<option value="">Choose…</option>${choiceOptions}</select>` +
         `</div>`
       );

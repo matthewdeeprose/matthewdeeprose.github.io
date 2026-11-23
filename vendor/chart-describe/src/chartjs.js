@@ -490,16 +490,35 @@
   function dataList(dataset) {
     const data = dataset ? dataset.data : undefined;
     if (Array.isArray(data)) return data;
-    if (!ArrayBuffer.isView(data) || data instanceof DataView) return null;
-    if (!NARROW_FLOAT_ARRAYS.some((kind) => data instanceof kind)) return Array.from(data);
-    return Array.from(data, (value) => shortestStored(value, data.constructor));
+    if (!ArrayBuffer.isView(data)) return null;
+    // The kind comes from the array's own internal slot, so it holds for an array made in another realm (an iframe) and for a subclass.
+    const kind = typedArrayName(data);
+    if (kind === undefined) return null; // a DataView
+    const store = NARROW_FLOAT_STORES.get(kind);
+    if (!store) return Array.from(data);
+    return Array.from(data, (value) => shortestStored(value, store));
   }
 
-  // Typed arrays that store each number with fewer digits than a double. Float16Array is left out where the runtime has none.
-  const NARROW_FLOAT_ARRAYS = [
-    typeof Float32Array === "function" ? Float32Array : null,
-    typeof Float16Array === "function" ? Float16Array : null,
-  ].filter(Boolean);
+  // The built-in getter behind every typed array's Symbol.toStringTag: it reads the internal slot, so a subclass or another realm cannot change the answer,
+  // and it returns undefined for anything that is not a typed array (a DataView).
+  const TYPED_ARRAY_TAG_GETTER = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Int8Array.prototype), Symbol.toStringTag).get;
+  const typedArrayName = (value) => TYPED_ARRAY_TAG_GETTER.call(value);
+
+  // Typed arrays that store each number with fewer digits than a double, each with the function that rounds a double to what the array would store.
+  // Rounding by function means no array is built from the value's own constructor. Float16Array is left out where the runtime has none.
+  const NARROW_FLOAT_STORES = new Map(
+    [
+      ["Float32Array", Math.fround],
+      ["Float16Array", typeof Math.f16round === "function" ? Math.f16round : typeof Float16Array === "function" ? storeInFloat16 : null],
+    ].filter(([, store]) => store),
+  );
+
+  /** Round a double to the nearest half-precision number, for a runtime that has Float16Array but not Math.f16round. */
+  function storeInFloat16(value) {
+    FLOAT16_SCRATCH[0] = value;
+    return FLOAT16_SCRATCH[0];
+  }
+  const FLOAT16_SCRATCH = typeof Float16Array === "function" ? new Float16Array(1) : null;
 
   // A double reads back exactly from 17 significant digits, so the search below always ends by then.
   const MAX_SIGNIFICANT_DIGITS = 17;
@@ -511,16 +530,16 @@
    * element: 0.095, the number the author put in, whenever it fits the array's precision. Zero (either sign), NaN
    * and the infinities come back unchanged.
    * @param {number} value - One element, as the typed array returns it
-   * @param {Function} ArrayKind - The typed array's constructor
+   * @param {Function} store - Rounds a double to the number the same kind of array stores (Math.fround for a Float32Array)
    * @returns {number} The first rounding, by significant digits, that the same kind of array stores as `value`
    */
-  function shortestStored(value, ArrayKind) {
+  function shortestStored(value, store) {
     if (value === 0 || !Number.isFinite(value)) return value;
-    const probe = new ArrayKind(1);
+    // A whole number the array holds is already exact; a shorter decimal would be another whole number (4112 would read 4110).
+    if (Number.isInteger(value)) return value;
     for (let digits = 1; digits < MAX_SIGNIFICANT_DIGITS; digits++) {
       const candidate = Number(value.toPrecision(digits));
-      probe[0] = candidate;
-      if (probe[0] === value) return candidate;
+      if (store(candidate) === value) return candidate;
     }
     return value;
   }

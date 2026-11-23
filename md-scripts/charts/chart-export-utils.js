@@ -149,14 +149,254 @@ html:not([data-theme="dark"]) img.${CHART_EXPORT.imageClass}[${EXPORT_MODE_ATTRI
 </style>`;
 
   /**
-   * The head CSS for an export: Mermaid's, then the chart pictures'. Either
-   * module may be absent; absent ones are skipped.
+   * MRC-107b: the "View larger" dialog for charts and diagrams in an export.
+   * The export's own script builds every button, so with no script there is no
+   * dead button and a figure is exactly as it was. One native <dialog> serves
+   * the page; its content is cloned on open and emptied on close, and ids in
+   * a clone are re-prefixed (attribute and style contexts only, never text) so
+   * the open page holds no duplicate id.
+   *
+   * It depends on the figure markup both export modules write
+   * (`figure.chart-figure`, `figure.mermaid-figure`, `.mermaid > svg`,
+   * `img.chart-export-image`, `data-export-mode`), as the Mermaid scroll-note
+   * script does. Treat those class names as a contract.
+   */
+  const VIEW_LARGER = Object.freeze({
+    figureSelector: "figure.mermaid-figure, figure.chart-figure",
+    buttonClass: "vl-open",
+    closeClass: "vl-close",
+    dialogClass: "vl-dialog",
+    barClass: "vl-bar",
+    buttonText: "View larger",
+    closeText: "Close",
+    titlePrefix: "Larger view: ",
+    fallbackName: "Figure",
+    // The figure's name is the first sentence of its label, kept short.
+    nameMaxChars: 150,
+    // Under this dialog width a diagram opens at its own size and the dialog scrolls.
+    narrowDialogPx: 640,
+    // Palette: the export's own tokens, with system colours as a last resort.
+    background: "var(--body-bg, Canvas)",
+    text: "var(--body-text, CanvasText)",
+    backdrop: "rgba(0, 0, 0, 0.7)",
+    // 44 px targets (2.75rem) and the border that makes the button visible.
+    targetSize: "2.75rem",
+    borderWidth: "0.15rem",
+    dialogWidth: "min(96vw, 90rem)",
+    dialogMaxHeight: "94vh",
+  });
+
+  const VIEW_LARGER_CSS = `<style id="view-larger-style">
+.${VIEW_LARGER.barClass} { margin: 0.5rem 0 0; }
+.vl-btn {
+  --vl-bg: ${VIEW_LARGER.background};
+  --vl-text: ${VIEW_LARGER.text};
+  font: inherit;
+  font-weight: 600;
+  color: var(--vl-text);
+  background: var(--vl-bg);
+  border: ${VIEW_LARGER.borderWidth} solid currentColor;
+  border-radius: 0.3rem;
+  padding: 0.35rem 0.8rem;
+  min-height: ${VIEW_LARGER.targetSize};
+  min-width: ${VIEW_LARGER.targetSize};
+  cursor: pointer;
+}
+.vl-btn:hover { text-decoration: underline; }
+.vl-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+dialog.${VIEW_LARGER.dialogClass} {
+  --vl-bg: ${VIEW_LARGER.background};
+  --vl-text: ${VIEW_LARGER.text};
+  box-sizing: border-box;
+  width: ${VIEW_LARGER.dialogWidth};
+  max-width: 96vw;
+  max-height: ${VIEW_LARGER.dialogMaxHeight};
+  padding: 1rem;
+  border: ${VIEW_LARGER.borderWidth} solid currentColor;
+  color: var(--vl-text);
+  background: var(--vl-bg);
+  overflow: auto;
+}
+dialog.${VIEW_LARGER.dialogClass}::backdrop { background: ${VIEW_LARGER.backdrop}; }
+.vl-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin: 0 0 0.75rem; }
+dialog.${VIEW_LARGER.dialogClass} .vl-title { font-size: 1.1rem; margin: 0; padding: 0; border: 0; min-width: 0; color: var(--vl-text); text-decoration: none; }
+.vl-close { flex: none; }
+.vl-body .mermaid { overflow: visible; }
+.vl-body .mermaid > svg { width: 100% !important; max-width: none !important; height: auto !important; max-height: calc(${VIEW_LARGER.dialogMaxHeight} - 9rem); }
+.vl-body img.chart-export-image { max-width: none; height: auto; }
+</style>`;
+
+  // String.raw keeps the backslashes in the regular expressions. The script
+  // holds no backtick, no dollar-brace and no closing script tag.
+  const VIEW_LARGER_SCRIPT = String.raw`<script id="view-larger-script">
+(function () {
+  var FIG = "${VIEW_LARGER.figureSelector}";
+  var NAME_MAX = ${VIEW_LARGER.nameMaxChars};
+  var NARROW_PX = ${VIEW_LARGER.narrowDialogPx};
+  var counter = 0;
+
+  function shortName(fig) {
+    var svg = fig.querySelector(".mermaid > svg[aria-label]");
+    var img = fig.querySelector("img.chart-export-image[alt]");
+    var raw = (svg && svg.getAttribute("aria-label")) || (img && img.getAttribute("alt")) || "${VIEW_LARGER.fallbackName}";
+    var sentence = raw.match(/^[\s\S]*?[.!?](?=\s|$)/);
+    var first = (sentence ? sentence[0] : raw).trim();
+    return first.length > NAME_MAX ? first.slice(0, NAME_MAX - 1) + "…" : first;
+  }
+
+  // Prefix every id in an HTML string and every reference to it, in attribute and
+  // style contexts only. Text is never touched: a sequence diagram names its actors
+  // "User" and "Gateway", and those words also appear in its labels.
+  function prefixIdsInHtml(html, prefix) {
+    var ids = {};
+    var any = false;
+    html.replace(/\sid="([^"]+)"/g, function (m, id) { ids[id] = true; any = true; return m; });
+    if (!any) return html;
+    function pf(id) { return ids[id] ? prefix + id : id; }
+    html = html.replace(/(\sid=")([^"]+)(")/g, function (m, a, id, c) { return a + pf(id) + c; });
+    html = html.replace(/(\s(?:aria-(?:labelledby|describedby|details|controls|owns|activedescendant|flowto)|for)=")([^"]*)(")/g, function (m, a, list, c) { return a + list.split(/\s+/).map(pf).join(" ") + c; });
+    html = html.replace(/((?:xlink:)?href="#)([^"]+)(")/g, function (m, a, id, c) { return a + pf(id) + c; });
+    html = html.replace(/url\((['"]?)#([^)'"\s]+)\1\)/g, function (m, q, id) { return "url(" + q + "#" + pf(id) + q + ")"; });
+    html = html.replace(/(<style[^>]*>)([\s\S]*?)(<\/style>)/g, function (m, a, css, c) { return a + css.replace(/#([A-Za-z_][\w-]*)/g, function (mm, id) { return "#" + pf(id); }) + c; });
+    return html;
+  }
+
+  function prefixIds(node, prefix) {
+    var t = document.createElement("template");
+    t.innerHTML = prefixIdsInHtml(node.outerHTML, prefix);
+    return t.content.firstElementChild;
+  }
+
+  // The picture only: both mode copies, each keeping its data-export-mode tag so the
+  // export's own head CSS still shows the one that matches the page's theme.
+  function pictureOf(fig, uid) {
+    var holder = document.createElement("div");
+    var box = fig.querySelector(".mermaid");
+    if (box) {
+      var m = document.createElement("div");
+      m.className = "mermaid";
+      box.querySelectorAll(":scope > svg").forEach(function (s) { m.appendChild(prefixIds(s, "vl" + uid + "-")); });
+      holder.appendChild(m);
+    } else {
+      fig.querySelectorAll("img.chart-export-image").forEach(function (i) { holder.appendChild(i.cloneNode(true)); });
+    }
+    return holder;
+  }
+
+  function buildDialog() {
+    var d = document.createElement("dialog");
+    d.className = "${VIEW_LARGER.dialogClass}";
+    d.setAttribute("aria-labelledby", "vl-title");
+    d.innerHTML = '<div class="vl-head"><h2 class="vl-title" id="vl-title"></h2><button type="button" class="vl-btn ${VIEW_LARGER.closeClass}">${VIEW_LARGER.closeText}</button></div><div class="vl-body"></div>';
+    d.querySelector(".${VIEW_LARGER.closeClass}").addEventListener("click", function () { d.close(); });
+    // The export binds page-wide shortcuts (Ctrl+Alt+T, S, F, R, N, B, and "?") on document.
+    // A keydown inside this modal stops here, so none of them fires behind it.
+    // Tab and Escape are the browser's own actions and do not depend on propagation.
+    d.addEventListener("keydown", function (e) { e.stopPropagation(); });
+    d.addEventListener("close", function () {
+      d.querySelector(".vl-body").textContent = "";
+      d.remove();
+      if (d.__opener) d.__opener.focus();
+    });
+    return d;
+  }
+
+  // The dialog is built when a figure is opened and removed when it closes, so the
+  // page holds no idle dialog and none of its ids or content between uses.
+  function open(fig, opener) {
+    var uid = ++counter;
+    var d = buildDialog();
+    document.body.appendChild(d);
+    d.__opener = opener;
+    d.querySelector(".vl-title").textContent = "${VIEW_LARGER.titlePrefix}" + shortName(fig);
+    var body = d.querySelector(".vl-body");
+    body.textContent = "";
+    var pic = pictureOf(fig, uid);
+    body.appendChild(pic);
+    d.showModal();
+    // A chart is a fixed-size picture, so it opens at its own size and the dialog scrolls.
+    // A diagram is a vector: it fits the dialog, or opens at its own size when the dialog is narrow.
+    // Sizes are read after the dialog is shown, because a hidden svg has no layout.
+    // A diagram never opens smaller than the page already shows it: a wide diagram that
+    // scrolls sideways at its own size on the page would shrink if it were fitted.
+    var fitDiagram = d.clientWidth >= NARROW_PX;
+    var pageSvg = Array.prototype.slice.call(fig.querySelectorAll(".mermaid > svg")).filter(function (s) {
+      return s.getBoundingClientRect().width > 0;
+    })[0];
+    var pageWidth = pageSvg ? pageSvg.getBoundingClientRect().width : 0;
+    pic.querySelectorAll(".mermaid > svg").forEach(function (s) {
+      var vb = s.viewBox && s.viewBox.baseVal && s.viewBox.baseVal.width;
+      var vbHeight = s.viewBox && s.viewBox.baseVal && s.viewBox.baseVal.height;
+      if (!vb) return;
+      var width = vb;
+      if (fitDiagram) {
+        var maxHeight = parseFloat(getComputedStyle(s).maxHeight) || Infinity;
+        var fitScale = Math.min(body.clientWidth / vb, maxHeight / vbHeight);
+        if (!(pageWidth / vb > fitScale)) return;
+        width = pageWidth;
+      }
+      s.style.setProperty("width", width + "px", "important");
+      s.style.setProperty("max-width", "none", "important");
+      s.style.setProperty("min-width", "0", "important");
+      s.style.setProperty("max-height", "none", "important");
+    });
+    pic.querySelectorAll("img.chart-export-image").forEach(function (i) {
+      if (!i.naturalWidth) return;
+      i.style.setProperty("width", i.naturalWidth + "px", "important");
+      i.style.setProperty("max-width", "none", "important");
+      i.style.setProperty("max-height", "none", "important");
+    });
+  }
+
+  // The visible words are "View larger"; the accessible name adds which figure.
+  function makeButton(fig) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "vl-btn ${VIEW_LARGER.buttonClass}";
+    b.appendChild(document.createTextNode("${VIEW_LARGER.buttonText}"));
+    var s = document.createElement("span");
+    s.className = "vl-sr";
+    s.textContent = ": " + shortName(fig);
+    b.appendChild(s);
+    return b;
+  }
+
+  function start() {
+    var figs = document.querySelectorAll(FIG);
+    if (!figs.length || typeof HTMLDialogElement !== "function") return;
+    figs.forEach(function (fig) {
+      var btn = makeButton(fig);
+      btn.addEventListener("click", function () { open(fig, btn); });
+      var bar = document.createElement("div");
+      bar.className = "${VIEW_LARGER.barClass}";
+      bar.appendChild(btn);
+      fig.parentNode.insertBefore(bar, fig.nextSibling);
+    });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
+</script>`;
+
+  const VIEW_LARGER_EXPORT_HEAD = `${VIEW_LARGER_CSS}\n${VIEW_LARGER_SCRIPT}`;
+
+  /**
+   * The head CSS for an export: Mermaid's, then the chart pictures', then the
+   * "View larger" dialog (CSS and script). Either module may be absent;
+   * absent ones are skipped.
    * @returns {string|undefined} The combined CSS, or undefined if neither exists
    */
   function getExportHead() {
     const mermaid =
       window.MermaidExportUtils && window.MermaidExportUtils.THEMED_EXPORT_HEAD;
-    const parts = [mermaid, CHART_EXPORT_HEAD].filter(Boolean);
+    const parts = [mermaid, CHART_EXPORT_HEAD, VIEW_LARGER_EXPORT_HEAD].filter(Boolean);
     return parts.length ? parts.join("\n") : undefined;
   }
 

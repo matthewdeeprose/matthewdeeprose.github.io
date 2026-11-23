@@ -1514,12 +1514,11 @@ const MarkdownEditor = (function () {
     return restoredHtml;
   }
 
-  // MRC-30: dev-only switch that renders through MarkdownRenderCore instead of
-  // the editor's own pipeline. Off unless the dev harness flag AND this key are set.
+  // MRC-30: the editor renders through MarkdownRenderCore by default (MRC-106).
+  // localStorage "md-editor-core" = "0" is the off switch and restores the
+  // editor's own pipeline; any other value, or none, means the core.
   const CORE_FLAG_KEY = "md-editor-core";
-  const CORE_FLAG_ON = "1";
-  const DEV_HARNESS_FLAG_KEY = "dev-test-harnesses";
-  const DEV_HARNESS_FLAG_ON = "true";
+  const CORE_FLAG_OFF = "0";
 
   // Editor option set, as recorded by MRC-28 (EDITOR_OPTIONS in its report).
   const CORE_EDITOR_OPTIONS = Object.freeze({
@@ -1535,19 +1534,16 @@ const MarkdownEditor = (function () {
 
   /**
    * Decide, per render, whether to use MarkdownRenderCore. The flag is read at
-   * call time (never at load) because the core is a gated dev script that
-   * loads after this file. Flag on but core absent runs the old path and
-   * warns once.
+   * call time (never at load) because the core script loads after this file.
+   * Core absent runs the editor's own path and warns once.
    * @returns {boolean} true when the core path should run
    */
   function shouldUseRenderCore() {
-    let flagOn = false;
+    let flagOn = true;
     try {
-      flagOn =
-        localStorage.getItem(DEV_HARNESS_FLAG_KEY) === DEV_HARNESS_FLAG_ON &&
-        localStorage.getItem(CORE_FLAG_KEY) === CORE_FLAG_ON;
+      flagOn = localStorage.getItem(CORE_FLAG_KEY) !== CORE_FLAG_OFF;
     } catch (error) {
-      return false;
+      flagOn = true; // storage blocked: take the default, which is now the core path
     }
     if (!flagOn) return false;
 
@@ -1555,7 +1551,7 @@ const MarkdownEditor = (function () {
       if (!coreMissingWarned) {
         coreMissingWarned = true;
         Logger.warn(
-          "md-editor-core flag is on but MarkdownRenderCore is not loaded; using the editor's own render path"
+          "MarkdownRenderCore is not loaded; using the editor's own render path"
         );
       }
       return false;

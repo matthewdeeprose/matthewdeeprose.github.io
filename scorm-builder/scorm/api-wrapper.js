@@ -149,9 +149,25 @@ export function generateApiWrapper(opts = {}) {
   //   2. set score BEFORE status (mastery evaluation reads the score);
   //   3. set completion + success status;
   //   4. Commit immediately (the single most common point of data loss).
+  //
+  // RA-154 (register 80): returns true ONLY when every SetValue and the Commit
+  // answered "true" (compared as strings, so a boolean true counts). Every write is
+  // still made, in the same order, whatever an earlier one answered. The reason it
+  // did not save is kept for getLastReportOutcome(): "saved", "kept" (the guard
+  // declined), "failed" (a write, the Commit or the API threw or refused) or
+  // "no-lms" (no API found).
+  var lastReportOutcome = null;
+
+  function accepted(answer) {
+    return String(answer) === "true";
+  }
+
   function reportScore(raw, min, max, passed) {
     var api = getSCORMAPI();
-    if (api == null) return false;
+    if (api == null) {
+      lastReportOutcome = "no-lms";
+      return false;
+    }
     try {
       var lo = Number(min) || 0;
       var hi = Number(max);
@@ -163,24 +179,33 @@ export function generateApiWrapper(opts = {}) {
       // across sessions; re-entry could otherwise lower a higher score).
       var prior = parseFloat(api.GetValue("cmi.score.scaled"));
       if (!isNaN(prior) && prior >= newScaled) {
+        lastReportOutcome = "kept";
         return false;
       }
 
-      api.SetValue("cmi.score.min", String(lo));
-      api.SetValue("cmi.score.max", String(hi));
-      api.SetValue("cmi.score.raw", String(raw));
-      api.SetValue("cmi.score.scaled", String(Math.round(newScaled * 10000) / 10000));
+      var allAccepted = true;
+      allAccepted = accepted(api.SetValue("cmi.score.min", String(lo))) && allAccepted;
+      allAccepted = accepted(api.SetValue("cmi.score.max", String(hi))) && allAccepted;
+      allAccepted = accepted(api.SetValue("cmi.score.raw", String(raw))) && allAccepted;
+      allAccepted = accepted(api.SetValue("cmi.score.scaled", String(Math.round(newScaled * 10000) / 10000))) && allAccepted;
 
-      api.SetValue("cmi.completion_status", "completed");
-      api.SetValue("cmi.success_status", passed ? "passed" : "failed");
+      allAccepted = accepted(api.SetValue("cmi.completion_status", "completed")) && allAccepted;
+      allAccepted = accepted(api.SetValue("cmi.success_status", passed ? "passed" : "failed")) && allAccepted;
 
       scoreReported = true;
-      api.Commit("");
-      return true;
+      allAccepted = accepted(api.Commit("")) && allAccepted;
+      lastReportOutcome = allAccepted ? "saved" : "failed";
+      return allAccepted;
     } catch (error) {
       console.error("[SCORM] reportScore error:", error);
+      lastReportOutcome = "failed";
       return false;
     }
+  }
+
+  // Read-only: what the last reportScore() call ended in, or null before any call.
+  function getLastReportOutcome() {
+    return lastReportOutcome;
   }
 
   function trackProgress(location, progress) {
@@ -211,6 +236,7 @@ export function generateApiWrapper(opts = {}) {
     terminate: terminateSCORM,
     trackProgress: trackProgress,
     reportScore: reportScore,
+    getLastReportOutcome: getLastReportOutcome,
     requestExit: requestExit,
     getAPI: getSCORMAPI,
     isAvailable: function() { return getSCORMAPI() != null; }

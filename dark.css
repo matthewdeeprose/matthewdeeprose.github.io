@@ -5571,7 +5571,10 @@ h4.mermaid-details-heading::before {
 
    #002e3b -> #e1e8ec    #00131d -> #fffff4    #231f20 -> #fffff4
    #495961 -> #9fb1bd    #005c84 -> #74c9e5    #8d3970 -> #fcbc00
-   #1e8765 -> #b3dbd2    #2e7d32 -> #c1d100    #d32f2f -> #ff6b6b
+   #1e8765 -> #b3dbd2    #2e7d32 -> #c1d100    #b71c1c -> #ff6b6b
+
+   The light error red was #d32f2f until 23 November 2026 (4.35:1 on #fdecea,
+   a fail); it is now #b71c1c (5.74:1). Its dark mapping is unchanged.
 
    ONE MAPPING SHIFTS HUE FAMILY AND IT IS DELIBERATE: #8d3970 is a magenta
    with no light counterpart in this site's dark palette, and #d5007f — the
@@ -5743,7 +5746,7 @@ h4.mermaid-details-heading::before {
   color: #c1d100;
 }
 
-/* #d32f2f -> #ff6b6b (1 selectors) */
+/* #b71c1c -> #ff6b6b (1 selectors) */
 .mermaid-description .mermaid-export-feedback.error {
   color: #ff6b6b;
 }

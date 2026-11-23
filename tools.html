@@ -7964,6 +7964,18 @@ Science,91</pre
                     >
                       Context
                     </button>
+                    <!-- QZ-7: Quiz tab for resume mode (Resume-only, like Context and AI; no data-format, so the upload group has no counterpart). Registered in session-restorer-init.js and session-restorer-pdf.js. -->
+                    <button
+                      id="resume-tab-quiz"
+                      type="button"
+                      class="mathpix-tab-header"
+                      role="tab"
+                      aria-selected="false"
+                      aria-controls="resume-panel-quiz"
+                      tabindex="-1"
+                    >
+                      Quiz
+                    </button>
                     <!-- S6-3a: AI tab for resume mode (Resume-only, like Context; no data-format). Registered in session-restorer-init.js and session-restorer-pdf.js. -->
                     <button
                       id="resume-tab-ai"
@@ -9374,6 +9386,168 @@ Science,91</pre
                       ></div>
                     </div>
                   </form>
+                </div>
+
+                <!--
+                  QZ-7: Quiz panel for resume mode (inside #mathpix-resume-mode-container, like Context and AI).
+                  STATIC STRUCTURE HERE, POPULATED BY mathpix-scripts/ai-enhancement/mathpix-quiz-tab.js.
+                  NO live region in this panel: the three events (writing started, written, refused) speak through
+                  the toast system, which announces through the shared announcer. Every status line here is plain text.
+                -->
+                <div
+                  id="resume-panel-quiz"
+                  class="mathpix-tab-panel"
+                  role="tabpanel"
+                  aria-labelledby="resume-tab-quiz"
+                  hidden
+                >
+                  <form id="resume-quiz-form" class="mathpix-context-form" novalidate>
+                    <h4 id="resume-quiz-heading">Practice quiz</h4>
+                    <p id="resume-quiz-intro">
+                      Ask for a practice quiz about this document. It is for
+                      practice, not marking, and you can add it to your export.
+                    </p>
+                    <p id="resume-quiz-provider">
+                      Provider and model:
+                      <span id="resume-quiz-provider-name"></span>
+                    </p>
+                    <p id="resume-quiz-state"></p>
+
+                    <fieldset
+                      id="resume-quiz-types"
+                      aria-describedby="resume-quiz-types-error"
+                    >
+                      <legend>Question types</legend>
+                      <div class="mathpix-context-field">
+                        <input
+                          type="checkbox"
+                          id="resume-quiz-type-multiple-choice"
+                          data-quiz-type="multiple-choice"
+                          checked
+                        />
+                        <label for="resume-quiz-type-multiple-choice"
+                          >Multiple choice</label
+                        >
+                      </div>
+                      <div class="mathpix-context-field">
+                        <input
+                          type="checkbox"
+                          id="resume-quiz-type-true-false"
+                          data-quiz-type="true-false"
+                          checked
+                        />
+                        <label for="resume-quiz-type-true-false"
+                          >True or false</label
+                        >
+                      </div>
+                      <div class="mathpix-context-field">
+                        <input
+                          type="checkbox"
+                          id="resume-quiz-type-multiple-answer"
+                          data-quiz-type="multiple-answer"
+                          checked
+                        />
+                        <label for="resume-quiz-type-multiple-answer"
+                          >Multiple answer</label
+                        >
+                      </div>
+                      <div class="mathpix-context-field">
+                        <input
+                          type="checkbox"
+                          id="resume-quiz-type-numeric"
+                          data-quiz-type="numeric"
+                          checked
+                        />
+                        <label for="resume-quiz-type-numeric">Numeric</label>
+                      </div>
+                      <p id="resume-quiz-types-error" class="field-hint" hidden></p>
+                    </fieldset>
+
+                    <fieldset id="resume-quiz-difficulty">
+                      <legend>Difficulty</legend>
+                      <div class="mathpix-context-field">
+                        <input
+                          type="radio"
+                          id="resume-quiz-difficulty-introductory"
+                          name="resume-quiz-difficulty"
+                          value="introductory"
+                        />
+                        <label for="resume-quiz-difficulty-introductory"
+                          >Introductory: recall and recognition. One idea or
+                          one step, taken straight from the document.</label
+                        >
+                      </div>
+                      <div class="mathpix-context-field">
+                        <input
+                          type="radio"
+                          id="resume-quiz-difficulty-intermediate"
+                          name="resume-quiz-difficulty"
+                          value="intermediate"
+                          checked
+                        />
+                        <label for="resume-quiz-difficulty-intermediate"
+                          >Intermediate: apply an idea from the document to a
+                          new but similar case, or combine two steps.</label
+                        >
+                      </div>
+                      <div class="mathpix-context-field">
+                        <input
+                          type="radio"
+                          id="resume-quiz-difficulty-challenging"
+                          name="resume-quiz-difficulty"
+                          value="challenging"
+                        />
+                        <label for="resume-quiz-difficulty-challenging"
+                          >Challenging: several steps, or a case that needs a
+                          careful reading of the document and a check of the
+                          reasoning.</label
+                        >
+                      </div>
+                    </fieldset>
+
+                    <div class="mathpix-context-field">
+                      <label for="resume-quiz-count">Number of questions</label>
+                      <input
+                        type="number"
+                        id="resume-quiz-count"
+                        value="6"
+                        min="3"
+                        max="20"
+                        step="1"
+                        inputmode="numeric"
+                        aria-describedby="resume-quiz-count-hint"
+                      />
+                      <p id="resume-quiz-count-hint" class="field-hint"></p>
+                    </div>
+
+                    <p id="resume-quiz-estimate">Estimated cost: not calculated yet.</p>
+                    <button
+                      type="button"
+                      id="resume-quiz-write"
+                      aria-describedby="resume-quiz-write-hint"
+                    >
+                      <span aria-hidden="true" data-icon="aiSparkle"></span>
+                      <span id="resume-quiz-write-label">Write practice quiz</span>
+                    </button>
+                    <p id="resume-quiz-write-hint" class="field-hint"></p>
+                    <p id="resume-quiz-progress" hidden></p>
+
+                    <div id="resume-quiz-refusal" hidden>
+                      <h5 id="resume-quiz-refusal-heading">
+                        The quiz was not written
+                      </h5>
+                      <ul id="resume-quiz-refusal-list"></ul>
+                    </div>
+                  </form>
+
+                  <section id="resume-quiz-result" aria-labelledby="resume-quiz-result-heading" hidden>
+                    <h4 id="resume-quiz-result-heading"></h4>
+                    <div id="resume-quiz-result-body"></div>
+                    <button type="button" id="resume-quiz-delete">
+                      <span aria-hidden="true" data-icon="trash"></span>
+                      Delete practice quiz
+                    </button>
+                  </section>
                 </div>
 
                 <!--
@@ -16075,6 +16249,15 @@ Science,91</pre
                   aria-live="off"
                 ></div>
 
+                <!-- Never shown. The layout-fix request's embed needs a
+                     container to write its reply into; the reply is read from
+                     the response and shown, if kept, in #imgdesc-output. -->
+                <div
+                  id="imgdesc-layout-fix-output"
+                  aria-live="off"
+                  hidden
+                ></div>
+
                 <!-- Reasoning Disclosure (conditional; the component reveals
                      itself only when a reasoning model returns a summary) -->
                 <div
@@ -21385,6 +21568,9 @@ Science,91</pre
               <button type="button" id="word-forms-check">
                 <span aria-hidden="true" data-icon="aiSparkle"></span> Check this form
               </button>
+              <button type="button" id="word-forms-fill-start">
+                <span aria-hidden="true" data-icon="pencil"></span> Fill in this form
+              </button>
               <button type="button" id="word-forms-cancel" hidden>
                 <span aria-hidden="true" data-icon="close"></span> Cancel
               </button>
@@ -21501,6 +21687,43 @@ Science,91</pre
               </ol>
             </div>
             <p id="word-forms-error" class="word-forms-error" hidden></p>
+          </section>
+
+          <!-- WF-14e (ruling 79): the fill-in path. The person answers the
+               form's own questions here and saves a filled Word file. No model
+               is called. Every fixed word is in this markup;
+               word-forms/word-forms-fill-ui.js makes only the questions and the
+               review rows (they come from the form) and fills the instruction
+               and "left in Word" paragraphs, whose words depend on the form.
+
+               NOTHING HERE IS A LIVE REGION. One line is spoken when the
+               questions are ready and one when the file is saved, through the
+               shared announcer; a heading that takes focus is read by itself. -->
+          <section
+            id="word-forms-fill"
+            class="word-forms-step"
+            aria-labelledby="word-forms-fill-heading"
+            hidden
+          >
+            <h2 id="word-forms-fill-heading" tabindex="-1">Answer the questions</h2>
+            <div id="word-forms-fill-questions-view">
+              <p id="word-forms-fill-instruction"></p>
+              <p id="word-forms-fill-tick-note" hidden>In the Word file, a question you answer No and a question you leave unanswered both show as an empty tick box.</p>
+              <p id="word-forms-fill-left" hidden></p>
+              <p id="word-forms-fill-none" hidden>This tool cannot fill in any part of this form. Fill it in in Word.</p>
+              <div id="word-forms-fill-questions"></div>
+              <div class="word-forms-actions" id="word-forms-fill-review-actions">
+                <button type="button" id="word-forms-fill-review">Review your answers</button>
+              </div>
+            </div>
+            <div id="word-forms-fill-review-view" hidden>
+              <h2 id="word-forms-fill-review-heading" tabindex="-1">Check your answers</h2>
+              <p id="word-forms-fill-review-note" hidden><span id="word-forms-fill-review-count"></span> In the Word file, a question you answer No and a question you leave unanswered both show as an empty tick box.</p>
+              <ul id="word-forms-fill-review-list" class="word-forms-fill-review-list"></ul>
+              <div class="word-forms-actions">
+                <button type="button" id="word-forms-fill-save">Save answers</button>
+              </div>
+            </div>
           </section>
 
           <section
@@ -22841,12 +23064,10 @@ Science,91</pre
     <!-- Load sortable table integration for markdown-it -->
     <script src="md-scripts/markdown-utils/markdown-it-sortable-tables-combined.js"></script>
 
-    <!-- MRC-30: shared render core, dev-only. Inert on a normal load; the editor
-         uses it only with ?dev=1 and localStorage "md-editor-core" = "1". -->
-    <script
-      type="application/dev-test"
-      data-src="md-scripts/markdown-utils/markdown-render-core.js"
-    ></script>
+    <!-- MRC-106: shared render core, loaded on every page. The Markdown Editor
+         renders through it by default; localStorage "md-editor-core" = "0" turns
+         that off and restores the editor's own pipeline. -->
+    <script src="md-scripts/markdown-utils/markdown-render-core.js"></script>
 
     <!-- Load our markdown editor implementation -->
     <script src="md-scripts/markdown-utils/markdown-editor.js"></script>
@@ -23180,6 +23401,10 @@ Science,91</pre
     <script src="mathpix-scripts/ai-alt-text/alt-text-batch-runner.js?v=1.0"></script>
     <!-- S6-3a: the AI tab (window.MathPixAITab) — model lines and preconditions for the three steps. Reads the registry, the Context picker, the enhancer and the alt-text adapter at CALL time; placed after all of them. -->
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-tab.js?v=1.1"></script>
+    <!-- QZ-8: the in-place editor for one quiz question (window.MathPixQuizEditor). Builds and reads back the editor only; the Quiz tab below owns Save, Cancel, focus and the toasts. Placed before the tab. -->
+    <script src="mathpix-scripts/ai-enhancement/mathpix-quiz-editor.js?v=1.0"></script>
+    <!-- QZ-7: the Quiz tab (window.MathPixQuizTab) — the form, the write button, the read-only result. Reads the writer, the store, the registry and ProviderSwitcher at CALL time; placed after them. Sends nothing until the person presses Write. -->
+    <script src="mathpix-scripts/ai-enhancement/mathpix-quiz-tab.js?v=1.1"></script>
     <!-- Phase 2 Stage 1: Context auto-fill preflight harness (window.runContextAITests) -->
     <script
       type="application/dev-test"
@@ -23359,6 +23584,11 @@ Science,91</pre
     <script
       type="application/dev-test"
       data-src="word-forms/testing/word-forms-ui-tests.js"
+    ></script>
+    <!-- Word forms fill-in path tests (WF-14e): dev-only -->
+    <script
+      type="application/dev-test"
+      data-src="word-forms/testing/word-forms-fill-tests.js"
     ></script>
     <script
       type="module"
@@ -23932,6 +24162,9 @@ Science,91</pre
     <!-- Model output ceilings (generated data) and the shared resolver — must load before the controller (H-17) -->
     <script src="js/model-output-ceilings.js"></script>
     <script src="js/model-output-budget.js"></script>
+
+    <!-- Image Describer layout checker (pure text; used by the generate file) -->
+    <script src="image-describer/image-describer-structure-check.js"></script>
 
     <!-- Image Describer Controller -->
     <script src="image-describer/image-describer-controller.js"></script>

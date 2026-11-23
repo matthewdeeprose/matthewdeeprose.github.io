@@ -1209,6 +1209,28 @@
   }
 
   /**
+   * An average with fewer decimals than the printed ends that sits far from the mean (more than MEAN_MISPLACED_BEYOND of the printed range)
+   * is spoken as the detailed tier speaks it: the mean at the decimals of the two typed ends. That happens only where the search for a figure
+   * inside the printed range ran out of decimals.
+   * @param {string} spoken - The average as spokenAverage chose it
+   * @param {Object} ends - `{ min, max }` as the tier prints them
+   * @param {Object} stats - Statistics from computeStatistics
+   * @returns {string} The average as it is spoken
+   */
+  function averageNearMean(spoken, ends, stats) {
+    const figure = (written) => Number(written.replace(/^about /, ""));
+    // An average that is the mean rounded to the decimals of the printed ends (trailing zeros dropped) is the ruled form: the ends' own decimals are all the range offers.
+    const endDecimals = Math.max(printedDecimals(ends.min), printedDecimals(ends.max));
+    if (!Number.isFinite(stats.mean) || spoken === atLeastDecimals(spoken, stats.mean, endDecimals, meanExactOf(stats))) return spoken;
+    if (printedDecimals(spoken) >= endDecimals) return spoken;
+    const width = figure(ends.max) - figure(ends.min);
+    if (!Number.isFinite(stats.mean) || !Number.isFinite(width) || width <= 0) return spoken;
+    if (Math.abs(Number(spoken) - stats.mean) <= width * MEAN_MISPLACED_BEYOND) return spoken;
+    const typedDecimals = Math.max(printedDecimals(formatAuthorValue(stats.min)), printedDecimals(formatAuthorValue(stats.max)));
+    return formatMean(stats.mean, stats.min, stats.max, meanExactOf(stats), typedDecimals);
+  }
+
+  /**
    * The average of a single series as a tier speaks it beside that tier's printed range. The takeaway's range sentence and the detailed
    * tier's "Average value:" bullet both take their figure from here, so the two never disagree.
    * @param {Object} stats - Statistics from computeStatistics
@@ -1217,7 +1239,8 @@
    */
   function spokenAverage(stats, ends) {
     const meanBounds = printedMeanBounds(ends, stats);
-    return formatMean(stats.mean, meanBounds.min, meanBounds.max, meanExactOf(stats), meanFloorDecimals(ends, stats));
+    const spoken = formatMean(stats.mean, meanBounds.min, meanBounds.max, meanExactOf(stats), meanFloorDecimals(ends, stats));
+    return averageNearMean(spoken, ends, stats);
   }
 
   /**

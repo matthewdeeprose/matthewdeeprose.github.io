@@ -14,7 +14,7 @@ export const DEFAULT_SCORM_CONFIG = {
   README_FILENAME: "README.txt",
 
   MATHJAX_MODE: "cdn", // "cdn" | "local"
-  CDN_MATHJAX_URL: "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js",
+  CDN_MATHJAX_URL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js",
   LOCAL_MATHJAX_PATH: "./libs/mathjax/es5/tex-chtml.js",
   LOCAL_MATHJAX_DIR: "libs/mathjax", // zip folder that mathjaxAssets are written under
 

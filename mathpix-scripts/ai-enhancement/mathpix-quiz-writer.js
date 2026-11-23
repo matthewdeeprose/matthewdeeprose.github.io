@@ -11,10 +11,10 @@
  * MathPixQuizStore. It has no window and says nothing aloud: part 3 builds the
  * UI and owns every announcement and toast.
  *
- * NOT MEASURED. The prompt in mathpix-quiz-prompts.json and the token and
- * reply-size assumptions below were written, not measured. The paid round that
- * measures them is a later parcel. Every figure `estimate` returns is an
- * estimate from those assumptions and the correction's measured prompt bounds.
+ * MEASURED AT QZ-5, REVISED AT QZ-6. The estimate's bounds below come from the
+ * eight real sends of QZ-5 (n = 8, two documents, one model, prompt qz4-1.0.0).
+ * The prompt in mathpix-quiz-prompts.json is now qz6-1.1.0, which NO send has
+ * measured. Every figure `estimate` returns is an estimate, not a price.
  *
  * THE MODEL IS CHOSEN BY PURPOSE, for the provider the person has chosen:
  * MathPixModelRegistry.recommendedModel("practice-quiz", active provider). An
@@ -104,22 +104,34 @@
   const DEFAULT_PROVIDER_ID = "openrouter";
 
   /**
-   * Prompt-side bounds, in characters a token, MEASURED by M-10bs and shared with
-   * the correction. Read from MathPixAIEnhancer.ESTIMATE_BOUNDS when it is on the
-   * page so there is one copy; these are the fallback and are checked equal by a row.
+   * Prompt-side bounds for the QUIZ prompt, in characters a token. Set from the
+   * QZ-5 paid round (22 November 2026, n = 8 sends, two documents, one model,
+   * anthropic/claude-fable-5.1): the wire reported 2.17 characters a token on the
+   * capacitors document and 1.92 on the electric one. The correction's bounds
+   * (2.7 / 2.0, M-10bs) are NOT used here because electric fell below their high
+   * end. The range is widened a little either side of those two readings. It
+   * covers the eight sends by construction, not by independent test.
    */
-  const FALLBACK_PROMPT_BOUNDS = Object.freeze({ LOW: 2.7, HIGH: 2.0 });
-  const FALLBACK_REPLY_BOUNDS = Object.freeze({ LOW: 1.8, HIGH: 1.3 });
+  const PROMPT_BOUNDS = Object.freeze({ LOW: 2.3, HIGH: 1.8 });
 
   /**
-   * ASSUMPTIONS, NOT MEASUREMENTS (QZ-4). The characters one question's JSON
-   * takes in the reply, from the four examples in the prompt (measured in the QZ-4
-   * report, about 450 to 700) widened either side; and the output ceiling sent as
-   * max_tokens, which is also the HIGH end of the estimate because a reply
-   * cannot cost more than it. The paid round replaces all three.
+   * THE REPLY SIDE, from QZ-5 (n = 8, two documents, one model). Completion tokens,
+   * reasoning included, were 3,114 to 3,616 at 4 questions and 3,131 to 3,430 at
+   * 6: a base that barely moves with the count, not an amount a question. So the
+   * reply is a flat low and high, widened either side of the measured spread, and
+   * no longer 450 characters a question.
+   *
+   * ASSUMED, NOT MEASURED: how the reply grows beyond 6 questions (nothing above 6
+   * was sent). Above MEASURED_COUNT_MAX the HIGH end adds EXTRA_REPLY_TOKENS_PER_QUESTION
+   * a question (450 characters at the correction's 1.3 characters a token, QZ-4's
+   * old per-question size). And max_tokens, the cut-off guard, which no QZ-5 reply
+   * came near, is unchanged from QZ-4.
    */
   const ASSUMED = Object.freeze({
-    REPLY_CHARS_PER_QUESTION_LOW: 450,
+    REPLY_TOKENS_LOW: 2700,
+    REPLY_TOKENS_HIGH: 4300,
+    MEASURED_COUNT_MAX: 6,
+    EXTRA_REPLY_TOKENS_PER_QUESTION: 350,
     MAX_TOKENS_BASE: 4000,
     MAX_TOKENS_PER_QUESTION: 800,
   });
@@ -228,22 +240,6 @@
     return { input: input / 1_000_000, output: output / 1_000_000 };
   }
 
-  function promptBounds() {
-    const b = window.MathPixAIEnhancer && window.MathPixAIEnhancer.ESTIMATE_BOUNDS;
-    if (b && b.PROMPT_CHARS_PER_TOKEN_LOW && b.PROMPT_CHARS_PER_TOKEN_HIGH) {
-      return { LOW: b.PROMPT_CHARS_PER_TOKEN_LOW, HIGH: b.PROMPT_CHARS_PER_TOKEN_HIGH };
-    }
-    return FALLBACK_PROMPT_BOUNDS;
-  }
-
-  function replyBounds() {
-    const b = window.MathPixAIEnhancer && window.MathPixAIEnhancer.ESTIMATE_BOUNDS;
-    if (b && b.REPLY_CHARS_PER_TOKEN_LOW && b.REPLY_CHARS_PER_TOKEN_HIGH) {
-      return { LOW: b.REPLY_CHARS_PER_TOKEN_LOW, HIGH: b.REPLY_CHARS_PER_TOKEN_HIGH };
-    }
-    return FALLBACK_REPLY_BOUNDS;
-  }
-
   // ============================================================================
   // OPTIONS
   // ============================================================================
@@ -335,21 +331,24 @@
 
   /**
    * A low and a high US dollar figure. ESTIMATE ONLY. Low: the prompt at the
-   * highest chars-a-token rate plus the reply at the assumed size and the highest
-   * reply rate. High: the prompt at the lowest rate plus the whole max_tokens
-   * ceiling, which a reply cannot exceed (so reasoning is inside it). Null when the
-   * model has no known price.
+   * highest chars-a-token rate plus the lowest reply (reasoning included). High:
+   * the prompt at the lowest rate plus the highest reply, which grows with the
+   * count above MEASURED_COUNT_MAX and never exceeds max_tokens. Set from QZ-5's
+   * eight sends (see PROMPT_BOUNDS and ASSUMED). Null when the model has no known
+   * price.
    */
   function estimateCost({ modelId, promptChars, count, maxTokens }) {
     const prices = pricesPerToken(modelId);
     if (!prices) return null;
 
-    const pb = promptBounds();
-    const rb = replyBounds();
-    const inputLow = Math.ceil(promptChars / pb.LOW);
-    const inputHigh = Math.ceil(promptChars / pb.HIGH);
-    const outputLow = Math.ceil((count * ASSUMED.REPLY_CHARS_PER_QUESTION_LOW) / rb.LOW);
-    const outputHigh = Math.max(maxTokens, outputLow);
+    const inputLow = Math.ceil(promptChars / PROMPT_BOUNDS.LOW);
+    const inputHigh = Math.ceil(promptChars / PROMPT_BOUNDS.HIGH);
+    const outputLow = ASSUMED.REPLY_TOKENS_LOW;
+    const extraQuestions = Math.max(0, count - ASSUMED.MEASURED_COUNT_MAX);
+    const outputHigh = Math.max(
+      outputLow,
+      Math.min(maxTokens, ASSUMED.REPLY_TOKENS_HIGH + extraQuestions * ASSUMED.EXTRA_REPLY_TOKENS_PER_QUESTION)
+    );
 
     return {
       kind: "estimate",

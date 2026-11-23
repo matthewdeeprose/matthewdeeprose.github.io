@@ -38,7 +38,7 @@
 
 .chart-export-feedback.error {
   background-color: #fdecea;
-  color: #d32f2f;
+  color: #b71c1c; /* 5.74:1 on #fdecea; #d32f2f was 4.35:1 */
 }
 
 .chart-export-feedback.visible {

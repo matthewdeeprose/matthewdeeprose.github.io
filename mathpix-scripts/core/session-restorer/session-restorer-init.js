@@ -378,12 +378,14 @@
       tabAnalysis: document.getElementById("resume-tab-analysis"),
       tabChemistry: document.getElementById("resume-tab-chemistry"), // Phase 6B
       tabContext: document.getElementById("resume-tab-context"), // Stage 7
+      tabQuiz: document.getElementById("resume-tab-quiz"), // QZ-7 (Resume-only)
       tabAi: document.getElementById("resume-tab-ai"), // S6-3a (Resume-only)
       panelMmd: document.getElementById("resume-panel-mmd"),
       panelConfidence: document.getElementById("resume-panel-confidence"),
       panelAnalysis: document.getElementById("resume-panel-analysis"),
       panelChemistry: document.getElementById("resume-panel-chemistry"), // Phase 6B
       panelContext: document.getElementById("resume-panel-context"), // Stage 7
+      panelQuiz: document.getElementById("resume-panel-quiz"), // QZ-7
       panelAi: document.getElementById("resume-panel-ai"), // S6-3a
 
       // MMD view controls
@@ -582,6 +584,12 @@
         this.switchTab("context"),
       );
     }
+    // QZ-7: Quiz tab
+    if (this.elements.tabQuiz) {
+      this.elements.tabQuiz.addEventListener("click", () =>
+        this.switchTab("quiz"),
+      );
+    }
     // S6-3a: AI tab
     if (this.elements.tabAi) {
       this.elements.tabAi.addEventListener("click", () =>
@@ -600,6 +608,7 @@
       this.elements.tabAnalysis,
       this.elements.tabChemistry,
       this.elements.tabContext,
+      this.elements.tabQuiz,
       this.elements.tabAi,
     ].forEach((tabBtn) => {
       if (tabBtn) {
@@ -819,6 +828,7 @@
       { name: "analysis", element: this.elements.tabAnalysis },
       { name: "chemistry", element: this.elements.tabChemistry },
       { name: "context", element: this.elements.tabContext },
+      { name: "quiz", element: this.elements.tabQuiz },
       { name: "ai", element: this.elements.tabAi },
     ].filter((t) => t.element);
 

@@ -786,3 +786,53 @@
 #resume-ai-form .ai-sub .field-hint {
   font-size: 1rem;
 }
+
+/* ============================================================================
+   QUIZ TAB (QZ-8) — radios sized like the tick boxes, and the question editor
+   ============================================================================ */
+
+/* The tick boxes are 36px by main.css's global input[type="checkbox"] rule, and
+   the theme sheets colour both kinds through body's accent-color. Radios had no
+   such size rule, so they drew at the browser's 13px beside them. Same size,
+   same alignment; no colour here (the theme owns it). */
+#resume-panel-quiz input[type="radio"] {
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* Edit and Delete for each question, and the editor's Save and Cancel. */
+#resume-quiz-result-body .quiz-question-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+/* The editor's groups and fields stack and shrink: no horizontal scroll at 320px. */
+#resume-quiz-result-body .quiz-question-editing fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  margin: 1rem 0 0;
+}
+
+#resume-quiz-result-body .quiz-question-editing .mathpix-context-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+#resume-quiz-result-body .quiz-question-editing textarea,
+#resume-quiz-result-body .quiz-question-editing input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.5rem 0.625rem;
+}

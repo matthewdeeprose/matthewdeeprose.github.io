@@ -377,14 +377,21 @@
   /**
    * A value's share of the total, as a percentage to one decimal place, halves away from zero. A value that prints as a whole
    * number (or a BigInt sum of such values) over a whole total has an exact share, so it is worked out exactly: the total
-   * is wholeTotal when the caller has the exact sum (exactWholeSum), else the double total when that is a safe integer. Any other
-   * share uses the tolerance above.
-   * @param {number|bigint} value - The value, or an exact sum of values
+   * is wholeTotal when the caller has the exact sum (exactWholeSum). A pie with a decimal value is worked out the same way from the
+   * digits every value prints as, scaled to the finest place any of them carries (exactTotal, from exactDecimalSum): the share is
+   * a division of two whole numbers, never of two doubles. Only a pie with no exact sum (a value that is not finite) keeps the
+   * double total, when that is a safe integer, and the tolerance above.
+   * @param {number|bigint|string} value - The value, an exact whole sum of values, or an exact decimal sum as text
    * @param {number} total - The total as a number
    * @param {bigint|null} [wholeTotal] - The exact whole sum, or null
+   * @param {string|null} [exactTotal] - The exact decimal sum as text (exactDecimalSum), or null
    * @returns {number} The share in percent, to one decimal place
    */
-  function roundedShare(value, total, wholeTotal = null) {
+  function roundedShare(value, total, wholeTotal = null, exactTotal = null) {
+    const decimal = wholeTotal === null ? scaledAgainstTotal(value, exactTotal) : null;
+    if (decimal !== null && decimal.all > 0n) {
+      return Number((decimal.one * 2000n + decimal.all) / (2n * decimal.all)) / 10;
+    }
     const whole = wholeTotal ?? (Number.isSafeInteger(total) ? BigInt(total) : null);
     const exact = wholeValue(value);
     if (whole !== null && exact !== null && whole > 0n && exact >= 0n) {
@@ -399,7 +406,7 @@
    */
   function formatPercentage(value, total, wholeTotal = null, exactTotal = null) {
     // Halves round away from zero, as the radar's averages do: 86.1 of 168 is 51.25% and reads 51.3%.
-    const text = roundedShare(value, total, wholeTotal).toFixed(1);
+    const text = roundedShare(value, total, wholeTotal, exactTotal).toFixed(1);
     if (value > 0 && text === "0.0") return BELOW_ONE_TENTH;
     // With the exact sum the value is compared as the digits it prints as, so a value above 2^53 is not read as its double.
     if (text !== "100.0") return text + "%";
@@ -412,13 +419,13 @@
 
   /**
    * A value and the exact decimal total as whole numbers of the finest place either carries, or null when either is not plain digits.
-   * @param {number} value - The segment value
+   * @param {number|string} value - The segment value, or an exact sum of values as text (the bottom half)
    * @param {string|null} exactTotal - The sum from exactDecimalSum, or null
    * @returns {{one: bigint, all: bigint}|null} The two scaled numbers, or null
    */
   function scaledAgainstTotal(value, exactTotal) {
     if (exactTotal === null) return null;
-    const one = /^(\d+)(?:\.(\d+))?$/.exec(formatValue(value));
+    const one = /^(\d+)(?:\.(\d+))?$/.exec(typeof value === "string" ? value : formatValue(value));
     const all = /^(\d+)(?:\.(\d+))?$/.exec(exactTotal);
     if (!one || !all) return null;
     const places = Math.max((one[2] || "").length, (all[2] || "").length);
@@ -469,7 +476,7 @@
     };
     // The share as the reader hears it: the one the row prints, rounded the same way (halves away from zero). One that prints as a
     // simple fraction without being it reads "about", so "50.0%" never sits beside "over half", nor "25.0%" beside nothing.
-    const printed = roundedShare(value, total, wholeTotal).toFixed(1);
+    const printed = roundedShare(value, total, wholeTotal, exactTotal).toFixed(1);
     const printsAs = (target) => printed === (target * 100).toFixed(1);
     if (near(1 / 2)) return "exactly half";
     if (printsAs(1 / 2)) return "about half";
@@ -510,17 +517,13 @@
     };
   }
 
-  // Digits a double carries reliably: two values equal at this many significant digits differ by float noise at most.
-  const SAME_VALUE_DIGITS = 15;
-
   /**
-   * True when two values are one value, so "each" and "equal" are true of them. Two whole numbers
-   * carry no float noise, so they are one value only when they are equal. Any other pair is one
-   * value when it is equal to the digits a double carries.
+   * True when two values are one value, so "each" and "equal" are true of them: they print as the same digits. Two doubles print as
+   * the same digits only when they are the same double, so a pair that differs at all, as 499999999999999.9 and 500000000000000.1 do,
+   * reads "about equal" and is listed value by value.
    */
   function sameValue(a, b) {
-    if (Number.isInteger(a) && Number.isInteger(b)) return a === b;
-    return Number(a.toPrecision(SAME_VALUE_DIGITS)) === Number(b.toPrecision(SAME_VALUE_DIGITS));
+    return formatValue(a) === formatValue(b);
   }
 
   /** True when the segments' values are one value, so "each" and "equal" are true. */
@@ -656,13 +659,27 @@
    */
   function sharedShareRuns(group, total, wholeTotal = null, exactTotal = null) {
     const { text, term } = modelCore();
-    const shareOf = (segment) => roundedShare(segment.value, total, wholeTotal);
+    const shareOf = (segment) => roundedShare(segment.value, total, wholeTotal, exactTotal);
     const lowest = group.reduce((one, other) => (shareOf(other) < shareOf(one) ? other : one));
     const highest = group.reduce((one, other) => (shareOf(other) > shareOf(one) ? other : one));
     const low = formatPercentage(lowest.value, total, wholeTotal, exactTotal);
     const high = formatPercentage(highest.value, total, wholeTotal, exactTotal);
     if (low === high) return [term("percentage", [text(low)])];
     return [term("percentage", [text(low)]), text(" to "), term("percentage", [text(high)])];
+  }
+
+  /**
+   * The share runs, full stop included, of a tie sentence that names its members. Where every member's row prints the same share,
+   * "6.3% each." Where the rows differ, each member's printed share in the order of the names, with no "each" ("48.9% and 48.8%."),
+   * the same runs the Key Insights line builds (`groupPercentages`). A tie too long to name every member (the names are cut to
+   * TIE_NAMES_KEPT and a count) keeps `sharedShareRuns`' range, since a share for every member of it would not read as a sentence.
+   */
+  function namedTieShareRuns(group, total, wholeTotal = null, exactTotal = null) {
+    const { text } = modelCore();
+    if (group.length > TIE_NAMES_CAP) {
+      return [...sharedShareRuns(group, total, wholeTotal, exactTotal), text(" each.")];
+    }
+    return [...groupPercentages(group, total, [text(" each")], wholeTotal, exactTotal), text(".")];
   }
 
   /**
@@ -767,8 +784,7 @@
         ...tiedNames(ties.largest),
         // Two values that differ are not one value, so they are not "joint": the same "about equal" the all-equal sentence uses.
         text(ties.largestSame ? " are the joint largest segments, at " : " are the largest segments, about equal, at "),
-        ...sharedShareRuns(ties.largest, total, wholeTotal, exactTotal),
-        text(" each."),
+        ...namedTieShareRuns(ties.largest, total, wholeTotal, exactTotal),
       ];
     }
 
@@ -943,7 +959,7 @@
       logDebug(
         "Generating pattern analysis for " + segments.length + " segments"
       );
-      const pattern = generatePatternSection(segments, total, wholeTotal);
+      const pattern = generatePatternSection(segments, total, wholeTotal, exactTotal);
       if (pattern) sections.push(pattern);
     }
 
@@ -955,9 +971,10 @@
    * @param {Array} segments - Array of segment objects
    * @param {number} total - Total value of all segments
    * @param {bigint|null} [wholeTotal] - The exact whole sum (exactWholeSum), or null
+   * @param {string|null} [exactTotal] - The exact decimal sum as text (exactDecimalSum), or null
    * @returns {Object} The patterns section (model section)
    */
-  function generatePatternSection(segments, total, wholeTotal = null) {
+  function generatePatternSection(segments, total, wholeTotal = null, exactTotal = null) {
     const { text, term, paragraph, section } = modelCore();
 
     logDebug("Analysing distribution patterns");
@@ -973,10 +990,13 @@
       const bottomHalfCount = Math.floor(segments.length / 2);
       const bottomHalf = segments.slice(segments.length - bottomHalfCount);
       const bottomHalfTotal = compensatedSum(bottomHalf.map((segment) => segment.value));
-      // With an exact whole total every value prints as a whole number, so the bottom half has an exact sum too.
+      // With an exact whole total every value prints as a whole number, so the bottom half has an exact sum too; with a decimal
+      // value it has an exact decimal sum, as text.
       const bottomHalfExact =
-        wholeTotal === null ? bottomHalfTotal : bottomHalf.reduce((running, segment) => running + wholeValue(segment.value), 0n);
-      const bottomHalfPercentage = formatPercentage(bottomHalfExact, total, wholeTotal);
+        wholeTotal === null
+          ? (exactTotal === null ? null : exactDecimalSum(bottomHalf)) ?? bottomHalfTotal
+          : bottomHalf.reduce((running, segment) => running + wholeValue(segment.value), 0n);
+      const bottomHalfPercentage = formatPercentage(bottomHalfExact, total, wholeTotal, exactTotal);
 
       logDebug(
         "Bottom " +
