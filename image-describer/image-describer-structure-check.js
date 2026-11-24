@@ -2,8 +2,9 @@
  * @file image-describer-structure-check.js
  * @description Free, pure-text layout checker for an Image Describer description (IDQ H-194b, built at H-201).
  * It finds five slips a text-only repair request can fix (a block after the data table, text after the
- * data table, a wrong count line, month names listed one by one, a sentence said twice) and two it cannot
- * (a missing section, a missing closing line), and builds the repair request for the first five.
+ * data table, a count line below its list, month names listed one by one, a sentence said twice) and three it
+ * cannot (a missing section, a missing closing line, a count line above its list: H-204), and builds the repair
+ * request for the first five.
  * No network, no DOM, no announcement. Nothing here reads window.PROMPT_*: the caller passes the text.
  * Loaded by tools.html before the controller's generate file (H-202). It also holds the keep-or-discard
  * checks for a fixed description (numbersPreserved, judgeFix).
@@ -58,6 +59,7 @@
     REPEAT: "REPEAT",
     SECTIONS: "SECTIONS",
     ENDS: "ENDS",
+    COUNTHIGH: "COUNTHIGH",
   });
 
   /** Repairable rules, in the order of the numbered problem lines (H-200's RULES_IN_POOL). */
@@ -69,8 +71,13 @@
     RULES.REPEAT,
   ]);
 
-  /** Report-only rules, after the repairable ones in check()'s result. */
-  const REPORT_ONLY_RULES = Object.freeze([RULES.SECTIONS, RULES.ENDS]);
+  /**
+   * Report-only rules, after the repairable ones in check()'s result, in this order (H-204 put COUNTHIGH
+   * last, after SECTIONS and ENDS). COUNTHIGH: the count line says MORE than the list holds. That count may
+   * be true (grouped items, text not in a numbered list) or the list may have left items out, and lowering
+   * the number hides either, so the check reports it and never asks for a fix.
+   */
+  const REPORT_ONLY_RULES = Object.freeze([RULES.SECTIONS, RULES.ENDS, RULES.COUNTHIGH]);
 
   const SECTION_NUMBERS = Object.freeze([1, 2, 3, 4]);
   const REPEAT_MIN_WORDS = 8; // a repeated sentence must be at least this long to count
@@ -224,7 +231,7 @@
   /**
    * Check one description. Pure: reads only `text`.
    * @param {string} text - the description Markdown
-   * @returns {{ fired: Array<{ rule: string, detail: object }> }} in repairable-rule order, then SECTIONS, ENDS
+   * @returns {{ fired: Array<{ rule: string, detail: object }> }} in repairable-rule order, then SECTIONS, ENDS, COUNTHIGH
    */
   function check(text) {
     requireString(text, "text");
@@ -236,7 +243,9 @@
     if (textLate(text)) fired.push({ rule: RULES.TEXTLATE, detail: {} });
 
     const counts = countLine(text);
-    if (counts.said !== null && counts.listed !== null && counts.said !== counts.listed) {
+    // H-204: the list is the evidence only when it holds MORE than the count says; then raising the count is safe.
+    const countKnown = counts.said !== null && counts.listed !== null;
+    if (countKnown && counts.said < counts.listed) {
       fired.push({ rule: RULES.COUNTLINE, detail: { said: counts.said, listed: counts.listed } });
     }
 
@@ -251,6 +260,10 @@
     if (missing.length) fired.push({ rule: RULES.SECTIONS, detail: { missing } });
 
     if (!/^\s*Description ends/im.test(text)) fired.push({ rule: RULES.ENDS, detail: {} });
+
+    if (countKnown && counts.said > counts.listed) {
+      fired.push({ rule: RULES.COUNTHIGH, detail: { said: counts.said, listed: counts.listed } });
+    }
 
     logDebug("check fired", fired.map((f) => f.rule));
     return { fired };

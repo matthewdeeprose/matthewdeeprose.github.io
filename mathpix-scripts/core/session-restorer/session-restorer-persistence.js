@@ -73,6 +73,10 @@
         return;
       }
 
+      // FI-19a: a save drops TikZ code whose picture has changed, before the
+      // downloader reads the registry (it calls registry.toJSON() itself).
+      this.imageRegistry?.dropStaleTikz?.();
+
       // Get current MMD content
       const currentMMD = this.getCurrentMMDContent();
       const originalMMD = this.restoredSession?.originalMMD || "";

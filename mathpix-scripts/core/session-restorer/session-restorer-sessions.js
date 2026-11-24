@@ -184,11 +184,17 @@ const { logError, logWarn, logInfo, logDebug, getIcon, RESTORER_CONFIG } =
       // Content-bearing fields only: metadata timestamps and the had-blob flags
       // can differ between two saves of one state and must not split a version.
       return JSON.stringify({
-        images: snapshot.images.map((e) => [
-          e.id, e.altText, e.altTextSource, e.title, e.titleSource,
-          e.textInImage, e.textInImageSource, e.longDescription,
-          e.longDescriptionSource, e.decorative, e.status, e.source,
-        ]),
+        images: snapshot.images.map((e) => {
+          const row = [
+            e.id, e.altText, e.altTextSource, e.title, e.titleSource,
+            e.textInImage, e.textInImageSource, e.longDescription,
+            e.longDescriptionSource, e.decorative, e.status, e.source,
+          ];
+          // FI-19a: the TikZ code is an authored field. A trailing slot, added
+          // only when the entry has code, so a no-code key is byte-identical.
+          if (typeof e.tikzSource === "string") row.push(e.tikzSource);
+          return row;
+        }),
         filenames: snapshot.filenames || {},
         // VS-3e: two versions that swap one picture differently differ here.
         swaps: snapshot.swaps || {},
@@ -223,7 +229,9 @@ const { logError, logWarn, logInfo, logDebug, getIcon, RESTORER_CONFIG } =
     { name: "textInImage", slots: [4, 5] },
     { name: "longDescription", slots: [6, 7] },
     { name: "decorative", slots: [8] },
+    { name: "tikzCode", slots: [9] }, // FI-19a: the key's trailing slot, see TIKZ_KEY_SLOT
   ]);
+  const TIKZ_KEY_SLOT = 12; // id plus eleven fields in _registrySnapshotKey, then the code
   const UNREADABLE_FIELD = "unreadable";
 
   /**
@@ -247,7 +255,9 @@ const { logError, logWarn, logInfo, logDebug, getIcon, RESTORER_CONFIG } =
     const entries = (key) => {
       const parsed = JSON.parse(key);
       return {
-        map: new Map(parsed.images.map((e) => [e[0], e.slice(1, AUTHORED_FIELDS)])),
+        // Slots 1 to 9 are the nine authored fields; the code, when present, is
+        // appended as a tenth (an absent code reads as null, which has no content).
+        map: new Map(parsed.images.map((e) => [e[0], [...e.slice(1, AUTHORED_FIELDS), e[TIKZ_KEY_SLOT] ?? null]])),
         swaps: parsed.swaps || {},
       };
     };
@@ -1819,7 +1829,7 @@ if (context.eagerDiff) {
       !this.hasUnsavedChanges &&
       this._normaliseMMDForComparison(liveText) ===
         this._normaliseMMDForComparison(this._archiveSavedMMD()) &&
-      this._registryEditsDiffer({ registrySnapshot: this._registrySnapshot?.() }) !== true;
+      this._registryEditsDiffer({ registrySnapshot: this._registrySnapshot?.({ keepStale: true }) }) !== true;
 
     if (sessionsWithEdits.length === 0 && onScreenIsArchive) {
       this.showNotification("No alternative versions available", "info");
@@ -1836,7 +1846,7 @@ if (context.eagerDiff) {
     // the ZIP. Now that such a copy is listed, identify it by the registry on
     // screen: the listed copy whose snapshot is the live one.
     if (actualVersion.type !== "localStorage" && !onScreenIsArchive) {
-      const liveKey = this._registrySnapshotKey({ registrySnapshot: this._registrySnapshot?.() });
+      const liveKey = this._registrySnapshotKey({ registrySnapshot: this._registrySnapshot?.({ keepStale: true }) });
       const onScreen = liveKey
         ? sessionsWithEdits.findIndex(
             (s) =>
@@ -2273,6 +2283,8 @@ if (context.eagerDiff) {
           logInfo(
             `applyRecoveredSession: registry mirror hydrate matched=${hydrateResult.matched} applied=${hydrateResult.applied} decorativeApplied=${hydrateResult.decorativeApplied}`,
           );
+          // FI-19a: code the mirror gave back is checked against the picture's bytes.
+          await this._verifyTikzDigests?.();
         } else {
           logDebug("applyRecoveredSession: no registry mirror to hydrate.");
         }

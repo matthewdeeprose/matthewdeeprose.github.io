@@ -260,7 +260,17 @@ Two sessions showed AI built with disabled people, not around them. HSBC publish
 
 Helen Charles of Meta, talking about AI glasses, argued against carve-outs that would make disabled people prove they qualify, and asked policymakers to talk to disabled users before they set policy.
 
-Nobody settled the question. To me, the recruitment result shows that AI often sits on the organisation's side of the interface, where the person applying has no say in how it behaves. An agent that reads a website for you can't help when the organisation's AI is the one judging you.
+#### My view
+
+Nobody on stage settled the question, so here is my answer: yes, the page still has to be accessible. An agent is a welcome extra choice for disabled people, but it can't be the only way in, for five reasons.
+
+1. It already costs more to be disabled. Scope's Disability Price Tag puts the extra cost at £1,095 a month for the average disabled household, just to reach the same standard of living as non-disabled households. If access depends on an AI subscription, we add to that bill.
+2. Agents read the accessibility tree too. Browser agents such as Microsoft's Playwright MCP work from the same structure a screen reader uses, because it is fast and precise, and working from screenshots costs more and means guessing from pixels. Miro found the same thing by accident. An inaccessible page is harder for the agent as well, so the agent depends on accessibility; it doesn't replace it.
+3. The person can't always check the agent's work. When Mathpix read a lecturer's handwritten pi as 55, my workflow had a subject expert to catch it. A blind student who relies on an agent may never know the page said something different. Using the page directly is how you check.
+4. Handing an agent control carries risk. The Secure by Inclusion session showed that when disabled people can't use a login, they end up sharing passwords or relying on helpers. An agent holding your credentials, inside your bank account or student record, is the same workaround with new risks.
+5. Some settings don't allow AI, and the duty stays with the organisation. Many assessments restrict AI tools, and a student still has to read the exam paper. Under the Equality Act 2010 and the accessibility regulations, the duty to be accessible sits with us, not with whatever tool a disabled person can afford.
+
+The recruitment research adds one more reason to be careful. AI often sits on the organisation's side of the interface, where the person has no say in how it behaves. An agent that reads a website for you can't help when the organisation's AI is the one judging you.
 
 ### A new business case
 
@@ -371,7 +381,7 @@ Large organisations dominated, mostly finance and big tech. When I counted the s
 
 The event left me with three questions about AI that I can't yet answer.
 
-1. When an agent reads a website for a disabled person, who checks what the agent got wrong? The person using it may have no way to see the mistake, like a blind student who can't spot that pi became 55.
+1. Who tests agents with disabled people before organisations recommend them? Vendors say an agent can open a site on someone's behalf, but I heard no evidence that disabled people had tried it on the tasks that matter to them, such as booking an appointment or submitting coursework.
 2. How do we judge AI-written descriptions at the scale of a whole university? The people best placed to judge them, disabled students and subject experts, have the least spare time.
 3. Who in a university gets asked before an AI tool is bought? Reginé's third question, whether disabled people were asked, is one I want us to be able to answer yes to.
 

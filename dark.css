@@ -6990,6 +6990,14 @@ figcaption a:active {
   color: #00131d !important;
 }
 
+/* A focused caption link keeps the caption's own link colour: the caption sits on a light figure (#9fb1bd), and
+   main a:focus (#74c9e5) would read 1.18:1 there. Specificity 0,1,3 beats main a:focus at 0,1,2. */
+main figcaption a:focus,
+aside figcaption a:focus,
+footer figcaption a:focus {
+  color: #002e3b;
+}
+
 /* HOV-2b: the dark hover tint. main.css sets #002e3b with !important for both themes;
    this sheet loads after main.css, so the same selector wins here. Their glow is
    handled in main.css and by the global keyboard focus ring. */

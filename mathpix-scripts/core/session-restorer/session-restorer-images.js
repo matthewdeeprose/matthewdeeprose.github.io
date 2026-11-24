@@ -412,6 +412,9 @@
       // Store registry
       this.imageRegistry = registry;
 
+      // FI-19a: check carried TikZ digests against the bytes just attached.
+      await this._verifyTikzDigests?.();
+
       result.restored = extractedCount > 0;
       result.imageCount = extractedCount;
 
@@ -1829,6 +1832,35 @@
     } else {
       delete this._swapDigests[imageId];
     }
+
+    // FI-19a: report the digest of the bytes the picture holds now, so TikZ code
+    // made for them is confirmed (undo then redo keeps it). No digest (the
+    // original picture after an undo) leaves it marked changed. The registry
+    // drops stale code at the next save, never here.
+    this.imageRegistry.notePictureDigest?.(imageId, state.digest);
+  };
+
+  /**
+   * FI-19a: after a restore, check each picture's carried TikZ code against the
+   * bytes the picture holds now. Digests the Blob with the same `_digestBlob` the
+   * swap marker uses (one algorithm) and tells the registry, which keeps code on
+   * a match and drops it at the next save otherwise. A picture with no Blob is
+   * marked changed, so a file-less entry cannot keep code. Never drops by itself.
+   * @returns {Promise<number>} how many pictures were checked
+   * @private
+   */
+  proto._verifyTikzDigests = async function () {
+    const registry = this.imageRegistry;
+    if (!registry || typeof registry.notePictureDigest !== "function") return 0;
+
+    let checked = 0;
+    for (const entry of registry.getAllImages()) {
+      if (typeof entry.tikzSourceFor !== "string") continue;
+      const digest = entry.blob instanceof Blob ? await this._digestBlob(entry.blob) : null;
+      registry.notePictureDigest(entry.id, digest);
+      checked++;
+    }
+    return checked;
   };
 
   /**
@@ -2583,6 +2615,9 @@
       this._swapDigests = {};
       this._resetSwapLedger?.();
 
+      // FI-19a: check carried TikZ digests against the bytes just attached.
+      await this._verifyTikzDigests?.();
+
       // Free what the old state held and the archive state does not use.
       const inUse = new Set(nextMap.values());
       for (const url of oldUrls) {
@@ -2630,14 +2665,19 @@
    * mints a live URL from the cached bytes.
    *
    * Pure and deterministic: two calls with no change between give equal JSON.
+   * (FI-19a: a save also drops TikZ code whose picture has changed, once; a
+   * caller that only COMPARES passes `keepStale` so it drops nothing.)
    *
+   * @param {Object} [options]
+   * @param {boolean} [options.keepStale=false] - compare only: drop no stale TikZ code
    * @returns {{v: number, metadata: Object, images: Object[], filenames: Object}|null}
    * @private
    */
-  proto._registrySnapshot = function () {
+  proto._registrySnapshot = function (options = {}) {
     const registry = this.imageRegistry;
     if (!registry || typeof registry.toJSON !== "function") return null;
 
+    if (!options.keepStale) registry.dropStaleTikz?.();
     const data = registry.toJSON();
     const filenames = {};
 
@@ -2960,6 +3000,9 @@
       this.imageBlobUrlMap.set(cdnUrl, blobUrl);
     }
     this._archiveImageUrls = nextStore;
+
+    // FI-19a: check carried TikZ digests against the bytes just attached.
+    await this._verifyTikzDigests?.();
 
     // Free what the old state held and this version does not use.
     const inUse = new Set(nextMap.values());

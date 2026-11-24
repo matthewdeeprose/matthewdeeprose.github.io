@@ -173,8 +173,10 @@ html:not([data-theme="dark"]) img.${CHART_EXPORT.imageClass}[${EXPORT_MODE_ATTRI
     fallbackName: "Figure",
     // The figure's name is the first sentence of its label, kept short.
     nameMaxChars: 150,
-    // Under this dialog width a diagram opens at its own size and the dialog scrolls.
-    narrowDialogPx: 640,
+    // The dialog's height as a fraction of the window; a picture is fitted inside what is left.
+    dialogHeightRatio: 0.94,
+    // The least height a picture is fitted to, so a very short window never sizes it to nothing.
+    minPictureHeightPx: 120,
     // Palette: the export's own tokens, with system colours as a last resort.
     background: "var(--body-bg, Canvas)",
     text: "var(--body-text, CanvasText)",
@@ -229,9 +231,8 @@ dialog.${VIEW_LARGER.dialogClass}::backdrop { background: ${VIEW_LARGER.backdrop
 .vl-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin: 0 0 0.75rem; }
 dialog.${VIEW_LARGER.dialogClass} .vl-title { font-size: 1.1rem; margin: 0; padding: 0; border: 0; min-width: 0; color: var(--vl-text); text-decoration: none; }
 .vl-close { flex: none; }
-.vl-body .mermaid { overflow: visible; }
-.vl-body .mermaid > svg { width: 100% !important; max-width: none !important; height: auto !important; max-height: calc(${VIEW_LARGER.dialogMaxHeight} - 9rem); }
-.vl-body img.chart-export-image { max-width: none; height: auto; }
+.vl-body .mermaid { overflow: visible; text-align: center; }
+.vl-body img.chart-export-image { margin: 0 auto; }
 </style>`;
 
   // String.raw keeps the backslashes in the regular expressions. The script
@@ -240,13 +241,78 @@ dialog.${VIEW_LARGER.dialogClass} .vl-title { font-size: 1.1rem; margin: 0; padd
 (function () {
   var FIG = "${VIEW_LARGER.figureSelector}";
   var NAME_MAX = ${VIEW_LARGER.nameMaxChars};
-  var NARROW_PX = ${VIEW_LARGER.narrowDialogPx};
+  var HEIGHT_RATIO = ${VIEW_LARGER.dialogHeightRatio};
+  var MIN_PICTURE_PX = ${VIEW_LARGER.minPictureHeightPx};
   var counter = 0;
 
+  // The page behind does not scroll while a dialog is open. The root's own inline values are
+  // kept and put back on every way out, and a stable gutter stops the page shifting sideways
+  // when the scrollbar goes. A second open never overwrites the saved values.
+  var saved = null;
+  function lockPage() {
+    if (saved) return;
+    var root = document.documentElement;
+    saved = { overflow: root.style.overflow, gutter: root.style.scrollbarGutter };
+    root.style.overflow = "hidden";
+    root.style.scrollbarGutter = "stable";
+  }
+  function unlockPage() {
+    if (!saved) return;
+    var root = document.documentElement;
+    root.style.overflow = saved.overflow;
+    root.style.scrollbarGutter = saved.gutter;
+    saved = null;
+  }
+
+  // Size every picture to the dialog's content box, aspect kept: small ones scale up to fit
+  // both ways, wide or tall ones scale down to the width only, and the dialog scrolls up and
+  // down. Never sideways. Run again on resize and zoom.
+  function fitPictures(d) {
+    var body = d.querySelector(".vl-body");
+    var head = d.querySelector(".vl-head");
+    var cs = getComputedStyle(d);
+    var chrome = head.offsetHeight + parseFloat(getComputedStyle(head).marginBottom) +
+      parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+    var availW = Math.floor(body.clientWidth);
+    // In a very short window the heading and Close button can fill the dialog: the picture
+    // still fits the width (no sideways scroll) and the dialog scrolls up and down instead.
+    var availH = Math.max(MIN_PICTURE_PX, Math.floor(window.innerHeight * HEIGHT_RATIO - chrome));
+    if (availW < 1) return;
+    body.querySelectorAll(".mermaid > svg, img.chart-export-image").forEach(function (p) {
+      var w, h;
+      if (p.tagName.toLowerCase() === "svg") {
+        var vb = p.viewBox && p.viewBox.baseVal;
+        w = vb && vb.width; h = vb && vb.height;
+        if (!w || !h) { var bb = p.getBBox(); w = bb.width; h = bb.height; }
+        p.style.setProperty("vertical-align", "top");
+      } else {
+        w = p.naturalWidth; h = p.naturalHeight;
+      }
+      if (!w || !h) return;
+      // Fit both ways, but never shrink a wide picture below the width fit: a very tall or wide
+      // diagram stays readable and the dialog scrolls up and down, never sideways.
+      var fitWidth = availW / w;
+      var scale = Math.max(Math.min(fitWidth, availH / h), Math.min(fitWidth, 1));
+      p.style.setProperty("width", Math.floor(w * scale) + "px", "important");
+      p.style.setProperty("height", "auto", "important");
+      p.style.setProperty("min-width", "0", "important");
+      p.style.setProperty("max-width", "none", "important");
+      p.style.setProperty("max-height", "none", "important");
+    });
+  }
+
   function shortName(fig) {
+    // A diagram that holds a link names its SVG as a group ("Diagram links") and keeps the short
+    // description on its container and on an image stand-in, so those are read first. The SVG's own
+    // label is used only when its role is "img", where the label is the description.
+    var holder = fig.querySelector("[data-svg-accessible-name]");
+    var standIn = fig.querySelector('.mermaid-link-standin[role="img"]');
     var svg = fig.querySelector(".mermaid > svg[aria-label]");
     var img = fig.querySelector("img.chart-export-image[alt]");
-    var raw = (svg && svg.getAttribute("aria-label")) || (img && img.getAttribute("alt")) || "${VIEW_LARGER.fallbackName}";
+    var raw = (holder && holder.getAttribute("data-svg-accessible-name")) ||
+      (standIn && (standIn.getAttribute("aria-label") || standIn.textContent)) ||
+      (svg && svg.getAttribute("role") === "img" && svg.getAttribute("aria-label")) ||
+      (img && img.getAttribute("alt")) || "${VIEW_LARGER.fallbackName}";
     var sentence = raw.match(/^[\s\S]*?[.!?](?=\s|$)/);
     var first = (sentence ? sentence[0] : raw).trim();
     return first.length > NAME_MAX ? first.slice(0, NAME_MAX - 1) + "…" : first;
@@ -302,6 +368,9 @@ dialog.${VIEW_LARGER.dialogClass} .vl-title { font-size: 1.1rem; margin: 0; padd
     // Tab and Escape are the browser's own actions and do not depend on propagation.
     d.addEventListener("keydown", function (e) { e.stopPropagation(); });
     d.addEventListener("close", function () {
+      unlockPage();
+      if (d.__refit) window.removeEventListener("resize", d.__refit);
+      if (d.__watch) d.__watch.disconnect();
       d.querySelector(".vl-body").textContent = "";
       d.remove();
       if (d.__opener) d.__opener.focus();
@@ -321,39 +390,21 @@ dialog.${VIEW_LARGER.dialogClass} .vl-title { font-size: 1.1rem; margin: 0; padd
     body.textContent = "";
     var pic = pictureOf(fig, uid);
     body.appendChild(pic);
+    lockPage();
     d.showModal();
-    // A chart is a fixed-size picture, so it opens at its own size and the dialog scrolls.
-    // A diagram is a vector: it fits the dialog, or opens at its own size when the dialog is narrow.
-    // Sizes are read after the dialog is shown, because a hidden svg has no layout.
-    // A diagram never opens smaller than the page already shows it: a wide diagram that
-    // scrolls sideways at its own size on the page would shrink if it were fitted.
-    var fitDiagram = d.clientWidth >= NARROW_PX;
-    var pageSvg = Array.prototype.slice.call(fig.querySelectorAll(".mermaid > svg")).filter(function (s) {
-      return s.getBoundingClientRect().width > 0;
-    })[0];
-    var pageWidth = pageSvg ? pageSvg.getBoundingClientRect().width : 0;
-    pic.querySelectorAll(".mermaid > svg").forEach(function (s) {
-      var vb = s.viewBox && s.viewBox.baseVal && s.viewBox.baseVal.width;
-      var vbHeight = s.viewBox && s.viewBox.baseVal && s.viewBox.baseVal.height;
-      if (!vb) return;
-      var width = vb;
-      if (fitDiagram) {
-        var maxHeight = parseFloat(getComputedStyle(s).maxHeight) || Infinity;
-        var fitScale = Math.min(body.clientWidth / vb, maxHeight / vbHeight);
-        if (!(pageWidth / vb > fitScale)) return;
-        width = pageWidth;
-      }
-      s.style.setProperty("width", width + "px", "important");
-      s.style.setProperty("max-width", "none", "important");
-      s.style.setProperty("min-width", "0", "important");
-      s.style.setProperty("max-height", "none", "important");
+    // Every picture fits the dialog, charts and diagrams alike. Sizes are read after the
+    // dialog is shown, because a hidden element has no layout.
+    fitPictures(d);
+    d.__refit = function () { fitPictures(d); };
+    window.addEventListener("resize", d.__refit);
+    // A dialog taken out of the page by anything other than close() gives the page back too.
+    d.__watch = new MutationObserver(function () {
+      if (d.isConnected) return;
+      d.__watch.disconnect();
+      window.removeEventListener("resize", d.__refit);
+      unlockPage();
     });
-    pic.querySelectorAll("img.chart-export-image").forEach(function (i) {
-      if (!i.naturalWidth) return;
-      i.style.setProperty("width", i.naturalWidth + "px", "important");
-      i.style.setProperty("max-width", "none", "important");
-      i.style.setProperty("max-height", "none", "important");
-    });
+    d.__watch.observe(document.body, { childList: true });
   }
 
   // The visible words are "View larger"; the accessible name adds which figure.

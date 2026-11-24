@@ -118,6 +118,29 @@ function mathsNameAttr(rich) {
   return DELIMITED_TEX.test(plain) ? ` aria-label="${escapeXML(convertDelimited(plain))}"` : "";
 }
 
+// The same idea for places that hold only text: an <option> (matching choice, inline select) and a
+// Move button's name (RA-157, register 79). An <option> cannot hold markup, so MathJax's output in
+// it is shown and named unreliably (blank with assistive MathML off, raw TeX with no network), and
+// a Move button's name carried the raw "\(x^2\)". Content holding delimited TeX becomes Unicode
+// text here; the runtime adds each equation's speech once MathJax has run. Content with no TeX
+// keeps today's text, byte for byte. Returns the text still to be escaped by the caller.
+function textOf(rich) {
+  const plain = decodeEntities(detag(rich));
+  return DELIMITED_TEX.test(plain) ? convertDelimited(plain) : detag(rich);
+}
+
+// The attribute that marks an <option> holding TeX and carries its source, so the runtime can
+// speak it (the option itself holds only Unicode). Empty when the content has no TeX.
+function mathsOptionAttr(rich) {
+  const plain = decodeEntities(detag(rich));
+  return DELIMITED_TEX.test(plain) ? ` data-maths-tex="${escapeXML(plain)}"` : "";
+}
+
+// The attribute that marks a Move button, or a list item, whose content holds TeX.
+function mathsMoveAttr(rich) {
+  return DELIMITED_TEX.test(decodeEntities(detag(rich))) ? " data-maths-name" : "";
+}
+
 // Envelope shape check shared by every type, then dispatch to the per-type
 // validator. Enough to render + score a question and to keep a broken block from
 // reaching a learner. Returns an error string, or null when usable.
@@ -399,15 +422,16 @@ function renderOrdering(q) {
   const rows = q.body.items
     .map((item) => {
       const itemId = escapeXML(item.id);
-      const name = escapeXML(detag(item.content));
+      const name = escapeXML(textOf(item.content));
+      const mark = mathsMoveAttr(item.content);
       return (
         `<li class="quiz-reorder-item" data-item-id="${itemId}" data-part="${itemId}">` +
         `<span class="quiz-item-text">${inlineRich(item.content)}</span>` +
         // aria-label leads with the visible text ("Move up") so the visible
         // words are a contiguous run inside the accessible name (SC 2.5.3).
         `<span class="quiz-move-buttons">` +
-        `<button type="button" class="quiz-move" data-dir="up" aria-label="Move up, ${name}">Move up</button>` +
-        `<button type="button" class="quiz-move" data-dir="down" aria-label="Move down, ${name}">Move down</button>` +
+        `<button type="button" class="quiz-move" data-dir="up" aria-label="Move up, ${name}"${mark}>Move up</button>` +
+        `<button type="button" class="quiz-move" data-dir="down" aria-label="Move down, ${name}"${mark}>Move down</button>` +
         `</span>` +
         `</li>`
       );
@@ -459,7 +483,7 @@ function validateMatching(q) {
 function renderMatching(q) {
   const id = escapeXML(q.id);
   const choiceOptions = q.body.choices
-    .map((c) => `<option value="${escapeXML(c.id)}">${escapeXML(detag(c.content))}</option>`)
+    .map((c) => `<option value="${escapeXML(c.id)}"${mathsOptionAttr(c.content)}>${escapeXML(textOf(c.content))}</option>`)
     .join("");
   const rows = q.body.prompts
     .map((p) => {
@@ -515,7 +539,7 @@ function renderSelectInText(q) {
     const selectId = `${id}-${sid}`;
     const label = escapeXML(String(sel.label || sel.id));
     const options = sel.options
-      .map((o) => `<option value="${escapeXML(o.id)}">${escapeXML(detag(o.content))}</option>`)
+      .map((o) => `<option value="${escapeXML(o.id)}"${mathsOptionAttr(o.content)}>${escapeXML(textOf(o.content))}</option>`)
       .join("");
     // aria-label (not an inline hidden <label>) to avoid the double-read.
     const field =

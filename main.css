@@ -4692,6 +4692,25 @@ body.tts-controls-bar-on::after {
   margin-bottom: 0.4rem;
 }
 
+/* FI-19b: the offer to edit a picture that kept its TikZ code. The button fills the block's width
+   so it is full width in the one-column layout; the block sits above "How to make it". */
+.image-recreate-dialog .image-recreate-offer {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+}
+
+.image-recreate-dialog .image-recreate-offer p {
+  margin: 0 0 0.5rem;
+}
+
+@media (max-width: 47.99rem) {
+  .image-recreate-dialog .image-recreate-offer .image-manager-btn {
+    width: 100%;
+  }
+}
+
 /* FI-10: the "How to make it" group sat on the Prompt label under it (0px gap). */
 .image-recreate-dialog .image-recreate-route {
   margin-bottom: 1rem;
@@ -4702,6 +4721,48 @@ body.tts-controls-bar-on::after {
 .image-recreate-dialog textarea {
   height: auto;
   min-height: 0;
+}
+
+/* FI-16: the change box and the code editor under a finished drawing. Both boxes fill the result
+   column (about 290px wide at 48rem and up); the code is in fixed-width letters so TeX's line
+   numbers line up with it, and its lines wrap rather than scroll the column sideways. */
+.image-recreate-edit {
+  margin-top: 1rem;
+}
+
+/* The labels sat on their boxes (the Prompt label has the same fix above). */
+.image-recreate-edit label {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.image-recreate-edit textarea {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+}
+
+.image-recreate-dialog textarea.image-recreate-code {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.85rem;
+  /* FI-18: each line stays whole (a wrap could fall inside "--"); a long line scrolls sideways inside the box, never the dialog */
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.image-recreate-code-edit {
+  margin-top: 1rem;
+}
+
+.image-recreate-code-edit summary {
+  min-height: 24px;
+  cursor: pointer;
+}
+
+.image-recreate-problems {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+  overflow-wrap: anywhere;
 }
 
 /* FI-9d: the card's "alt text was kept" note, a paragraph in the card's text flow under the

@@ -939,14 +939,30 @@
   }
 
   /**
+   * FI-18: what one resolved send used, read from the wire's own usage block (`response.raw.usage`, present on the streamed and the
+   * plain-JSON path; `metadata.tokens` is that same block only when streamed, so it is not read). Each field is a finite number or null.
+   * @returns {{promptTokens: number|null, completionTokens: number|null, cost: number|null}}
+   */
+  function readSendUsage(response) {
+    const usage = response && typeof response === "object" && response.raw && typeof response.raw === "object" ? response.raw.usage : null;
+    const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+    return {
+      promptTokens: num(usage && usage.prompt_tokens),
+      completionTokens: num(usage && usage.completion_tokens),
+      cost: num(usage && usage.cost),
+    };
+  }
+
+  /**
    * One press of Draw with AI: up to MAX_SENDS_PER_PRESS sends (the same cap as Describe and Fix), each proposal trial-rendered through
    * options.trialRender, stopping at the first that renders. Same model order and escalation as Fix. The author's source is never read
    * or written here: the adapter returns a drawing and the page decides what to do with it. Never rejects.
    * FI-12: with options.review true and a picture sent, the first drawing that renders is checked once against the original (one
    * more send, counted in the cap); options.onReview is called once as that send starts. Off by default; the result then has no `review`.
    * @param {{words?: string, pictureDataUrl?: string, trialRender: Function, signal?: AbortSignal, review?: boolean, onReview?: Function}} options
-   * @returns {Promise<{ok: true, source: string, summary: string, svg: string, model: string, escalated: boolean, sends: number, attempts: object[], raw: string, review?: {status: string, reason: string}}
-   *   | {ok: false, reason: string, message: string, sends?: number, attempts?: object[]}>}
+   * @returns {Promise<{ok: true, source: string, summary: string, svg: string, model: string, escalated: boolean, sends: number, attempts: object[], usage: object, raw: string, review?: {status: string, reason: string}}
+   *   | {ok: false, reason: string, message: string, sends?: number, attempts?: object[], usage?: object}>}
+   * FI-18: `usage` is `{ promptTokens, completionTokens, cost }`, each a number only when every send of the press reported it, else null.
    */
   async function generate(options) {
     const opts = options || {};
@@ -993,7 +1009,24 @@
 
     let sends = 0;
     const attempts = []; // proposals that did not render, oldest first
-    const finish = (result) => Object.assign(result, { sends, attempts: attempts.slice() });
+    // FI-18: what the press's sends used. A field is a number only when EVERY send of the press reported it (a send that threw or was
+    // cancelled reported nothing); otherwise null, so a partial total is never shown as the whole.
+    const usageSum = { promptTokens: 0, completionTokens: 0, cost: 0 };
+    const usageSeen = { promptTokens: 0, completionTokens: 0, cost: 0 };
+    const tallyUsage = (response) => {
+      const got = readSendUsage(response);
+      for (const field of Object.keys(usageSum)) {
+        if (got[field] === null) continue;
+        usageSum[field] += got[field];
+        usageSeen[field] += 1;
+      }
+    };
+    const pressUsage = () => {
+      const out = {};
+      for (const field of Object.keys(usageSum)) out[field] = sends > 0 && usageSeen[field] === sends ? Math.round(usageSum[field] * 1e9) / 1e9 : null;
+      return out;
+    };
+    const finish = (result) => Object.assign(result, { sends, attempts: attempts.slice(), usage: pressUsage() });
 
     /**
      * FI-12: one review round, opt-in. The model sees the original beside its own drawing once, with the same model that drew it. It
@@ -1049,6 +1082,7 @@
         await Promise.race([refreshFoundryTokenIfNeeded(), cancellation]);
         sends += 1; // the review is one of the press's sends
         const response = await Promise.race([instance.sendStreamingRequest({ userPrompt: generateReviewText(), messages: reviewMessages }), cancellation]);
+        tallyUsage(response);
         reply = typeof response === "string" ? response : (response && response.text) || "";
         if (response && response.finishReason === FINISH_REASON_LENGTH) return kept(REASONS.TRUNCATED);
       } catch (e) {
@@ -1096,6 +1130,7 @@
         let problem = null;
         try {
           const response = await Promise.race([instance.sendStreamingRequest({ userPrompt: request.text, messages }), cancellation]);
+          tallyUsage(response);
           raw = typeof response === "string" ? response : (response && response.text) || "";
           if (response && response.finishReason === FINISH_REASON_LENGTH) {
             problem = fail(REASONS.TRUNCATED, "The model's reply was cut off at its limit, so it was not used.", { model: modelId, raw });

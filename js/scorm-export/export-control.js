@@ -369,7 +369,6 @@ export function mountExportControl(opts = {}) {
   const button = doc.createElement("button");
   button.type = "button";
   button.className = `scorm-export-button${opts.buttonClass ? " " + opts.buttonClass : ""}`;
-  button.setAttribute("aria-describedby", statusId);
 
   // The icon is decorative (aria-hidden); the label span carries the accessible name and
   // is the only thing the label code below rewrites.

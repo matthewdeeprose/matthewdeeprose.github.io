@@ -626,6 +626,50 @@
   };
 
   /**
+   * QZ-11: restore the practice quiz from the session ZIP's data/quiz.json.
+   *
+   * ABSENT entry → nothing happens (a session without a quiz restores exactly
+   * as before). PRESENT → the store runs the full check and holds the quiz
+   * only if it passes. Anything else (broken JSON, an unknown format, a quiz
+   * the checker refuses) holds nothing and raises ONE warning toast; the toast
+   * is the voice, so nothing is announced beside it. A quiet restore raises
+   * nothing and leaves the line on this.lastQuizRestoreLine. Never throws.
+   *
+   * @returns {Promise<{branch: "skipped"|"absent"|"held"|"refused"}>}
+   */
+  proto.extractAndRestoreQuiz = async function () {
+    try {
+      const store = window.MathPixQuizStore;
+      const zip = this.restoredSession?.zip;
+      if (!store || typeof store.restoreSaved !== "function" || !zip) {
+        return { branch: "skipped" };
+      }
+
+      const file = zip.file(store.SAVED_PATH);
+      if (!file) return { branch: "absent" };
+
+      let result;
+      try {
+        result = await store.restoreSaved(JSON.parse(await file.async("text")));
+      } catch (readError) {
+        result = { ok: false, reason: `unreadable (${readError.message})` };
+      }
+      if (result.ok) return { branch: "held" };
+
+      logWarn(`${store.SAVED_PATH} present but not loaded: ${result.reason}`);
+      const line = "This session's saved practice quiz could not be loaded, so it has been left out.";
+      this.lastQuizRestoreLine = line;
+      if (this._restoreQuiet !== true && typeof window.notifyWarning === "function") {
+        window.notifyWarning(line, { duration: 0 });
+      }
+      return { branch: "refused" };
+    } catch (error) {
+      logWarn("Saved quiz restore failed (non-fatal):", error);
+      return { branch: "skipped" };
+    }
+  };
+
+  /**
    * Restore session from parse result
    * @param {Object} parseResult - Parsed ZIP data
    * @param {Object|null} selectedEdit - User's edit selection (or null for original)
@@ -695,6 +739,12 @@
       // P3: capture the result so a preserved re-open capture can raise the
       // dirty signal after the recovery gates below have settled.
       const ctxResult = await this.extractAndRestoreContext();
+
+      // QZ-11: the practice quiz saved with the session, if any. Non-fatal.
+      this.lastQuizRestoreLine = null;
+      // Called through the prototype, as the page-marker step is, so a restorer-shaped
+      // object that lacks the method (the hydrate suite's fakes) still restores.
+      await MathPixSessionRestorer.prototype.extractAndRestoreQuiz.call(this);
 
       // RD-3: set by the image step, read by the one outcome line at the end.
       let figuresOutcome = null;

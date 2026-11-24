@@ -16,6 +16,9 @@
  *   - anything else shows the stored string as it is;
  *   - the person's other tags (em, strong, code, sub, sup, br) stay as typed,
  *     and maths stays as typed \( \) source: the format allows nothing else;
+ *   - QZ-10: inside maths a stored "&lt;" or "&gt;" shows as the "<" or ">" a
+ *     person types, and an edited box stores them as entities again
+ *     (MathPixQuizFormat.escapeAnglesInMaths, one paragraph at a time);
  *   - a box left as it opened writes back the ORIGINAL string untouched, so
  *     opening and saving a question with no change cannot alter one byte;
  *   - an edited box is written back as <p>...</p> per paragraph when the
@@ -111,19 +114,33 @@
   const HINT_TEXT =
     "Type the text as it should read. A blank line starts a new paragraph. " +
     "Maths stays as typed source between \\( and \\). These tags are allowed: " +
-    "em, strong, code, sub, sup and br.";
+    "em, strong, code, sub, sup and br. A less-than or greater-than sign belongs " +
+    "inside maths. Outside maths, a less-than sign followed by a letter is read " +
+    "as the start of a tag, and the question is not saved.";
 
   // ============================================================================
   // HTML <-> TEXT
   // ============================================================================
 
+  /**
+   * QZ-10: the format's escapeAnglesInMaths, read at call time. Inside maths a
+   * stored "&lt;" shows as "<" (reverse), and a typed "<" is stored as "&lt;".
+   * Applied to one paragraph at a time, so a span never crosses a paragraph
+   * join. If the format is not on the page the text passes through unchanged.
+   */
+  function anglesInMaths(text, reverse) {
+    const format = window.MathPixQuizFormat;
+    if (!format || typeof format.escapeAnglesInMaths !== "function") return text;
+    return format.escapeAnglesInMaths(text, { reverse });
+  }
+
   /** What a box shows for a stored html string. */
   function htmlToText(html) {
     if (typeof html !== "string") return "";
-    if (!PARAGRAPHS_ONLY.test(html)) return html;
+    if (!PARAGRAPHS_ONLY.test(html)) return anglesInMaths(html, true);
     const parts = [];
     html.replace(PARAGRAPH_BODY, (_all, inner) => {
-      parts.push(inner);
+      parts.push(anglesInMaths(inner, true));
       return "";
     });
     return parts.join(PARAGRAPH_JOIN);
@@ -131,17 +148,18 @@
 
   /**
    * The html string a box's text becomes. Text unchanged from what the stored
-   * string shows writes the stored string back untouched.
+   * string shows writes the stored string back untouched. Edited text has a
+   * "<" or ">" inside maths stored as "&lt;" or "&gt;" (QZ-10).
    */
   function textToHtml(text, originalHtml) {
     if (typeof originalHtml === "string" && text === htmlToText(originalHtml)) return originalHtml;
     const asParagraphs = typeof originalHtml !== "string" || PARAGRAPHS_ONLY.test(originalHtml);
-    if (!asParagraphs) return text;
+    if (!asParagraphs) return anglesInMaths(String(text), false);
     return String(text)
       .split(BLANK_LINE)
       .map((p) => p.trim())
       .filter((p) => p !== "")
-      .map((p) => `<p>${p}</p>`)
+      .map((p) => `<p>${anglesInMaths(p, false)}</p>`)
       .join("");
   }
 

@@ -447,8 +447,9 @@ const MathPixModelRegistry = (function () {
      * PRACTICE QUIZ — the quiz writer (QZ-4, 22 November 2026).
      *
      * Both ids are COPIED from MMD_CORRECTION. The OpenRouter entry carries the
-     * QZ-5 paid round (22 November 2026): one model, 8 sends, a record and not a
-     * ranking. The Foundry entry has NOT been measured: its evidence is null on
+     * QZ-5 and QZ-9 paid rounds (22 and 23 November 2026, recorded at QZ-10): one
+     * model, 16 sends, a record and not a ranking. The Foundry entry has NOT
+     * been measured: its evidence is null on
      * purpose, which `entry` accepts and which says "not measured" rather than
      * borrowing the correction's record, and its round reads "QZ-4, not
      * measured" so nobody takes it for a rating.
@@ -456,18 +457,18 @@ const MathPixModelRegistry = (function () {
     [PURPOSES.PRACTICE_QUIZ]: Object.freeze({
       [PROVIDERS.OPENROUTER]: entry(
         "anthropic/claude-fable-5.1",
-        "QZ-5",
-        "2026-11-22",
+        "QZ-9",
+        "2026-11-23",
         {
           instrument:
-            "QZ-5 paid round: 8 real sends, 2 documents (capacitors, electric), 2 settings, 2 runs each; every quiz read by Claude Code against its document",
+            "QZ-5 and QZ-9 paid rounds: 16 real sends (8 on prompt qz4-1.0.0, 8 on qz6-1.1.0), 2 documents (capacitors, electric), 2 settings, 2 runs each; every quiz read by Claude Code against its document",
           promptHash: null,
           opponents: [],
           margin:
-            "no opponent: this model alone. 40 questions read, 0 wrong keys; 7 of 8 replies held by the format check; the one refused reply (send 4) had two paragraphs in each of its 4 prompts",
-          finishReasons: { stop: 8 },
+            "no opponent: this model alone. 80 questions read, 0 wrong keys; 14 of 16 replies held by the format check; one refused for two paragraphs in its prompts (QZ-5 send 4, qz4-1.0.0), one for a bare less-than sign inside maths (QZ-9 send 4, qz6-1.1.0), which the writer now makes safe (QZ-10)",
+          finishReasons: { stop: 16 },
           notes:
-            "NOT A RATING BEYOND THAT. One model, two documents, n = 8, prompt version qz4-1.0.0 (the prompt now in the repo, qz6-1.1.0, is NOT measured). Cost US$0.21 to 0.24 a send at 4 to 6 questions, reasoning included. The id was copied from MMD_CORRECTION and was never ranked against another model for this task.",
+            "NOT A RATING BEYOND THAT. One model, two documents, n = 16. Prompt qz6-1.1.0 is measured (QZ-9); the prompt now in the repo, qz10-1.2.0, is NOT measured. Cost US$0.21 to 0.27 a send at 4 to 6 questions, reasoning included. The id was copied from MMD_CORRECTION and was never ranked against another model for this task.",
         }
       ),
       [PROVIDERS.AZURE_OPENAI]: entry(

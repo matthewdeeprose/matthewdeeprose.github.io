@@ -89,6 +89,10 @@
     count: "resume-include-quiz-count",
   });
 
+  /** QZ-11: the session ZIP entry that carries the quiz, and its file format version. */
+  const SAVED_PATH = "data/quiz.json";
+  const SAVED_FORMAT = 1;
+
   const MESSAGES = Object.freeze({
     noFormat: "The quiz format checker has not loaded, so no quiz can be held",
     noSession: "Open a session first: the practice quiz belongs to the open session",
@@ -251,6 +255,51 @@
     return quiz;
   }
 
+  /**
+   * QZ-11: the quiz the session ZIP should carry, or null. Unlike quizForExport
+   * it ignores the Convert tick box: a ticked-off quiz is still the person's
+   * work and is saved with the session.
+   */
+  function quizForSession() {
+    return get();
+  }
+
+  /**
+   * QZ-11: hold a quiz read from a session ZIP's `data/quiz.json`. A file from
+   * disk is as untrusted as a model's reply, so it runs the FULL async check
+   * (checkQuiz) and is held only when that passes. Never throws; never holds a
+   * quiz on any refusal, and holds nothing if the open session changed while
+   * the check ran.
+   * @param {*} saved - the parsed file: { format: 1, savedAt, quiz }
+   * @returns {Promise<{ ok: boolean, reason: string }>}
+   */
+  async function restoreSaved(saved) {
+    const refuse = (reason) => {
+      logWarn(`Saved quiz refused: ${reason}`);
+      return { ok: false, reason };
+    };
+    try {
+      const format = window.MathPixQuizFormat;
+      if (!format || typeof format.checkQuiz !== "function") return refuse(MESSAGES.noFormat);
+      if (!saved || typeof saved !== "object" || Array.isArray(saved)) return refuse("not an object");
+      if (saved.format !== SAVED_FORMAT) return refuse(`unknown format ${String(saved.format)}`);
+      if (!saved.quiz || typeof saved.quiz !== "object") return refuse("no quiz in the file");
+
+      const session = currentSession();
+      if (!session) return refuse(MESSAGES.noSession);
+
+      const verdict = await format.checkQuiz(saved.quiz);
+      if (!verdict.ok) return refuse("the quiz did not pass the check");
+      if (currentSession() !== session) return refuse("the open session changed during the check");
+
+      const result = set(saved.quiz);
+      return result.ok ? { ok: true, reason: "" } : refuse("the quiz did not pass the rules");
+    } catch (e) {
+      logError("Saved quiz could not be restored", e);
+      return { ok: false, reason: "unexpected error" };
+    }
+  }
+
   /** Test hook: supply the open session (a function), or null for the real one. */
   function setSessionSource(fn) {
     sessionSource = typeof fn === "function" ? fn : defaultSessionSource;
@@ -287,6 +336,10 @@
     clear,
     count,
     quizForExport,
+    quizForSession,
+    restoreSaved,
+    SAVED_FORMAT,
+    SAVED_PATH,
     setSessionSource,
   });
 })();

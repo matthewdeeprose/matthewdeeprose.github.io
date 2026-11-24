@@ -3730,6 +3730,38 @@ ${fileList}
   }
 
   /**
+   * QZ-11 — save the open session's practice quiz as data/quiz.json:
+   * { format: 1, savedAt, quiz }. Writes nothing when no quiz is held, so a
+   * session without a quiz builds the same archive as before. Non-critical in
+   * the way data/chemistry-settings.json is: a failure is logged and the
+   * archive is still made. Written at ONE point (not beside each chemistry
+   * write) because those two sit inside chemistry-only branches and a quiz
+   * must be saved whether or not the document has chemistry. Never throws.
+   *
+   * @param {JSZip} zip - The archive under construction
+   * @returns {void}
+   */
+  addQuizToArchive(zip) {
+    try {
+      const store = window.MathPixQuizStore;
+      if (!store || typeof store.quizForSession !== "function") return;
+      const quiz = store.quizForSession();
+      if (!quiz) return;
+      zip.file(
+        store.SAVED_PATH,
+        JSON.stringify(
+          { format: store.SAVED_FORMAT, savedAt: new Date().toISOString(), quiz },
+          null,
+          2,
+        ),
+      );
+      logDebug("Practice quiz written to data/quiz.json");
+    } catch (error) {
+      logWarn("Failed to write the practice quiz to the archive (non-critical)", error);
+    }
+  }
+
+  /**
    * S6-1b — build the session archive and stop: everything createArchive did up
    * to and including generateAsync and the DL-1 picture report. It does not
    * trigger a download and raises no tail toast. (The image-block error toasts
@@ -3767,6 +3799,9 @@ ${fileList}
       // written immediately after folder creation, before any awaited or
       // conditional step, so a document-boundary reset cannot race the save.
       this.addContextToArchive(zip);
+
+      // QZ-11: the practice quiz, when one is held for the open session.
+      this.addQuizToArchive(zip);
 
       // Collect source files (Phase 2)
       const sourceResult = await this.collectSourceFiles(

@@ -167,14 +167,48 @@
     KEPT_ALT_NOTE: "The alt text was kept. Check it still matches the new picture.",
     NO_MANAGER: "Recreate is not available: the Image Manager has not loaded.",
     SWAP_FALLBACK_LINE: "Image replaced.",
+    // FI-19a: appended to the ONE closing line, never spoken as a second line.
+    CODE_TOO_LONG: "The drawing's code was too long to keep with the picture.",
     CONFIRM_TITLE: "Make this image?",
     NO_PREVIEW: "No preview available.",
     TIKZ_COPIED: "TikZ code copied.",
     TIKZ_COPY_FAILED: "The TikZ code could not be copied.",
+    // FI-16: change a finished drawing, in words or in code.
+    CHANGING: "Changing the drawing…",
+    CHANGE_EMPTY: "Say what should change first.",
+    CHANGE_CONFIRM_TITLE: "Change this drawing?",
+    CHANGE_FAILED: "The drawing could not be changed. The drawing you had is still here.",
+    REDRAWN: "Drawing redrawn.",
+    REDRAW_FAILED: "That code does not compile, so the drawing was not changed.",
+    REDRAW_EMPTY: "There is no code to draw.",
+    REDRAW_COST: "nothing (redrawn from your code)",
+    // FI-19b: the offer on a picture that kept its TikZ code, and what its press says.
+    OFFER_HEADING: "This picture was drawn from TikZ code",
+    OFFER_SENTENCE: "You can change it without paying for a new drawing.",
+    OFFER_BUTTON: "Edit this drawing",
+    OFFER_COST: "nothing (the picture's own code)",
+    OFFER_READY: "The drawing's code is ready to edit.",
+    OFFER_NO_PICTURE: "The picture could not be read, so it cannot be edited here.",
   });
 
-  // The lines clearMaking may take down: the one spoken line of a press, on either route.
-  const MAKING_LINES = Object.freeze([TEXT.MAKING, TEXT.DRAWING]);
+  // FI-16: the lines clearMaking may take down: the one spoken line of a press, on either route.
+  const MAKING_LINES = Object.freeze([TEXT.MAKING, TEXT.DRAWING, TEXT.CHANGING]);
+
+  // FI-16 arm C: added after the person's prompt on a Drawing Make press (not on a change press).
+  // It is also told to the person, in drawExplainText.
+  const DIAGRAM_ONLY_SENTENCE =
+    "Draw the diagram only, on a plain white background. Leave out the paper it was drawn on (its lines, squares and colour) and anything that is cut off at the edge of the picture.";
+  const DIAGRAM_ONLY_EXPLAIN = "It also asks for the diagram only: no paper lines and nothing cut off at the edge.";
+
+  // FI-16 arm A: the words of a change press. The model is given its own code back and one change to make.
+  const CHANGE_WORDS_BEFORE_CODE = "This is the TikZ you wrote for this picture:\n\n";
+  const CHANGE_WORDS_BEFORE_CHANGE = "\n\nKeep the drawing as it is and change only this:\n";
+
+  // Which press the shared Drawing path is running. Each has its own button, wording and figures.
+  const DRAW_PRESS = Object.freeze({
+    MAKE: Object.freeze({ id: "make", busy: TEXT.DRAWING, line: TEXT.DRAWING, review: true }),
+    CHANGE: Object.freeze({ id: "change", busy: TEXT.CHANGING, line: TEXT.CHANGING, review: false }),
+  });
 
   // FI-9d: the long description shows more of itself. Measured: 8 rows is 154px, shorter than
   // the 200px the shared textarea rules gave before, so 14.
@@ -357,14 +391,23 @@
   }
 
   /** True when the usual figure is below the ceiling, so it can be shown beside it. */
-  function usualBelow(ceilingUsd) {
-    return DRAW_USUAL_USD < ceilingUsd;
+  function usualBelow(ceilingUsd, usualUsd = DRAW_USUAL_USD) {
+    return usualUsd < ceilingUsd;
   }
 
   /** The Drawing result line's cost, for a ceiling. */
-  function drawResultCostText(usd) {
-    if (!usualBelow(usd)) return `up to about ${formatPrice(usd)} (estimated)`;
-    return `usually about ${formatPrice(DRAW_USUAL_USD)}, up to about ${formatPrice(usd)} (estimated)`;
+  function drawResultCostText(usd, usualUsd = DRAW_USUAL_USD) {
+    if (!usualBelow(usd, usualUsd)) return `up to about ${formatPrice(usd)} (estimated)`;
+    return `usually about ${formatPrice(usualUsd)}, up to about ${formatPrice(usd)} (estimated)`;
+  }
+
+  /** FI-16: the change box's cost line. A change press has no review round, so its usual figure is the first drawing's. */
+  function changeCostText(provider) {
+    if (provider !== PROVIDER.OPENROUTER) return FOUNDRY_CREDIT_TEXT;
+    const usd = drawEstimateUsd();
+    if (usd === null) return TEXT.DRAW_COST_UNKNOWN;
+    if (!usualBelow(usd, DRAW_FIRST_DRAWING_USUAL_USD)) return `Up to about ${formatPrice(usd)} for one press. (estimated)`;
+    return `Usually about ${formatPrice(DRAW_FIRST_DRAWING_USUAL_USD)} for one press. Up to about ${formatPrice(usd)} if it takes ${drawSendsCap()} tries. (estimated)`;
   }
 
   /** What the Drawing route sends, in plain words. */
@@ -374,18 +417,22 @@
       : "It is sent your prompt only, because the current picture could not be read.";
     // With a picture the model also checks its drawing once against it (FI-12); with words only no review runs.
     const checks = hasPicture ? ", checks it once against the current picture," : "";
-    return `A text model writes the drawing as TikZ${checks} and it is turned into a picture. ${sent} Up to ${drawSendsCap()} tries.`;
+    return `A text model writes the drawing as TikZ${checks} and it is turned into a picture. ${sent} ${DIAGRAM_ONLY_EXPLAIN} Up to ${drawSendsCap()} tries.`;
   }
 
-  /** The price question for a drawing. Resolves false on No. */
-  function confirmDrawing(usd) {
+  /** The price question for a drawing, or for a change to one. Resolves false on No. */
+  function confirmDrawing(usd, press = DRAW_PRESS.MAKE) {
     const confirm = window.safeConfirm;
     if (typeof confirm !== "function") return Promise.resolve(true);
-    const question = usualBelow(usd)
-      ? `A drawing usually costs about ${formatPrice(DRAW_USUAL_USD)}, and up to about ${formatPrice(usd)} if it takes ${drawSendsCap()} tries. Make this drawing?`
-      : `A drawing costs up to about ${formatPrice(usd)} for one press. Make this drawing?`;
-    return confirm(question, TEXT.DRAW_CONFIRM_TITLE, {
-      returnFocusTo: () => byId("make"),
+    const changing = press === DRAW_PRESS.CHANGE;
+    const usual = changing ? DRAW_FIRST_DRAWING_USUAL_USD : DRAW_USUAL_USD;
+    const noun = changing ? "Changing a drawing" : "A drawing";
+    const ask = changing ? "Change this drawing?" : "Make this drawing?";
+    const question = usualBelow(usd, usual)
+      ? `${noun} usually costs about ${formatPrice(usual)}, and up to about ${formatPrice(usd)} if it takes ${drawSendsCap()} tries. ${ask}`
+      : `${noun} costs up to about ${formatPrice(usd)} for one press. ${ask}`;
+    return confirm(question, changing ? TEXT.CHANGE_CONFIRM_TITLE : TEXT.DRAW_CONFIRM_TITLE, {
+      returnFocusTo: () => byId(press.id),
     });
   }
 
@@ -579,6 +626,11 @@
         <div class="image-recreate-current">
           <p><span class="image-recreate-current-label">Current alt text:</span> ${escapeHTML(entry.altText || "none")}</p>
         </div>
+        <div id="${ID_PREFIX}offer" class="image-recreate-offer" role="group" aria-labelledby="${ID_PREFIX}offer-heading" hidden>
+          <p id="${ID_PREFIX}offer-heading"><strong>${escapeHTML(TEXT.OFFER_HEADING)}</strong></p>
+          <p>${escapeHTML(TEXT.OFFER_SENTENCE)}</p>
+          <button type="button" id="${ID_PREFIX}offer-edit" class="image-manager-btn">${escapeHTML(TEXT.OFFER_BUTTON)}</button>
+        </div>
         <fieldset class="image-recreate-route">
           <legend>${escapeHTML(TEXT.ROUTE_LEGEND)}</legend>
           <div>
@@ -641,6 +693,28 @@
             <button type="button" id="${ID_PREFIX}again" class="image-manager-btn">Try again</button>
             <button type="button" id="${ID_PREFIX}copy-tikz" class="image-manager-btn" hidden>Copy TikZ code</button>
           </div>
+          <div id="${ID_PREFIX}edit-controls" class="image-recreate-edit" hidden>
+            <div class="image-recreate-field">
+              <label for="${ID_PREFIX}change-words">What should change?</label>
+              <textarea id="${ID_PREFIX}change-words" rows="3"></textarea>
+            </div>
+            <p id="${ID_PREFIX}change-cost-line" class="image-recreate-hint"></p>
+            <div class="image-recreate-actions">
+              <button type="button" id="${ID_PREFIX}change" class="image-manager-btn">Change it</button>
+            </div>
+            <details class="image-recreate-code-edit">
+              <summary>Edit the TikZ code</summary>
+              <div class="image-recreate-field">
+                <label for="${ID_PREFIX}code">TikZ code</label>
+                <textarea id="${ID_PREFIX}code" class="image-recreate-code" rows="12" wrap="off" spellcheck="false" aria-describedby="${ID_PREFIX}code-problems"></textarea>
+              </div>
+              <div class="image-recreate-actions">
+                <button type="button" id="${ID_PREFIX}redraw" class="image-manager-btn">Redraw</button>
+              </div>
+              <p class="image-recreate-hint">Redrawing costs nothing.</p>
+              <ul id="${ID_PREFIX}code-problems" class="image-recreate-problems" hidden></ul>
+            </details>
+          </div>
         </section>
         </div>
        </div>
@@ -681,16 +755,17 @@
         : `About ${formatPrice(model.usdPerImage)} per image (measured)`;
   }
 
-  function setRunning(running) {
+  /** `buttonId` is the button that was pressed (FI-16: Make, or Change it); it carries aria-busy. */
+  function setRunning(running, buttonId = "make") {
     if (!session) return;
-    const make = byId("make");
+    const pressed = byId(buttonId);
     const cancel = byId("cancel");
     const busy = byId("busy");
-    if (!make || !cancel || !busy) return;
+    if (!pressed || !cancel || !busy) return;
     session.running = running;
     // The focused control is never disabled: aria-busy plus the re-entry flag instead.
-    if (running) make.setAttribute("aria-busy", "true");
-    else make.removeAttribute("aria-busy");
+    if (running) pressed.setAttribute("aria-busy", "true");
+    else pressed.removeAttribute("aria-busy");
     if (running) cancel.removeAttribute("aria-disabled");
     else cancel.setAttribute("aria-disabled", "true");
     busy.hidden = !running;
@@ -729,6 +804,38 @@
     s.drawSource = typeof source === "string" && source.trim() ? source : null;
     const button = byId("copy-tikz");
     if (button) button.hidden = !s.drawSource;
+    // FI-16: the change box and the code box are there only while there is code, and the code box
+    // always holds the code of the drawing on screen.
+    const edit = byId("edit-controls");
+    if (!edit) return;
+    edit.hidden = !s.drawSource;
+    byId("code").value = s.drawSource || "";
+    if (s.drawSource) {
+      byId("change-cost-line").textContent = changeCostText(s.provider);
+      return;
+    }
+    byId("change-words").value = "";
+    clearProblems();
+  }
+
+  /** FI-16: empty the code box's list of TeX's problems. */
+  function clearProblems() {
+    const list = byId("code-problems");
+    if (!list) return;
+    list.textContent = "";
+    list.hidden = true;
+  }
+
+  /** FI-16: show TeX's problems with the typed code as plain text, with the line number where there is one. */
+  function showProblems(messages) {
+    const list = byId("code-problems");
+    list.textContent = "";
+    for (const message of messages) {
+      const item = document.createElement("li");
+      item.textContent = message;
+      list.appendChild(item);
+    }
+    list.hidden = messages.length === 0;
   }
 
   /** FI-15: copy the shown drawing's TikZ code. One toast line says what happened; nothing else speaks. */
@@ -760,6 +867,9 @@
     byId("result-img").src = image.image_url.url;
     byId("result-meta").textContent = `${sizeText}. Cost: ${costText}.`;
     setDrawSource(s, drawSource);
+    // FI-19b: a made or changed picture is always offered; only the edit press hides Use afterwards.
+    s.editBaseline = null;
+    byId("use").hidden = false;
     byId("result").hidden = false;
     byId("result-heading").focus();
   }
@@ -770,7 +880,39 @@
    * in the same shape the Picture route's result has. One line is spoken for the whole press.
    */
   async function onMakeDrawing() {
+    await runDrawingPress(DRAW_PRESS.MAKE, byId("prompt").value + diagramOnlySuffix(byId("prompt").value));
+  }
+
+  /** FI-16 arm C: the diagram-only sentence, set after the person's prompt (or alone when there is none). */
+  function diagramOnlySuffix(prompt) {
+    return (prompt.trim() ? "\n\n" : "") + DIAGRAM_ONLY_SENTENCE;
+  }
+
+  /**
+   * FI-16 arm A: one press of "Change it". The model is given its own code for the drawing on screen
+   * and one change to make, through the same path as Make. The drawing on screen stays until a new
+   * one has been made, so a failure or a cancel loses nothing.
+   */
+  async function onChangeDrawing() {
     const s = session;
+    if (!s || s.running || s.using || !s.drawSource) return;
+    const sentence = byId("change-words").value.trim();
+    if (!sentence) {
+      byId("change-words").focus();
+      say("notifyWarning", TEXT.CHANGE_EMPTY, { duration: 0 });
+      return;
+    }
+    await runDrawingPress(DRAW_PRESS.CHANGE, CHANGE_WORDS_BEFORE_CODE + s.drawSource + CHANGE_WORDS_BEFORE_CHANGE + sentence);
+  }
+
+  /**
+   * FI-10 / FI-16: the Drawing route's press, for Make and for Change it. `press` says which button
+   * was pressed, how it is worded and whether the adapter checks the drawing against the original;
+   * `words` is what is sent beside the picture.
+   */
+  async function runDrawingPress(press, words) {
+    const s = session;
+    const changing = press === DRAW_PRESS.CHANGE;
     const tools = drawTools();
     if (!tools) {
       say("notifyError", TEXT.DRAW_NOT_AVAILABLE, { duration: 0 });
@@ -796,7 +938,7 @@
     // The price question, by the Picture route's own rule: asked at or above the same figure.
     const estimate = s.provider === PROVIDER.OPENROUTER ? drawEstimateUsd() : null;
     const asked = estimate !== null && estimate >= priceCheckUsd() && typeof window.safeConfirm === "function";
-    const agreed = asked ? await confirmDrawing(estimate) : true;
+    const agreed = asked ? await confirmDrawing(estimate, press) : true;
     if (asked && agreed) await confirmGone();
     const picture = await s.pictureDataUrl;
     if (session !== s || !byId("make")) return;
@@ -805,13 +947,16 @@
 
     s.controller = new AbortController();
     s.drawTries = 0;
-    byId("busy").textContent = TEXT.DRAWING;
-    setRunning(true);
-    byId("result").hidden = true;
-    setDrawSource(s, null);
+    byId("busy").textContent = press.busy;
+    setRunning(true, press.id);
+    // A change press leaves the drawing on screen: only a new one replaces it.
+    if (!changing) {
+      byId("result").hidden = true;
+      setDrawSource(s, null);
+    }
     // Spoken once, here, for the whole press: no line per try. No auto-hide; clearMaking takes it
     // down when the press ends.
-    say("notifyInfo", TEXT.DRAWING, { duration: 0 });
+    say("notifyInfo", press.line, { duration: 0 });
 
     // Each reply is trial-rendered through this. A drawing that does not compile changes the
     // visible busy line only: that line is plain text, not a live region, so nothing is spoken.
@@ -834,10 +979,11 @@
     let outcome;
     try {
       outcome = await tools.llm.generate({
-        words: byId("prompt").value,
+        words,
         pictureDataUrl: picture || undefined,
         trialRender,
-        review: true,
+        // A change press is not reviewed: the review compares with the original and could undo the change asked for.
+        review: press.review,
         onReview,
         signal: s.controller.signal,
       });
@@ -851,13 +997,13 @@
     if (session !== s || !byId("make")) return;
     const cancelled = s.controller.signal.aborted;
     s.controller = null;
-    setRunning(false);
+    setRunning(false, press.id);
     clearMaking(s);
 
     if (cancelled) {
       byId("busy").hidden = false;
       byId("busy").textContent = TEXT.CANCELLED;
-      byId("make").focus();
+      byId(press.id).focus();
       return;
     }
 
@@ -872,13 +1018,90 @@
     }
     if (!image) {
       const failedWell = outcome && !outcome.ok && outcome.message;
-      say("notifyError", failedWell ? outcome.message : TEXT.DRAW_FAILED, { duration: 0 });
-      byId("make").focus();
+      say("notifyError", failedWell ? outcome.message : changing ? TEXT.CHANGE_FAILED : TEXT.DRAW_FAILED, { duration: 0 });
+      byId(press.id).focus();
       return;
     }
 
-    const costText = estimate === null ? (s.provider === PROVIDER.OPENROUTER ? COST_NOT_REPORTED_TEXT : FOUNDRY_CREDIT_TEXT) : drawResultCostText(estimate);
+    const usual = changing ? DRAW_FIRST_DRAWING_USUAL_USD : DRAW_USUAL_USD;
+    // FI-18: on OpenRouter, what the press really cost (the adapter's usage, every send summed) replaces the estimate. Foundry has no
+    // money figure, and a press whose sends did not all report a cost keeps the estimate, exactly as before.
+    const reportedUsd = s.provider === PROVIDER.OPENROUTER && outcome.usage && typeof outcome.usage.cost === "number" ? outcome.usage.cost : null;
+    const costText = reportedUsd !== null ? formatCost(reportedUsd) : estimate === null ? (s.provider === PROVIDER.OPENROUTER ? COST_NOT_REPORTED_TEXT : FOUNDRY_CREDIT_TEXT) : drawResultCostText(estimate, usual);
     await showResult(s, { ok: true, images: [image] }, costText, outcome.source);
+    // The sentence has been acted on: the box starts empty for the next change.
+    if (changing && session === s && byId("change-words")) byId("change-words").value = "";
+  }
+
+  /**
+   * FI-16 arm B: compile the code box's text with no model and no request. If it compiles, the
+   * drawing on screen is replaced by it; if not, nothing changes and TeX's problems are listed.
+   * Focus stays on Redraw either way.
+   */
+  async function onRedraw() {
+    const s = session;
+    if (!s || s.running || s.using || !s.drawSource) return;
+    const tools = drawTools();
+    if (!tools) {
+      say("notifyError", TEXT.DRAW_NOT_AVAILABLE, { duration: 0 });
+      return;
+    }
+
+    // The flag stops a second press, and a Make or a change, while this compiles.
+    s.running = true;
+    const redraw = byId("redraw");
+    redraw.setAttribute("aria-busy", "true");
+    const finish = () => {
+      s.running = false;
+      const button = byId("redraw");
+      if (button) button.removeAttribute("aria-busy");
+    };
+
+    const typed = byId("code").value;
+    let trial = null;
+    let image = null;
+    if (typed.trim()) {
+      try {
+        await tools.controller.initKit();
+        trial = await tools.controller.trialRender(typed);
+        if (trial && trial.ok && trial.svg) image = await drawingToImage(trial.svg);
+      } catch (error) {
+        logError("Redraw failed:", error);
+      }
+    }
+    if (session !== s || !byId("make")) return;
+
+    if (!image) {
+      finish();
+      showProblems(!typed.trim() ? [TEXT.REDRAW_EMPTY] : problemLines(trial));
+      say("notifyError", TEXT.REDRAW_FAILED, { duration: 0 });
+      return;
+    }
+
+    const size = await imageSize(image);
+    if (session !== s || !byId("make")) return;
+    clearProblems();
+    s.result = { ok: true, images: [image] };
+    s.drawSource = typed;
+    // FI-19b: after "Edit this drawing", Use waits for code that differs from the stored code.
+    if (s.editBaseline !== null && typed !== s.editBaseline) {
+      s.editBaseline = null;
+      byId("use").hidden = false;
+    }
+    byId("result-img").src = image.image_url.url;
+    byId("result-meta").textContent = `${size ? `${size.width} × ${size.height} pixels` : "size not known"}. Cost: ${TEXT.REDRAW_COST}.`;
+    finish();
+    say("notifySuccess", TEXT.REDRAWN);
+  }
+
+  /** TeX's problems with a trial, one plain line each, with the line number where there is one. */
+  function problemLines(trial) {
+    const errors = trial && Array.isArray(trial.errors) ? trial.errors : [];
+    const lines = errors.map((e) => {
+      const message = String((e && e.message) || e);
+      return e && e.line ? `Line ${e.line}: ${message}` : message;
+    });
+    return lines.length > 0 ? lines : [TEXT.DRAW_FAILED];
   }
 
   async function onMake() {
@@ -969,8 +1192,91 @@
     session.controller.abort();
   }
 
+  /**
+   * FI-19a: after a successful Use on the Drawing route, store the drawing's TikZ code on the picture's
+   * entry, tied to the bytes the entry holds NOW (digest taken after the swap, never of the made picture
+   * before it, because the swap may have re-encoded it). The Picture route has no code, so nothing is set
+   * and any code the entry already held goes stale by its digest.
+   * @returns {Promise<string>} the over-cap sentence, or "" when the code was kept or there was none
+   */
+  async function keepDrawingCode(mgr, s) {
+    if (!s.drawSource) return "";
+    const restorer = mgr.restorer;
+    const registry = restorer && restorer.imageRegistry;
+    if (!registry || typeof registry.setTikzSource !== "function" || typeof restorer._digestBlob !== "function") {
+      return "";
+    }
+    try {
+      const entry = registry.getImage(s.imageId);
+      const digest = entry && entry.blob instanceof Blob ? await restorer._digestBlob(entry.blob) : null;
+      if (!digest) return "";
+      const kept = registry.setTikzSource(s.imageId, s.drawSource, digest);
+      if (typeof restorer.scheduleAutoSave === "function" && restorer.restoredSession) {
+        restorer.scheduleAutoSave(restorer.restoredSession.currentMMD);
+      }
+      return kept.reason === "over-cap" ? TEXT.CODE_TOO_LONG : "";
+    } catch (error) {
+      logWarn("keepDrawingCode failed; the picture is swapped and no code was kept:", error);
+      return "";
+    }
+  }
+
+  /**
+   * FI-19b: show the "Edit this drawing" block only when the entry's stored code is FRESH, meaning the
+   * digest of the entry's own bytes equals the digest stored with the code. Decided once, after the
+   * dialog opens: the block appears once or never. Nothing is spoken (the block is not a live region).
+   */
+  async function offerEditDrawing(s) {
+    const entry = s.entry;
+    if (!entry || typeof entry.tikzSource !== "string" || !entry.tikzSource.trim()) return;
+    if (typeof entry.tikzSourceFor !== "string" || !(entry.blob instanceof Blob)) return;
+    const restorer = manager() && manager().restorer;
+    if (!restorer || typeof restorer._digestBlob !== "function") return;
+    let fresh = false;
+    try {
+      fresh = (await restorer._digestBlob(entry.blob)) === entry.tikzSourceFor;
+    } catch (error) {
+      logWarn("The stored TikZ code could not be checked, so no edit is offered:", error);
+    }
+    if (!fresh || session !== s || !byId("offer")) return;
+    s.storedCode = entry.tikzSource;
+    byId("offer").hidden = false;
+  }
+
+  /**
+   * FI-19b: "Edit this drawing". Chooses the Drawing route and shows the CURRENT picture as the
+   * drawing, with the stored code in the code box. Nothing is sent. Use waits for a new drawing.
+   * The code is untrusted text: it reaches the page through textarea.value only (setDrawSource).
+   */
+  async function onEditDrawing() {
+    const s = session;
+    if (!s || s.running || s.using || typeof s.storedCode !== "string") return;
+    const picture = await s.pictureDataUrl;
+    if (session !== s || !byId("make")) return;
+    if (!picture) {
+      say("notifyError", TEXT.OFFER_NO_PICTURE, { duration: 0 });
+      return;
+    }
+
+    byId("route-drawing").checked = true;
+    refreshRoute();
+    await showResult(s, { ok: true, images: [{ image_url: { url: picture } }] }, TEXT.OFFER_COST, s.storedCode);
+    if (session !== s || !byId("make")) return;
+
+    // The picture on screen IS the stored one, so there is nothing to swap until the code changes.
+    s.editBaseline = s.drawSource;
+    byId("use").hidden = true;
+    // Focus has already moved to the result heading, so the block can leave; a second press could not
+    // otherwise be told from a request to throw away a Change it drawing.
+    byId("offer").hidden = true;
+    const codeDetails = byId("code").closest("details");
+    if (codeDetails) codeDetails.open = true;
+    say("notifySuccess", TEXT.OFFER_READY);
+  }
+
   async function onUse() {
     if (!session || session.using || session.running || !session.result) return;
+    if (byId("use").hidden) return;
     const s = session;
     const mgr = manager();
     if (!mgr || typeof mgr.swapFromFile !== "function") {
@@ -1023,7 +1329,10 @@
 
     // The manager's own words for this swap, read back from the silenced area.
     const written = statusEl ? statusEl.textContent.trim() : "";
-    s.closingLine = written || TEXT.SWAP_FALLBACK_LINE;
+    // FI-19a: keep the drawing's code with its picture. Over the cap, one plain sentence joins the
+    // same closing line (the picture is already swapped either way).
+    const codeNote = await keepDrawingCode(mgr, s);
+    s.closingLine = [written || TEXT.SWAP_FALLBACK_LINE, codeNote].filter(Boolean).join(" ");
     s.used = true;
     s.instance.close();
   }
@@ -1125,6 +1434,9 @@
       // route (null when it cannot be).
       drawTries: 0,
       pictureDataUrl: null,
+      // FI-19b: the entry's stored code once it is known fresh, and the code the edit press showed.
+      storedCode: null,
+      editBaseline: null,
     };
     session = s;
     s.pictureDataUrl = currentDataUrl(entry).catch((error) => {
@@ -1170,7 +1482,13 @@
         byId("cancel").addEventListener("click", onCancel);
         byId("use").addEventListener("click", onUse);
         byId("copy-tikz").addEventListener("click", onCopyTikz);
+        byId("change").addEventListener("click", onChangeDrawing);
+        byId("redraw").addEventListener("click", onRedraw);
+        byId("offer-edit").addEventListener("click", onEditDrawing);
+        offerEditDrawing(s);
         byId("again").addEventListener("click", () => {
+          // FI-16: a change press leaves the result on screen, so Try again waits for it to end.
+          if (s.running) return;
           byId("result").hidden = true;
           setDrawSource(s, null);
           byId("prompt").focus();

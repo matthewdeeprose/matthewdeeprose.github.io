@@ -9,7 +9,9 @@
  * questions, an estimated cost range), a write button that calls
  * MathPixQuizWriter.generate once, and a read-only view of the quiz the store
  * then holds. QZ-8 (23 November 2026) adds Edit and Delete for one question
- * (the editor itself is mathpix-quiz-editor.js).
+ * (the editor itself is mathpix-quiz-editor.js). QZ-10 (23 November 2026): a
+ * repeat refused save names its attempt so it is announced every time, and a
+ * later successful save or write takes down the earlier refusal toasts.
  *
  * NOTHING SENDS UNTIL THE PERSON PRESSES WRITE. Every figure shown is an
  * estimate. The transport is a module-level seam (setTransport): the default
@@ -159,7 +161,13 @@
     deleteQuestionConfirm: "Delete question",
     deleteQuestionCancel: "Keep question",
     saved: (n) => `Question ${n} saved.`,
-    saveRefused: (n) => `Question ${n} was not saved. The reasons are listed in the editor.`,
+    // QZ-10: a repeat refusal in the same open editor names its attempt, so the
+    // toast's 2-second and the announcer's 5-second repeat suppressors (both
+    // shared files, both keyed on identical text) cannot swallow it.
+    saveRefused: (n, attempt) =>
+      attempt > 1
+        ? `Question ${n} was not saved (attempt ${attempt}). The reasons are listed in the editor.`
+        : `Question ${n} was not saved. The reasons are listed in the editor.`,
     questionDeleted: (n) => `Question ${n} deleted.`,
     deleteRefused: (n, why) => `Question ${n} was not deleted.${why ? ` ${why}` : ""}`,
   });
@@ -188,6 +196,12 @@
 
   /** A save is in flight (its check is async). A second press does nothing. */
   let saving = false;
+
+  /** QZ-10: refused saves since the open editor was opened (names a repeat). */
+  let saveRefusals = 0;
+
+  /** QZ-10: ids of the "was not saved" and "was not written" toasts still up. */
+  let refusalToasts = [];
 
   const byId = (id) => document.getElementById(id);
   const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -644,10 +658,39 @@
   // NOTIFICATIONS (the toast is the voice: no announce() beside it)
   // ============================================================================
 
+  /** Returns the toast id the notification system gives back, or null. */
   function notify(kind, message, options) {
     const fn = window[kind];
-    if (typeof fn === "function") fn(message, options);
-    else logWarn(`${kind} is not available`);
+    if (typeof fn === "function") return fn(message, options) || null;
+    logWarn(`${kind} is not available`);
+    return null;
+  }
+
+  /** QZ-10: a refusal toast, remembered so a later success can take it down. */
+  function notifyRefusal(message) {
+    const id = notify("notifyError", message);
+    if (id) refusalToasts.push(id);
+  }
+
+  /**
+   * QZ-10: once a save or a write succeeds, the refusal toasts of earlier
+   * attempts are out of date, so dismiss them through the notification
+   * system's own public dismiss. A toast holding focus is left for the person
+   * to close: dismissing it here would drop focus on the page body.
+   */
+  function dismissRefusalToasts() {
+    const api = window.UniversalNotifications;
+    const ids = refusalToasts;
+    refusalToasts = [];
+    if (!api || typeof api.dismiss !== "function") return;
+    for (const id of ids) {
+      const toast = document.getElementById(id);
+      if (toast && toast.contains(document.activeElement)) {
+        refusalToasts.push(id);
+        continue;
+      }
+      api.dismiss(id);
+    }
   }
 
   // ============================================================================
@@ -705,16 +748,17 @@
       const result = await writer().generate(assessed.options, deps);
 
       if (result && result.ok) {
+        dismissRefusalToasts();
         notify("notifySuccess", `Practice quiz written: ${quizNoun(result.quiz.questions.length)}.`);
       } else {
         showRefusal(result ? result.errors : []);
-        notify("notifyError", MESSAGES.refused);
+        notifyRefusal(MESSAGES.refused);
       }
       return result;
     } catch (e) {
       logError("The write failed unexpectedly", e);
       showRefusal([{ questionId: null, message: e && e.message ? e.message : String(e) }]);
-      notify("notifyError", MESSAGES.refused);
+      notifyRefusal(MESSAGES.refused);
       return null;
     } finally {
       running = false;
@@ -817,6 +861,7 @@
     const handle = editor.build(quiz.questions[index], index, quiz.questions.length);
     section.replaceWith(handle.root);
     editing = { index, handle };
+    saveRefusals = 0;
     setOthersBlocked(index);
     handle.firstControl.focus();
     return true;
@@ -876,7 +921,8 @@
       if (errors.length > 0) {
         const target = handle.showErrors(errors);
         if (target) target.focus();
-        notify("notifyError", MESSAGES.saveRefused(index + 1));
+        saveRefusals += 1;
+        notifyRefusal(MESSAGES.saveRefused(index + 1, saveRefusals));
         return { ok: false, errors };
       }
 
@@ -889,6 +935,7 @@
         const back = actionButtonFor("edit", index);
         if (back) back.focus();
       }
+      dismissRefusalToasts();
       notify("notifySuccess", MESSAGES.saved(index + 1));
       return { ok: true, errors: [] };
     } finally {

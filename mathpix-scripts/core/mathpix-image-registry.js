@@ -160,6 +160,45 @@
   const MIRROR_REGISTRY_DEBOUNCE_MS = 1000;
 
   /**
+   * FI-19a: the TikZ code a drawing was made from, kept on its picture entry.
+   * Two optional fields, absent until set (never in createDefaultEntry, so a
+   * session with no code serialises exactly as it did before):
+   *   tikzSource    - the code, a string, at most TIKZ_SOURCE_MAX_BYTES of UTF-8
+   *   tikzSourceFor - the digest of the picture bytes the code produced, the
+   *                   same 32-hex string the restorer's _digestBlob gives
+   */
+  const TIKZ_SOURCE_MAX_BYTES = 64 * 1024;
+  const TIKZ_DIGEST_PATTERN = /^[0-9a-f]{32}$/;
+
+  /** FI-19a: the picture's bytes changed and the new digest is not known yet. */
+  const TIKZ_PICTURE_PENDING = "pending";
+
+  const TIKZ_SET_RESULT = Object.freeze({
+    STORED: "stored",
+    OVER_CAP: "over-cap",
+    NO_PICTURE: "no-picture",
+    BAD_INPUT: "bad-input",
+  });
+
+  const tikzEncoder = new TextEncoder();
+
+  /** FI-19a: UTF-8 byte length of a string. */
+  function tikzByteLength(text) {
+    return tikzEncoder.encode(text).length;
+  }
+
+  /** FI-19a: a code string and digest that may be stored: non-empty, within the cap, digest well formed. */
+  function isWellFormedTikz(code, digest) {
+    return (
+      typeof code === "string" &&
+      code.length > 0 &&
+      typeof digest === "string" &&
+      TIKZ_DIGEST_PATTERN.test(digest) &&
+      tikzByteLength(code) <= TIKZ_SOURCE_MAX_BYTES
+    );
+  }
+
+  /**
    * Scheme and host of a MathPix-served image URL: the ONE source for "is this
    * a MathPix image host". isMathPixCDN reads it, and the session restorer reads
    * it through createCdnUrlRegex (MX-2), so no second host list exists to drift.
@@ -455,6 +494,14 @@
 
       /** @private {?number} Pending debounced mirror-write handle, null when idle. */
       this._pendingMirrorTimer = null;
+
+      /**
+       * @private {Map<string, string>} FI-19a: per picture that holds TikZ code,
+       * the digest of its current bytes, or TIKZ_PICTURE_PENDING when the bytes
+       * changed and the digest is not known. Never serialised. An id with no
+       * record is "unverified" (fresh from a restore) and its code is kept.
+       */
+      this._tikzPicture = new Map();
 
       logDebug("MathPixImageRegistry instance created");
     }
@@ -1055,6 +1102,13 @@
         entry.textInImage = newData.textInImage;
       if (newData.textInImageSource !== undefined)
         entry.textInImageSource = newData.textInImageSource;
+
+      // FI-19a: new bytes mean any TikZ code made the old picture is unconfirmed
+      // until the caller reports the new digest (notePictureDigest). Dropped at
+      // the next save if it never is, never here.
+      if (entry.tikzSource !== undefined && newData.blob !== undefined) {
+        this._tikzPicture.set(id, TIKZ_PICTURE_PENDING);
+      }
 
       // Update state
       entry.status = "user-replaced";
@@ -1657,6 +1711,105 @@
     }
 
     // ========================================================================
+    // FI-19a: TIKZ CODE KEPT WITH ITS PICTURE
+    // ========================================================================
+
+    /**
+     * Keep the TikZ code a picture was drawn from, tied to the picture's bytes
+     * by their digest. Refused (and any earlier code cleared) when the code is
+     * over the cap; the picture itself is never touched either way. A file-less
+     * entry (no Blob) never carries code.
+     *
+     * @param {string} id - Image ID
+     * @param {string} code - the TikZ code
+     * @param {string} digest - 32-hex digest of the bytes the entry holds now
+     * @returns {{ok: boolean, reason: string}} reason is one of TIKZ_SET_RESULT
+     */
+    setTikzSource(id, code, digest) {
+      const entry = typeof id === "string" ? this._images.get(id) : null;
+      if (!entry) return { ok: false, reason: TIKZ_SET_RESULT.NO_PICTURE };
+      if (
+        typeof code !== "string" ||
+        code.length === 0 ||
+        typeof digest !== "string" ||
+        !TIKZ_DIGEST_PATTERN.test(digest)
+      ) {
+        return { ok: false, reason: TIKZ_SET_RESULT.BAD_INPUT };
+      }
+      if (!(entry.blob instanceof Blob)) {
+        return { ok: false, reason: TIKZ_SET_RESULT.NO_PICTURE };
+      }
+      if (tikzByteLength(code) > TIKZ_SOURCE_MAX_BYTES) {
+        this.clearTikzSource(id);
+        return { ok: false, reason: TIKZ_SET_RESULT.OVER_CAP };
+      }
+
+      entry.tikzSource = code;
+      entry.tikzSourceFor = digest;
+      this._tikzPicture.set(id, digest);
+      this._metadata.lastUpdated = new Date().toISOString();
+      this._scheduleMirrorWrite();
+      return { ok: true, reason: TIKZ_SET_RESULT.STORED };
+    }
+
+    /**
+     * Remove a picture's TikZ code. Absent keys, never null or empty.
+     * @param {string} id - Image ID
+     * @returns {boolean} true when there was code to remove
+     */
+    clearTikzSource(id) {
+      const entry = typeof id === "string" ? this._images.get(id) : null;
+      this._tikzPicture.delete(id);
+      if (!entry || entry.tikzSource === undefined) return false;
+      delete entry.tikzSource;
+      delete entry.tikzSourceFor;
+      return true;
+    }
+
+    /**
+     * Record the digest of the bytes a picture holds now (the restorer has
+     * computed it). A null or malformed digest means "changed, not known".
+     * Never drops anything itself: the drop happens at a save.
+     * @param {string} id - Image ID
+     * @param {?string} digest
+     * @returns {void}
+     */
+    notePictureDigest(id, digest) {
+      const entry = typeof id === "string" ? this._images.get(id) : null;
+      if (!entry || entry.tikzSource === undefined) return;
+      this._tikzPicture.set(
+        id,
+        typeof digest === "string" && TIKZ_DIGEST_PATTERN.test(digest)
+          ? digest
+          : TIKZ_PICTURE_PENDING,
+      );
+    }
+
+    /**
+     * Drop the TikZ code of every picture whose current bytes are not the ones
+     * the code made. Called at each save (the session snapshot, the ZIP, the
+     * mirror), never when reading. Dropped: a recorded digest that differs from
+     * tikzSourceFor, and a picture marked changed with no digest. Kept: a
+     * matching digest, and a picture nobody has checked yet since a restore.
+     * Touches only entries that carry code.
+     * @returns {number} how many pictures lost their code
+     */
+    dropStaleTikz() {
+      let dropped = 0;
+      for (const [id, entry] of this._images) {
+        if (entry.tikzSource === undefined) continue;
+        const known = this._tikzPicture.get(id);
+        const stale =
+          known === TIKZ_PICTURE_PENDING ||
+          (known !== undefined && known !== entry.tikzSourceFor);
+        if (!stale) continue;
+        this.clearTikzSource(id);
+        dropped++;
+      }
+      return dropped;
+    }
+
+    // ========================================================================
     // RELOAD-SURVIVAL MIRROR (write side)
     // ========================================================================
 
@@ -1669,6 +1822,7 @@
      */
     _writeMirrorNow() {
       try {
+        this.dropStaleTikz();
         localStorage.setItem(MIRROR_REGISTRY_KEY, JSON.stringify(this.toJSON()));
         logDebug("Registry mirror written to localStorage.");
       } catch (error) {
@@ -1838,6 +1992,21 @@
           decorativeApplied++;
         }
 
+        // FI-19a: TikZ code, onto an entry that holds bytes and no code, and only
+        // when well formed. Marked "changed, digest not known": the restorer
+        // re-reads the bytes' digest straight after, and a save before that
+        // drops it rather than trust a mirror written for another picture.
+        // Not counted in `applied`, like decorative.
+        if (
+          entry.tikzSource === undefined &&
+          entry.blob instanceof Blob &&
+          isWellFormedTikz(mirrorEntry.tikzSource, mirrorEntry.tikzSourceFor)
+        ) {
+          entry.tikzSource = mirrorEntry.tikzSource;
+          entry.tikzSourceFor = mirrorEntry.tikzSourceFor;
+          this._tikzPicture.set(entry.id, TIKZ_PICTURE_PENDING);
+        }
+
         for (const [contentField, sourceField, allowList] of fieldTriples) {
           const liveSource = entry[sourceField];
           let mirrorSource = mirrorEntry[sourceField];
@@ -1948,6 +2117,9 @@
 
       // Restore images
       this._images.clear();
+      // FI-19a: every restored entry starts unverified; the restorer checks
+      // each carried digest against the picture's bytes once they are attached.
+      this._tikzPicture.clear();
 
       const images = Array.isArray(data.images) ? data.images : [];
       let restoredCount = 0;
@@ -1973,6 +2145,15 @@
 
         // Blobs are never in JSON — always null after restore
         entry.blob = null;
+
+        // FI-19a: the two TikZ fields are carried by name, never through the
+        // defaults loop above (that would make them present on every entry).
+        // Only well-formed code on an entry that had bytes: a file-less entry
+        // never carries code, and a malformed pair is dropped, both or neither.
+        if (imgData.hadBlob === true && isWellFormedTikz(imgData.tikzSource, imgData.tikzSourceFor)) {
+          entry.tikzSource = imgData.tikzSource;
+          entry.tikzSourceFor = imgData.tikzSourceFor;
+        }
 
         // Validate status
         if (!VALID_STATUSES.includes(entry.status)) {
@@ -2040,6 +2221,7 @@
      */
     clear() {
       this._images.clear();
+      this._tikzPicture.clear();
       this._metadata.documentId = null;
       this._metadata.createdAt = null;
       this._metadata.lastUpdated = null;
@@ -5594,6 +5776,190 @@ Some equations here.
         "42.5d: invalid-input calls did NOT mutate populated registry",
         JSON.stringify(reg.getAllImages()) === snapshot,
       );
+    }
+
+    // ========================================================================
+    // FI-19a: TIKZ CODE KEPT WITH ITS PICTURE
+    // ========================================================================
+    {
+      const DIGEST_A = "a".repeat(32);
+      const DIGEST_B = "b".repeat(32);
+      const CODE = "\\draw (0,0) -- (1,1);";
+      const fresh = () => {
+        const reg = new MathPixImageRegistry();
+        // A test registry must not write the live mirror key a second later.
+        reg._scheduleMirrorWrite = () => {};
+        reg.buildFromMMD("![d](https://cdn.mathpix.com/cropped/fi19a-one.png)");
+        const id = reg.getAllImages()[0].id;
+        reg.attachBlob(id, new Blob(["bytes"], { type: "image/png" }));
+        return { reg, id };
+      };
+      const imageJson = (reg) => JSON.stringify(reg.toJSON().images);
+
+      {
+        // Absence: a registry that never held code serialises as before, and a
+        // set followed by a clear leaves no trace (absent keys, never null).
+        const { reg, id } = fresh();
+        const before = imageJson(reg);
+        const entryKeys = Object.keys(reg.getImage(id));
+        assert(
+          "FI19A-1a: no TikZ key on a fresh entry",
+          !entryKeys.includes("tikzSource") && !entryKeys.includes("tikzSourceFor"),
+        );
+        assert("FI19A-1b: set stores", reg.setTikzSource(id, CODE, DIGEST_A).ok === true);
+        assert(
+          "FI19A-1c: both fields on the entry",
+          reg.getImage(id).tikzSource === CODE && reg.getImage(id).tikzSourceFor === DIGEST_A,
+        );
+        assert("FI19A-1d: clear reports it removed code", reg.clearTikzSource(id) === true);
+        const after = Object.keys(reg.getImage(id));
+        assert(
+          "FI19A-1e: after clear the keys are absent, not null",
+          !after.includes("tikzSource") && !after.includes("tikzSourceFor"),
+        );
+        assert("FI19A-1f: entry JSON byte-identical to before", imageJson(reg) === before);
+      }
+
+      {
+        // The cap is 65,536 bytes of UTF-8: one under and exactly at keep, one over does not.
+        const { reg, id } = fresh();
+        const atCap = "x".repeat(65536);
+        assert("FI19A-2a: exactly 65,536 bytes is kept", reg.setTikzSource(id, atCap, DIGEST_A).ok === true);
+        const over = reg.setTikzSource(id, atCap + "x", DIGEST_B);
+        assert(
+          "FI19A-2b: 65,537 bytes is refused as over-cap",
+          over.ok === false && over.reason === "over-cap",
+        );
+        assert(
+          "FI19A-2c: an over-cap set clears the earlier code and leaves the picture",
+          reg.getImage(id).tikzSource === undefined && reg.getImage(id).blob instanceof Blob,
+        );
+        // 32,769 two-byte characters is 65,538 bytes although only 32,769 characters.
+        const twoByte = "é".repeat(32769);
+        assert(
+          "FI19A-2d: the cap counts bytes, not characters",
+          reg.setTikzSource(id, twoByte, DIGEST_A).reason === "over-cap",
+        );
+      }
+
+      {
+        // fromJSON: round trip, a file-less entry, a malformed pair.
+        const { reg, id } = fresh();
+        reg.setTikzSource(id, CODE, DIGEST_A);
+        const copy = new MathPixImageRegistry();
+        copy.fromJSON(JSON.parse(JSON.stringify(reg.toJSON())));
+        assert(
+          "FI19A-3a: fromJSON round trip keeps both fields",
+          copy.getImage(id).tikzSource === CODE && copy.getImage(id).tikzSourceFor === DIGEST_A,
+        );
+        const data = JSON.parse(JSON.stringify(reg.toJSON()));
+        data.images[0].hadBlob = false;
+        const fileLess = new MathPixImageRegistry();
+        fileLess.fromJSON(data);
+        assert(
+          "FI19A-3b: an entry that had no bytes never carries code",
+          fileLess.getImage(id).tikzSource === undefined &&
+            !Object.keys(fileLess.getImage(id)).includes("tikzSourceFor"),
+        );
+        const bad = JSON.parse(JSON.stringify(reg.toJSON()));
+        bad.images[0].tikzSourceFor = "not-a-digest";
+        const badReg = new MathPixImageRegistry();
+        badReg.fromJSON(bad);
+        assert(
+          "FI19A-3c: a malformed digest drops both fields",
+          badReg.getImage(id).tikzSource === undefined && badReg.getImage(id).tikzSourceFor === undefined,
+        );
+        const nullPair = JSON.parse(JSON.stringify(reg.toJSON()));
+        nullPair.images[0].tikzSource = null;
+        nullPair.images[0].tikzSourceFor = null;
+        const nullReg = new MathPixImageRegistry();
+        nullReg.fromJSON(nullPair);
+        assert(
+          "FI19A-3d: null fields are not carried (absent, never null)",
+          !Object.keys(nullReg.getImage(id)).includes("tikzSource"),
+        );
+      }
+
+      {
+        // A file-less entry (no Blob) cannot be given code.
+        const reg = new MathPixImageRegistry();
+        reg.buildFromMMD("![d](https://cdn.mathpix.com/cropped/fi19a-two.png)");
+        const id = reg.getAllImages()[0].id;
+        assert(
+          "FI19A-4a: set on an entry with no bytes is refused",
+          reg.setTikzSource(id, CODE, DIGEST_A).ok === false &&
+            reg.getImage(id).tikzSource === undefined,
+        );
+        assert(
+          "FI19A-4b: set on an unknown id is refused",
+          reg.setTikzSource("nope", CODE, DIGEST_A).ok === false,
+        );
+      }
+
+      {
+        // The drop happens at a save and only on a known mismatch or an unknown change.
+        const { reg, id } = fresh();
+        reg.setTikzSource(id, CODE, DIGEST_A);
+        assert("FI19A-5a: a matching digest is kept", reg.dropStaleTikz() === 0 && reg.getImage(id).tikzSource === CODE);
+        reg.replaceImage(id, { blob: new Blob(["other"], { type: "image/png" }) });
+        assert(
+          "FI19A-5b: replaceImage alone does not drop (never at read)",
+          reg.getImage(id).tikzSource === CODE,
+        );
+        reg.notePictureDigest(id, DIGEST_A);
+        assert("FI19A-5c: the same digest reported back keeps it (undo then redo)", reg.dropStaleTikz() === 0);
+        reg.notePictureDigest(id, DIGEST_B);
+        assert(
+          "FI19A-5d: a different known digest drops at the next save",
+          reg.dropStaleTikz() === 1 && reg.getImage(id).tikzSource === undefined,
+        );
+      }
+
+      {
+        const { reg, id } = fresh();
+        reg.setTikzSource(id, CODE, DIGEST_A);
+        reg.replaceImage(id, { blob: new Blob(["other"], { type: "image/png" }) });
+        assert(
+          "FI19A-6a: bytes changed and digest never reported: dropped at the save",
+          reg.dropStaleTikz() === 1 && reg.getImage(id).tikzSourceFor === undefined,
+        );
+        const restored = fresh();
+        restored.reg.setTikzSource(restored.id, CODE, DIGEST_A);
+        const copy = new MathPixImageRegistry();
+        copy.fromJSON(JSON.parse(JSON.stringify(restored.reg.toJSON())));
+        assert(
+          "FI19A-6b: just after a restore, before verification, the code is kept",
+          copy.dropStaleTikz() === 0 && copy.getImage(restored.id).tikzSource === CODE,
+        );
+        copy.notePictureDigest(restored.id, DIGEST_B);
+        assert("FI19A-6c: verification that finds other bytes drops at the next save", copy.dropStaleTikz() === 1);
+      }
+
+      {
+        // Return visit: the mirror's code lands only on an entry with bytes and
+        // none, is marked unverified-changed, and is dropped unless verified.
+        const { reg, id } = fresh();
+        reg.setTikzSource(id, CODE, DIGEST_A);
+        const mirror = JSON.parse(JSON.stringify(reg.toJSON()));
+        const live = fresh();
+        live.reg.hydrateFromMirror(mirror);
+        assert(
+          "FI19A-7a: hydrate copies code onto an entry that holds bytes",
+          live.reg.getImage(live.id).tikzSource === CODE,
+        );
+        assert("FI19A-7b: unverified after a hydrate, a save drops it", live.reg.dropStaleTikz() === 1);
+        const second = fresh();
+        second.reg.hydrateFromMirror(mirror);
+        second.reg.notePictureDigest(second.id, DIGEST_A);
+        assert("FI19A-7c: a verified digest keeps it", second.reg.dropStaleTikz() === 0);
+        const bare = new MathPixImageRegistry();
+        bare.buildFromMMD("![d](https://cdn.mathpix.com/cropped/fi19a-one.png)");
+        bare.hydrateFromMirror(mirror);
+        assert(
+          "FI19A-7d: hydrate never gives code to an entry with no bytes",
+          bare.getAllImages()[0].tikzSource === undefined,
+        );
+      }
     }
 
     // ========================================================================

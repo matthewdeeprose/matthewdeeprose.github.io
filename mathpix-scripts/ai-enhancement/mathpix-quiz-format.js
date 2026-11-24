@@ -23,6 +23,10 @@
  * level's keys are a closed set (an unknown key is an error, not a warning), and
  * no string outside the allow-listed HTML fields may contain "<".
  *
+ * QZ-10 (23 November 2026): one pure helper, escapeAnglesInMaths, turns a bare
+ * "<" or ">" inside maths into "&lt;" or "&gt;" (and back, for the editor). The
+ * writer and the editor call it before the checker; no rule of the checker changed.
+ *
  * @requires scorm-builder/enhancers/quiz.js - processQuiz (vendored, never edited)
  * @requires scorm-builder/render/quiz-from-json.js - wrapQuestion, quizContentFromQuestions
  *
@@ -209,6 +213,39 @@
   function hasWordsOutsideMaths(html) {
     const text = String(html).replace(MATHS_SPANS, " ").replace(/<[^>]*>/g, " ");
     return /[\p{L}\p{N}]/u.test(text);
+  }
+
+  // QZ-10: an allow-listed tag written whole (no attributes), as htmlProblems reads one.
+  const ALLOWED_TAG_INSIDE = new RegExp(`<\\/?(?:${ALLOWED_TAGS.join("|")})\\s*\\/?>`, "i");
+
+  /**
+   * QZ-10: make a less-than or greater-than sign inside maths safe to store.
+   *
+   * Inside each maths span (the MATHS_SPANS forms above, the ones tools.html and
+   * the export's MathJax both typeset) a bare "<" becomes "&lt;" and a bare ">"
+   * becomes "&gt;". Text outside maths, and every entity already written, is left
+   * exactly as it is. A span that holds an allowed tag written whole is left alone
+   * too: tags split the text MathJax reads, so it is not one equation, and the
+   * checker judges it as it always has. Running it twice changes nothing more.
+   *
+   * With { reverse: true } it turns "&lt;" and "&gt;" inside maths back into the
+   * characters a person types (the editor's view); a span skipped one way is
+   * skipped the other.
+   *
+   * Pure: no DOM, never throws. A non-string comes back unchanged.
+   * @param {string} html
+   * @param {{ reverse?: boolean }} [options]
+   * @returns {string}
+   */
+  function escapeAnglesInMaths(html, options) {
+    if (typeof html !== "string") return html;
+    const reverse = Boolean(options && options.reverse);
+    return html.replace(MATHS_SPANS, (span) => {
+      if (ALLOWED_TAG_INSIDE.test(span)) return span;
+      return reverse
+        ? span.replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+        : span.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    });
   }
 
   /**
@@ -744,6 +781,7 @@
     ALLOWED_TYPES,
     ALLOWED_TAGS,
     checkQuizRules,
+    escapeAnglesInMaths,
     checkQuiz,
     toQuizContent,
     runLibraryCheck,

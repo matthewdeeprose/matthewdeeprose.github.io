@@ -11,10 +11,14 @@
  * MathPixQuizStore. It has no window and says nothing aloud: part 3 builds the
  * UI and owns every announcement and toast.
  *
- * MEASURED AT QZ-5, REVISED AT QZ-6. The estimate's bounds below come from the
- * eight real sends of QZ-5 (n = 8, two documents, one model, prompt qz4-1.0.0).
- * The prompt in mathpix-quiz-prompts.json is now qz6-1.1.0, which NO send has
- * measured. Every figure `estimate` returns is an estimate, not a price.
+ * MEASURED AT QZ-5 AND QZ-9, REVISED AT QZ-6 AND QZ-10. The estimate's bounds
+ * below come from 16 real sends: eight on prompt qz4-1.0.0 (QZ-5) and eight on
+ * qz6-1.1.0 (QZ-9), two documents, one model. The prompt in
+ * mathpix-quiz-prompts.json is now qz10-1.2.0, which NO send has measured.
+ * Every figure `estimate` returns is an estimate, not a price.
+ *
+ * QZ-10: a bare "<" or ">" inside maths in a reply is made "&lt;" or "&gt;"
+ * (MathPixQuizFormat.escapeAnglesInMaths) before the checker reads it.
  *
  * THE MODEL IS CHOSEN BY PURPOSE, for the provider the person has chosen:
  * MathPixModelRegistry.recommendedModel("practice-quiz", active provider). An
@@ -115,21 +119,26 @@
   const PROMPT_BOUNDS = Object.freeze({ LOW: 2.3, HIGH: 1.8 });
 
   /**
-   * THE REPLY SIDE, from QZ-5 (n = 8, two documents, one model). Completion tokens,
-   * reasoning included, were 3,114 to 3,616 at 4 questions and 3,131 to 3,430 at
-   * 6: a base that barely moves with the count, not an amount a question. So the
-   * reply is a flat low and high, widened either side of the measured spread, and
-   * no longer 450 characters a question.
+   * THE REPLY SIDE, from all 16 real sends (QZ-10 re-derived it, 23 November 2026):
+   * QZ-5, eight sends on prompt qz4-1.0.0, and QZ-9, eight on qz6-1.1.0; two
+   * documents, one model. Completion tokens, reasoning included, were 3,114 to
+   * 3,616 on qz4-1.0.0 and 3,471 to 4,294 on qz6-1.1.0, at 4 and at 6 questions:
+   * a base that barely moves with the count, not an amount a question. So the
+   * reply is a flat low and high. LOW stays 2,700 (414 tokens under the lowest).
+   * HIGH was 4,300 (QZ-6, from QZ-5 alone) and QZ-9 send 7 came within 6 tokens of
+   * it; it is now 4,800, 506 tokens above the highest. Every one of the 16 real
+   * costs sits inside its own send's range, but BY CONSTRUCTION, not by an
+   * independent test. The prompt now in the repo, qz10-1.2.0, has NOT been sent.
    *
    * ASSUMED, NOT MEASURED: how the reply grows beyond 6 questions (nothing above 6
    * was sent). Above MEASURED_COUNT_MAX the HIGH end adds EXTRA_REPLY_TOKENS_PER_QUESTION
    * a question (450 characters at the correction's 1.3 characters a token, QZ-4's
-   * old per-question size). And max_tokens, the cut-off guard, which no QZ-5 reply
-   * came near, is unchanged from QZ-4.
+   * old per-question size). And max_tokens, the cut-off guard, which no real reply
+   * came near (highest 4,294 against 7,200), is unchanged from QZ-4.
    */
   const ASSUMED = Object.freeze({
     REPLY_TOKENS_LOW: 2700,
-    REPLY_TOKENS_HIGH: 4300,
+    REPLY_TOKENS_HIGH: 4800,
     MEASURED_COUNT_MAX: 6,
     EXTRA_REPLY_TOKENS_PER_QUESTION: 350,
     MAX_TOKENS_BASE: 4000,
@@ -138,6 +147,10 @@
 
   const TEMPERATURE = 0.3;
   const EMBED_CONTAINER_ID = "quiz-writer-embed-container";
+  // QZ-14-2: the embed's cancelRequest returns false until it has set its own
+  // processing flag, so a stop in that gap is retried briefly (bounded).
+  const STOP_RETRY_MS = 50;
+  const STOP_RETRY_LIMIT = 40;
 
   /** Plain sentences, spoken by nothing here; part 3 decides what to show. */
   const MESSAGES = Object.freeze({
@@ -272,8 +285,95 @@
     return problems;
   }
 
+  /**
+   * QZ-14-2: the reasons of a refusal as plain strings, by the Quiz tab's own
+   * rule (mathpix-quiz-tab.js showRefusal): "Question <id>: " in front when the
+   * error names a question, each distinct line once, in the order given.
+   */
+  function reasonsFrom(errors) {
+    const shown = new Set();
+    const reasons = [];
+    for (const err of errors || []) {
+      const where = err && err.questionId ? `Question ${err.questionId}: ` : "";
+      const text = `${where}${err && err.message ? err.message : String(err)}`;
+      if (shown.has(text)) continue;
+      shown.add(text);
+      reasons.push(text);
+    }
+    return reasons;
+  }
+
+  /** A refusal that came from the checker or the store: its errors untouched, plus reasons. */
+  function refused(errors) {
+    return { ok: false, errors, reasons: reasonsFrom(errors) };
+  }
+
   function refusal(errors) {
-    return { ok: false, errors: errors.map((message) => ({ questionId: null, field: "", message })) };
+    return refused(errors.map((message) => ({ questionId: null, field: "", message })));
+  }
+
+  /** QZ-14-2: the outcome of a write the person stopped. Not a refusal, not an error. */
+  function stoppedOutcome() {
+    return { ok: false, stopped: true, errors: [], reasons: [] };
+  }
+
+  // ============================================================================
+  // STOPPING A WRITE (QZ-14-2)
+  // ============================================================================
+
+  /** The one write in flight, or null. */
+  let inFlight = null;
+
+  /**
+   * One control per generate call. `signal` is aborted on a stop (a stub
+   * transport reads it); `onStop` is set by a transport that can stop its own
+   * request (the embed transport registers embed.cancelRequest).
+   */
+  function makeControl() {
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    let release;
+    const stopSignal = new Promise((resolve) => { release = resolve; });
+    return {
+      signal: controller ? controller.signal : null,
+      stopped: false,
+      reason: "",
+      onStop: null,
+      abort: () => { if (controller) controller.abort(); },
+      release,
+      stopSignal,
+    };
+  }
+
+  /** Did the embed itself report a cancelled send? (streamed: raw.cancelled; plain: top level) */
+  function replyWasCancelled(response) {
+    return !!response && typeof response === "object" &&
+      (response.cancelled === true || (!!response.raw && response.raw.cancelled === true));
+  }
+
+  /**
+   * Stop the write in flight. Returns true when there was one to stop, false
+   * (and does nothing) when there was not. The pending generate settles at
+   * once with { ok: false, stopped: true }; a reply that arrives later is
+   * dropped before the checker and the store.
+   *
+   * @param {string} [reason]
+   * @returns {boolean}
+   */
+  function cancel(reason = "User cancelled") {
+    const control = inFlight;
+    if (!control || control.stopped) return false;
+    control.stopped = true;
+    control.reason = reason;
+    control.abort();
+    if (typeof control.onStop === "function") {
+      try {
+        control.onStop(reason);
+      } catch (e) {
+        logWarn("The transport could not be stopped", e);
+      }
+    }
+    control.release();
+    return true;
   }
 
   // ============================================================================
@@ -333,9 +433,10 @@
    * A low and a high US dollar figure. ESTIMATE ONLY. Low: the prompt at the
    * highest chars-a-token rate plus the lowest reply (reasoning included). High:
    * the prompt at the lowest rate plus the highest reply, which grows with the
-   * count above MEASURED_COUNT_MAX and never exceeds max_tokens. Set from QZ-5's
-   * eight sends (see PROMPT_BOUNDS and ASSUMED). Null when the model has no known
-   * price.
+   * count above MEASURED_COUNT_MAX and never exceeds max_tokens. The prompt side
+   * is set from QZ-5's eight sends and the reply side from all 16 (see
+   * PROMPT_BOUNDS and ASSUMED). Null when the model has no known price. Exported
+   * at QZ-10 so a proof can compute each real send's own range.
    */
   function estimateCost({ modelId, promptChars, count, maxTokens }) {
     const prices = pricesPerToken(modelId);
@@ -371,7 +472,7 @@
    * (mathpix-ai-enhancer.js initialiseEmbed ~:6361 and sendRequestWithTimeout
    * ~:6614). Nothing in this parcel calls it.
    */
-  async function embedTransport(request) {
+  async function embedTransport(request, control) {
     if (typeof OpenRouterEmbed === "undefined") throw new Error(MESSAGES.noClient);
 
     let container = document.getElementById(EMBED_CONTAINER_ID);
@@ -394,7 +495,34 @@
         showNotifications: false,
         enableLogging: false,
       });
-      return await embed.sendRequest(request.messages[1].content);
+      // QZ-14-2: a stop reaches the embed through its public cancelRequest. That
+      // returns false until the embed has set its own processing flag, so a stop
+      // in that gap is retried every STOP_RETRY_MS, STOP_RETRY_LIMIT times at most.
+      let settled = false;
+      const stopEmbed = (reason) => {
+        let tries = 0;
+        const attempt = () => {
+          if (settled) return;
+          let reached = false;
+          try {
+            reached = embed.cancelRequest(reason) === true;
+          } catch (e) {
+            logWarn("The embed could not be stopped", e);
+          }
+          if (reached || ++tries >= STOP_RETRY_LIMIT) return;
+          setTimeout(attempt, STOP_RETRY_MS);
+        };
+        attempt();
+      };
+      if (control) control.onStop = stopEmbed;
+      try {
+        const sending = embed.sendRequest(request.messages[1].content);
+        // A stop made before the send began has nothing to cancel yet: stop it now it has.
+        if (control && control.stopped) stopEmbed(control.reason);
+        return await sending;
+      } finally {
+        settled = true;
+      }
     } finally {
       if (made && container.parentNode) container.parentNode.removeChild(container);
     }
@@ -446,6 +574,35 @@
   }
 
   /**
+   * QZ-10: run the format's escapeAnglesInMaths over every `html` string of a
+   * parsed reply, in place, before the checker sees it. A bare "<" inside maths
+   * (QZ-9 send 4 wrote \(R_1<r<R_2\)) is otherwise read as an unfinished tag and
+   * the whole quiz refused. Nothing outside maths changes, so a reply with no
+   * angle sign in its maths is left byte for byte as it was. Cycle-safe.
+   */
+  function escapeMathsInReply(quiz) {
+    const format = window.MathPixQuizFormat;
+    if (!format || typeof format.escapeAnglesInMaths !== "function") return;
+    const seen = new WeakSet();
+    const visit = (value) => {
+      if (value === null || typeof value !== "object" || seen.has(value)) return;
+      seen.add(value);
+      if (Array.isArray(value)) {
+        value.forEach(visit);
+        return;
+      }
+      for (const key of Object.keys(value)) {
+        if (key === "html" && typeof value[key] === "string") {
+          value[key] = format.escapeAnglesInMaths(value[key]);
+        } else {
+          visit(value[key]);
+        }
+      }
+    };
+    visit(quiz);
+  }
+
+  /**
    * Write a quiz: build, send ONCE, check, hold. No retry.
    *
    * @param {{ types: string[], difficulty: string, count: number }} options
@@ -455,7 +612,20 @@
    *   | { ok: false, errors: object[] }>}
    */
   async function generate(options, deps = {}) {
+    // QZ-14-2: the control exists from the first line, so cancel() reaches a write
+    // that is still loading its prompts as well as one waiting on the model.
+    const control = makeControl();
+    inFlight = control;
+    try {
+      return await write(options, deps, control);
+    } finally {
+      if (inFlight === control) inFlight = null;
+    }
+  }
+
+  async function write(options, deps, control) {
     await loadPrompts();
+    if (control.stopped) return stoppedOutcome();
     const request = buildRequest(options);
     if (!request.ok) return request;
 
@@ -471,13 +641,23 @@
     }
 
     const transport = typeof deps.transport === "function" ? deps.transport : embedTransport;
+    if (control.stopped) return stoppedOutcome();
+
+    // The transport is told how to stop through its second argument; a one-argument
+    // transport ignores it and is stopped by the race below instead.
+    const sending = (async () => transport(request, control))();
+    sending.catch(() => {}); // a stopped write's late failure is not an unhandled rejection
     let response;
     try {
-      response = await transport(request);
+      const winner = await Promise.race([sending.then((r) => ({ reply: r })), control.stopSignal]);
+      if (control.stopped) return stoppedOutcome();
+      response = winner.reply;
     } catch (e) {
+      if (control.stopped) return stoppedOutcome();
       logWarn("The quiz request failed", e);
       return refusal([`${MESSAGES.sendFailed}: ${e && e.message ? e.message : e}`]);
     }
+    if (replyWasCancelled(response)) return stoppedOutcome();
 
     const usage = replyUsage(response);
     if (replyWasCutOff(response)) return refusal([MESSAGES.cutOff]);
@@ -488,15 +668,17 @@
     const quiz = parseQuiz(text);
     if (!quiz) return refusal([MESSAGES.notJson]);
 
+    escapeMathsInReply(quiz);
     const verdict = await window.MathPixQuizFormat.checkQuiz(quiz);
-    if (!verdict.ok) return { ok: false, errors: verdict.errors };
+    if (control.stopped) return stoppedOutcome();
+    if (!verdict.ok) return refused(verdict.errors);
 
     const store = window.MathPixQuizStore;
     if (!store || typeof store.set !== "function") {
       return refusal(["The quiz store has not loaded"]);
     }
     const held = store.set(quiz);
-    if (!held.ok) return { ok: false, errors: held.errors };
+    if (!held.ok) return refused(held.errors);
 
     logInfo(`Quiz written and held (${held.count} questions)`);
     return { ok: true, quiz, warnings: verdict.warnings, usage };
@@ -511,7 +693,9 @@
     loadPrompts,
     setPrompts,
     buildRequest,
+    estimateCost,
     generate,
+    cancel,
   });
 
   logInfo("Quiz writer ready");
