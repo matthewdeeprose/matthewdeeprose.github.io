@@ -1,1 +1,1 @@
-Draw it as a flat illustration with simple shapes, solid colours and no gradients.
+Draw it as a flat illustration on a plain off-white background (#FFFFF9), with closed shapes filled in solid colours and cleanly outlined, no gradients, no paper texture and no grid, showing only the parts and labels described, with labels in plain printed lettering.

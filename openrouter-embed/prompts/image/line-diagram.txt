@@ -1,1 +1,1 @@
-Draw it as a clean black line diagram on a white background, with no shading.
+Draw it as a clean black line diagram on a plain off-white background (#FFFFF9), with even solid lines, no shading and no colour, showing only the parts and labels described, each drawn once, with labels in plain printed lettering.

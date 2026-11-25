@@ -9,7 +9,7 @@
  *
  * FI-10: a second route, "Drawing". A text model writes the picture as TikZ through the TikZ
  * tool's own adapter (window.TikzStudioLLM.generate with TikzStudioController.trialRender), and
- * the drawing is handed to the same Use this picture path as a white-backed PNG.
+ * the drawing is handed to the same Use this picture path as an off-white-backed PNG.
  *
  * Every global is resolved at call time, never cached at load.
  *
@@ -87,7 +87,7 @@
   const FALLBACK_FILE_BASE = "recreated-image";
   // JPEG quality for a made picture that replaces a JPEG (the canvas default is 0.92 and unstated).
   const REENCODE_QUALITY = 0.9;
-  const REENCODE_BACKGROUND = "#ffffff"; // JPEG has no transparency; a clear PNG is flattened on white
+  const REENCODE_BACKGROUND = "#fffff9"; // JPEG has no transparency; a clear PNG is flattened on off-white (FI-22b)
   const MIME_BY_EXTENSION = Object.freeze({
     jpg: "image/jpeg",
     jpeg: "image/jpeg",
@@ -108,8 +108,17 @@
     "wide-16-9": "Wide (16:9)",
   });
 
-  // Measured by FI-6 on 20 November 2026: this model chooses its own shape.
-  const OWN_SHAPE_MODEL_IDS = Object.freeze(["google/gemini-3.1-flash-lite-image"]);
+  // FI-21b, 24 November 2026: a copy of ALWAYS_WIDE_MODEL_IDS in image-maker/image-maker.js
+  // (measured at FI-20, 9 of 9 square asks each, and FI-M1). It is a copy because Recreate must
+  // work before Make an image has loaded; once that tool has loaded, listModels() uses its note
+  // instead and this list is not consulted. Keep the two lists the same.
+  const ALWAYS_WIDE_MODEL_IDS = Object.freeze([
+    "google/gemini-3.1-flash-lite-image",
+    "google/gemini-nano-banana-2.1",
+    "google/gemini-3.1-flash-image",
+    "google/gemini-3.1-flash-image-preview",
+    "google/gemini-3-pro-image",
+  ]);
 
   // FI-10: the two ways to make the new picture. PICTURE is the image model (FI-9); DRAWING asks a
   // text model for TikZ through the TikZ tool's own adapter and turns the drawing into a PNG.
@@ -197,7 +206,7 @@
   // FI-16 arm C: added after the person's prompt on a Drawing Make press (not on a change press).
   // It is also told to the person, in drawExplainText.
   const DIAGRAM_ONLY_SENTENCE =
-    "Draw the diagram only, on a plain white background. Leave out the paper it was drawn on (its lines, squares and colour) and anything that is cut off at the edge of the picture.";
+    "Draw the diagram only, on a plain off-white background (#FFFFF9), not bright white. Leave out the paper it was drawn on (its lines, squares and colour) and anything that is cut off at the edge of the picture.";
   const DIAGRAM_ONLY_EXPLAIN = "It also asks for the diagram only: no paper lines and nothing cut off at the edge.";
 
   // FI-16 arm A: the words of a change press. The model is given its own code back and one change to make.
@@ -216,7 +225,7 @@
 
   const SHAPE_NOTE = Object.freeze({
     SQUARE_ONLY: "This model makes square pictures only.",
-    OWN_SHAPE: "This model may choose its own shape.",
+    ALWAYS_WIDE: "This model makes wide pictures (about 16:9), whatever shape you choose.",
   });
 
   // ============================================================================
@@ -311,7 +320,8 @@
         label: m.displayName,
         acceptsReference: m.acceptsReference === true,
         shapes: Array.isArray(m.shapes) && m.shapes.length > 0 ? m.shapes.slice() : [SQUARE_SHAPE_ID],
-        shapeNote: shapeNoteFor(m),
+        // FI-21b: Make an image's own note wins when its list carried one (one source of truth).
+        shapeNote: typeof m.shapeNote === "string" ? m.shapeNote : shapeNoteFor(m),
         costIsCredit: usd === null,
         needsPriceCheck: usd !== null && usd >= priceCheckUsd(),
       };
@@ -487,7 +497,7 @@
   }
 
   function shapeNoteFor(model) {
-    if (OWN_SHAPE_MODEL_IDS.includes(model.id)) return SHAPE_NOTE.OWN_SHAPE;
+    if (ALWAYS_WIDE_MODEL_IDS.includes(model.id)) return SHAPE_NOTE.ALWAYS_WIDE;
     const shapes = model.shapes || [];
     return shapes.length === 1 && shapes[0] === SQUARE_SHAPE_ID ? SHAPE_NOTE.SQUARE_ONLY : "";
   }
@@ -668,6 +678,7 @@
           <p id="${ID_PREFIX}guide-reason" class="image-recreate-hint"></p>
         </div>
         <p id="${ID_PREFIX}cost-line" class="image-recreate-hint"></p>
+        <p id="${ID_PREFIX}picture-explain" class="image-recreate-hint">${escapeHTML(DIAGRAM_ONLY_EXPLAIN)}</p>
         </div>
         <div id="${ID_PREFIX}drawing-controls" hidden>
           <p id="${ID_PREFIX}draw-explain" class="image-recreate-hint">${escapeHTML(drawExplainText(true))}</p>
@@ -743,7 +754,9 @@
     const reason = byId("guide-reason");
     const accepts = !!(model && model.acceptsReference);
     guide.disabled = !accepts;
-    if (!accepts) guide.checked = false;
+    // FI-22b: ticked whenever the model can take a guide, unless the person unticked it in this open.
+    const wantsGuide = !session || session.wantsGuide !== false;
+    guide.checked = accepts && wantsGuide;
     reason.textContent = accepts ? "" : TEXT.GUIDE_REASON;
     reason.hidden = accepts;
 
@@ -876,7 +889,7 @@
 
   /**
    * FI-10: one press of Make on the Drawing route. The TikZ tool's adapter writes the drawing (up
-   * to its own cap of sends, each one trial-rendered), and the drawing becomes a white-backed PNG
+   * to its own cap of sends, each one trial-rendered), and the drawing becomes an off-white-backed PNG
    * in the same shape the Picture route's result has. One line is spoken for the whole press.
    */
   async function onMakeDrawing() {
@@ -1130,7 +1143,8 @@
     if (!agreed) return;
 
     const request = {
-      prompt: byId("prompt").value,
+      // FI-22b: the same diagram-only sentence as the Drawing route, added at send time only.
+      prompt: byId("prompt").value + diagramOnlySuffix(byId("prompt").value),
       styleId: byId("style").value,
       shapeId: byId("shape").value,
       model: modelId,
@@ -1437,6 +1451,8 @@
       // FI-19b: the entry's stored code once it is known fresh, and the code the edit press showed.
       storedCode: null,
       editBaseline: null,
+      // FI-22b: the person's own choice for the guide box in this open (fresh each open).
+      wantsGuide: true,
     };
     session = s;
     s.pictureDataUrl = currentDataUrl(entry).catch((error) => {
@@ -1471,6 +1487,10 @@
           return;
         }
         byId("model").addEventListener("change", () => refreshModelControls(models));
+        // FI-22b: only a person's click fires this; the model's own ticking and unticking does not.
+        byId("guide").addEventListener("change", () => {
+          s.wantsGuide = byId("guide").checked;
+        });
         // FI-10: the route. Picture is checked in the markup, so every open starts there.
         byId("route-picture").addEventListener("change", refreshRoute);
         byId("route-drawing").addEventListener("change", refreshRoute);

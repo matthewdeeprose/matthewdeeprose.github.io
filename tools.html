@@ -9726,6 +9726,30 @@ Science,91</pre
                           <!-- RP-3c fills this with one row per picture. -->
                           <ol class="ai-queue-sublist"></ol>
                         </li>
+                        <!-- QZ-15: the practice quiz row. Hidden by mathpix-ai-tab.js when mathpix-ai-quiz-step.js is absent. -->
+                        <li
+                          class="resume-progress-item"
+                          data-step="quiz"
+                          data-status="waiting"
+                          hidden
+                        >
+                          <div class="mathpix-progress-item">
+                            <span
+                              class="mathpix-progress-icon"
+                              aria-hidden="true"
+                              data-icon="hourglass"
+                            ></span>
+                            <span class="mathpix-progress-label"
+                              >Practice quiz</span
+                            >
+                            <span class="sr-only ai-queue-sep">, </span>
+                            <span class="mathpix-progress-status"></span>
+                            <span
+                              class="ai-queue-clock"
+                              aria-hidden="true"
+                            ></span>
+                          </div>
+                        </li>
                       </ol>
                     </div>
 
@@ -9840,6 +9864,26 @@ Science,91</pre
                             reviewed are kept.
                           </p>
                         </div>
+                      </li>
+                      <!-- QZ-15: the practice quiz card. No "Change the model" disclosure: the writer takes the registry's model only. -->
+                      <li class="ai-step" id="ai-card-quiz">
+                        <div class="ai-step-head">
+                          <label for="resume-ai-step-quiz">
+                            <input
+                              type="checkbox"
+                              id="resume-ai-step-quiz"
+                              data-ai-step="quiz"
+                              aria-describedby="resume-ai-step-quiz-hint"
+                            />
+                            <span aria-hidden="true" data-icon="document"></span>
+                            Practice quiz
+                          </label>
+                        </div>
+                        <p id="resume-ai-step-quiz-hint" class="field-hint">
+                          Writes a practice quiz from the corrected text, using
+                          the choices on the Quiz tab.
+                        </p>
+                        <p id="resume-ai-model-quiz" class="ai-model"></p>
                       </li>
                     </ol>
                     <div
@@ -23400,6 +23444,7 @@ Science,91</pre
     <!-- Phase 4 (Parcel BG-P1): batch runner — the sequential loop, the cancel flag, the tally and the outcome-line taxonomy for a Describe All run (window.MathPixAltTextBatchRunner). Makes NO DOM calls and takes no load-order dependency: the orchestrator instance is supplied to create() by the caller. -->
     <script src="mathpix-scripts/ai-alt-text/alt-text-batch-runner.js?v=1.0"></script>
     <!-- S6-3a: the AI tab (window.MathPixAITab) — model lines and preconditions for the three steps. Reads the registry, the Context picker, the enhancer and the alt-text adapter at CALL time; placed after all of them. -->
+    <script src="mathpix-scripts/ai-enhancement/mathpix-ai-quiz-step.js?v=1.0"></script>
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-tab.js?v=1.1"></script>
     <!-- QZ-8: the in-place editor for one quiz question (window.MathPixQuizEditor). Builds and reads back the editor only; the Quiz tab below owns Save, Cancel, focus and the toasts. Placed before the tab. -->
     <script src="mathpix-scripts/ai-enhancement/mathpix-quiz-editor.js?v=1.1"></script>

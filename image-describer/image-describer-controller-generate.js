@@ -177,25 +177,50 @@
   // ============================================================================
   // After a cloud description arrives, the free layout checker looks for slips a
   // text-only request can fix. Only for the models whose repair was measured
-  // (H-200 tested Sonnet 5.5 alone): for any other model the check still runs and
-  // its fires are logged, and nothing is sent. The fixed text replaces the
+  // (H-200 tested Sonnet 5.5; H-203 tested GPT-6.1 Terra, 32 of 32 fixed): for any
+  // other model the check still runs and its fires are logged, and no AI fix is
+  // sent (since H-207 the code fix below still runs for it). The fixed text replaces the
   // original only if every keep-or-discard check in the module passes; otherwise
   // the original stays. Nothing here speaks: the stage line is not a live region,
   // #imgdesc-output is aria-live="off", and the run's one success line is
   // unchanged.
-  const LAYOUT_REPAIR_MODELS = Object.freeze(["anthropic/claude-sonnet-5.5"]);
+  const LAYOUT_REPAIR_MODELS = Object.freeze([
+    "anthropic/claude-sonnet-5.5",
+    "azure-openai/gpt-6.1-terra",
+  ]);
   const LAYOUT_FIX_CONTAINER_ID = "imgdesc-layout-fix-output";
-  // Why a layout check ended without replacing the description (logged, and kept
-  // on lastLayoutCheck for the test drive).
+  // IDQ H-207: before any AI fix, and for EVERY cloud model, the module's codeFix
+  // makes the fixes that are a pure move or one number (TABLELATE, TEXTLATE,
+  // COUNTLINE; H-206 cleared 289 of 289 such slips by code). Its text is kept only
+  // if judgeFix passes. The AI fix above is then sent only for MONTHS or REPEAT
+  // still firing on the kept text. One-step undo: false restores the H-205
+  // behaviour exactly (no code fix; the AI fix as before).
+  const LAYOUT_CODE_FIX = true;
+  // The rules left to the AI once code has fixed the rest (H-206: deleting a
+  // repeat by code was unsafe in 7 of 13 records).
+  const LAYOUT_AI_RULES = Object.freeze(["MONTHS", "REPEAT"]);
+  // The finish reason a code fix is judged with: code always finishes.
+  const LAYOUT_CODE_FINISH = "stop";
+  // How a layout check ended (logged, and kept on lastLayoutCheck for the test
+  // drive). The first eight are H-202's; with the code fix on they describe the
+  // AI step when no code fix was kept.
   const LAYOUT_OUTCOME = Object.freeze({
     NO_CHECKER: "NO_CHECKER",
     CLEAN: "CLEAN",
+    // H-207: code fix only for this model and none was kept; no AI fix is sent.
     MODEL_NOT_MEASURED: "MODEL_NOT_MEASURED",
     PROMPT_UNUSABLE: "PROMPT_UNUSABLE",
     NOTHING_REPAIRABLE: "NOTHING_REPAIRABLE",
     REQUEST_FAILED: "REQUEST_FAILED",
     DISCARDED: "DISCARDED",
     KEPT: "KEPT",
+    // H-207: the code-fixed text is shown and no AI fix replaced it (none was
+    // needed, the model is not on the list, or the AI fix failed; aiOutcome says).
+    CODE_FIXED: "CODE_FIXED",
+    // H-207: the code-fixed text was then fixed by the AI, and the AI's is shown.
+    CODE_AND_AI_FIXED: "CODE_AND_AI_FIXED",
+    // H-207: the code fix failed a keep check, the original stays, no AI fix sent.
+    CODE_DISCARDED: "CODE_DISCARDED",
   });
 
   // ============================================================================
@@ -4483,13 +4508,23 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
      * lastRawOutput becomes the fixed text, before the rest of the pipeline.
      * Nothing is announced and no toast is raised here.
      *
+     * H-207: with codeFix on (the default, LAYOUT_CODE_FIX), the module's codeFix
+     * runs first for every model and its text is kept only if judgeFix passes.
+     * The AI fix is then sent only for a measured model and only for MONTHS or
+     * REPEAT still firing on the kept text, built from that text and judged
+     * against it. A kept text is shown once, through the same render path. A
+     * cancel while the AI fix is out replaces nothing, the code fix included.
+     *
      * @param {Object} options
      * @param {OpenRouterEmbed} options.embed - The main embed (it renders the output)
      * @param {string} options.modelId - The model the description was sent to
      * @param {AbortSignal} options.runSignal - This run's own signal
-     * @returns {Promise<{ outcome: string, fired: string[], sent: boolean, kept: boolean, failedCheck: string|null, usage: Object|null }>}
+     * @param {boolean} [options.codeFix=LAYOUT_CODE_FIX] - false runs the H-205 path
+     *   exactly (the test drive's handle on the one-step undo)
+     * @returns {Promise<{ outcome: string, fired: string[], sent: boolean, kept: boolean, failedCheck: string|null, usage: Object|null, codeFixed: boolean, codeEdits: number, codeFailedCheck: string|null, aiOutcome: string|null }>}
+     *   kept and failedCheck are the AI fix's; codeFixed and codeFailedCheck the code fix's
      */
-    async _checkAndFixLayout({ embed, modelId, runSignal }) {
+    async _checkAndFixLayout({ embed, modelId, runSignal, codeFix = LAYOUT_CODE_FIX }) {
       const result = {
         outcome: LAYOUT_OUTCOME.CLEAN,
         fired: [],
@@ -4497,6 +4532,10 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         kept: false,
         failedCheck: null,
         usage: null,
+        codeFixed: false,
+        codeEdits: 0,
+        codeFailedCheck: null,
+        aiOutcome: null,
       };
       const checker = window.ImageDescriberStructureCheck;
       if (!checker) {
@@ -4518,10 +4557,91 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       if (fired.length === 0) return result;
       logInfo("Layout check fired", result.fired, "model:", modelId);
 
-      if (!LAYOUT_REPAIR_MODELS.includes(modelId)) {
-        logInfo("Layout repair not measured for this model; nothing sent", modelId);
-        result.outcome = LAYOUT_OUTCOME.MODEL_NOT_MEASURED;
+      // Show a kept text: the same maths-protected render the description itself
+      // went through (H-191). Focus stays where it was; the embed's final inject
+      // would move it. #imgdesc-output is aria-live="off", so nothing speaks.
+      const show = (markdown) => {
+        const focusBefore = document.activeElement;
+        embed.injectContent(embed.processMarkdownWithFallback(markdown));
+        const output = this.elements.output;
+        if (
+          focusBefore &&
+          focusBefore !== document.body &&
+          focusBefore !== output &&
+          focusBefore.isConnected &&
+          typeof focusBefore.focus === "function"
+        ) {
+          focusBefore.focus();
+        }
+        this.lastRawOutput = markdown;
+      };
+
+      // H-207: the code fix, for every model. `text` and `textFired` are what the
+      // AI step works on: the code-fixed text when it was kept, else the original.
+      let text = original;
+      let textFired = fired;
+      if (codeFix) {
+        let code = null;
+        try {
+          code = checker.codeFix(original);
+        } catch (error) {
+          logWarn("Code layout fix threw; the original is kept", error);
+        }
+        if (code && code.text !== original) {
+          const codeVerdict = checker.judgeFix({
+            original,
+            fixed: code.text,
+            finishReason: LAYOUT_CODE_FINISH,
+            fired,
+          });
+          if (codeVerdict.keep) {
+            text = code.text;
+            textFired = checker.check(text).fired;
+            result.codeFixed = true;
+            result.codeEdits = code.edits.length;
+            logInfo("Code layout fix kept", code.edits);
+          } else {
+            result.codeFailedCheck = codeVerdict.failed;
+            logInfo("Code layout fix discarded; the original is kept. Failed check:", codeVerdict.failed);
+          }
+        }
+      }
+      // With the code fix on, only MONTHS and REPEAT are left for the AI.
+      const aiFired = codeFix
+        ? textFired.filter((f) => LAYOUT_AI_RULES.includes(f.rule))
+        : fired;
+
+      // The end of a check with no AI fix sent: show the code-fixed text, if any.
+      const endWithoutAi = (outcomeWithoutCode) => {
+        if (result.codeFixed) {
+          show(text);
+          result.outcome = LAYOUT_OUTCOME.CODE_FIXED;
+        } else if (result.codeFailedCheck) {
+          result.outcome = LAYOUT_OUTCOME.CODE_DISCARDED;
+        } else {
+          result.outcome = outcomeWithoutCode;
+        }
         return result;
+      };
+      // The end of a check whose AI step ended without a kept AI fix.
+      const endAfterAi = (aiOutcome) => {
+        result.aiOutcome = aiOutcome;
+        if (result.codeFixed) {
+          show(text);
+          result.outcome = LAYOUT_OUTCOME.CODE_FIXED;
+        } else {
+          result.outcome = aiOutcome;
+        }
+        return result;
+      };
+
+      if (!LAYOUT_REPAIR_MODELS.includes(modelId)) {
+        logInfo("Layout repair not measured for this model; no AI fix sent", modelId);
+        return endWithoutAi(LAYOUT_OUTCOME.MODEL_NOT_MEASURED);
+      }
+      if (codeFix && aiFired.length === 0) {
+        logInfo("Nothing left for an AI fix; nothing sent", textFired.map((f) => f.rule));
+        return endWithoutAi(LAYOUT_OUTCOME.NOTHING_REPAIRABLE);
       }
 
       // The prompt's month sentence is cut out by code. If the prompt no longer
@@ -4530,19 +4650,17 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       try {
         await window.promptsLoaded;
         request = checker.buildRepairRequest(
-          original,
-          fired,
+          text,
+          aiFired,
           checker.monthSentence(window.PROMPT_IMAGE_DESCRIPTION),
         );
       } catch (error) {
         logWarn("Layout fix skipped: the request could not be built", error);
-        result.outcome = LAYOUT_OUTCOME.PROMPT_UNUSABLE;
-        return result;
+        return endAfterAi(LAYOUT_OUTCOME.PROMPT_UNUSABLE);
       }
       if (request === null) {
         logInfo("Layout check found only report-only slips; nothing sent", result.fired);
-        result.outcome = LAYOUT_OUTCOME.NOTHING_REPAIRABLE;
-        return result;
+        return endAfterAi(LAYOUT_OUTCOME.NOTHING_REPAIRABLE);
       }
 
       // One text-only request. The stage line is not a live region and speaks nothing.
@@ -4557,8 +4675,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       } catch (error) {
         if (runSignal.aborted) throw new DOMException("Aborted", "AbortError");
         logWarn("Layout fix request failed; the original is kept", error);
-        result.outcome = LAYOUT_OUTCOME.REQUEST_FAILED;
-        return result;
+        return endAfterAi(LAYOUT_OUTCOME.REQUEST_FAILED);
       } finally {
         if (this.layoutFixEmbedInstance === fixEmbed) {
           this.layoutFixEmbedInstance = null;
@@ -4570,36 +4687,26 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       }
       result.usage = reply?.metadata?.tokens || null;
 
+      // Judged against the text it was built from, with that text's own fires.
       const verdict = checker.judgeFix({
-        original,
+        original: text,
         fixed: reply?.text,
         finishReason: reply?.finishReason,
-        fired,
+        fired: textFired,
       });
       if (!verdict.keep) {
-        logInfo("Layout fix discarded; the original is kept. Failed check:", verdict.failed);
-        result.outcome = LAYOUT_OUTCOME.DISCARDED;
+        logInfo("Layout fix discarded; the text before it is kept. Failed check:", verdict.failed);
         result.failedCheck = verdict.failed;
-        return result;
+        return endAfterAi(LAYOUT_OUTCOME.DISCARDED);
       }
 
-      // Keep: the same maths-protected render the description itself went through
-      // (H-191). Focus stays where it was; the embed's final inject would move it.
-      const focusBefore = document.activeElement;
-      embed.injectContent(embed.processMarkdownWithFallback(reply.text));
-      const output = this.elements.output;
-      if (
-        focusBefore &&
-        focusBefore !== document.body &&
-        focusBefore !== output &&
-        focusBefore.isConnected &&
-        typeof focusBefore.focus === "function"
-      ) {
-        focusBefore.focus();
-      }
-      this.lastRawOutput = reply.text;
+      // Keep: shown once, through show() above.
+      show(reply.text);
       result.kept = true;
-      result.outcome = LAYOUT_OUTCOME.KEPT;
+      result.aiOutcome = LAYOUT_OUTCOME.KEPT;
+      result.outcome = result.codeFixed
+        ? LAYOUT_OUTCOME.CODE_AND_AI_FIXED
+        : LAYOUT_OUTCOME.KEPT;
       logInfo("Layout fix kept");
       return result;
     },

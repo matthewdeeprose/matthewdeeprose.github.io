@@ -489,15 +489,44 @@
    */
   function dataList(dataset) {
     const data = dataset ? dataset.data : undefined;
-    if (Array.isArray(data)) return data;
+    if (readsAsKeyed(data)) return null;
+    // Chart.js reads element 0, 1, 2 and so on up to the array's length, and never calls the array's iterator or its methods. A list made here,
+    // element by element, is read the same way by everything below, so a replaced iterator, find or filter cannot change what is described.
+    if (Array.isArray(data)) return readByIndex(data, undefined);
     if (!ArrayBuffer.isView(data)) return null;
     // The kind comes from the array's own internal slot, so it holds for an array made in another realm (an iframe) and for a subclass.
-    const kind = typedArrayName(data);
-    if (kind === undefined) return null; // a DataView
-    const store = NARROW_FLOAT_STORES.get(kind);
-    if (!store) return Array.from(data);
-    return Array.from(data, (value) => shortestStored(value, store));
+    // A DataView has no kind and no length, so Chart.js reads no element from it: it is read like any array-like, and is an empty list.
+    const store = NARROW_FLOAT_STORES.get(typedArrayName(data));
+    return readByIndex(data, store);
   }
+
+  /**
+   * The elements of an array or typed array, read as Chart.js reads them: index 0 up to its `length`, by index, with a narrow float array's numbers
+   * brought back to the decimals the author wrote.
+   * @param {Object} data - An array or typed array
+   * @param {Function|undefined} store - Rounds a double to what the same kind of narrow float array stores, or undefined for any other kind
+   * @returns {Array} A new list
+   */
+  function readByIndex(data, store) {
+    const length = data.length;
+    assertDrawableLength(length);
+    if (!store) return Array.from({ length }, (_, index) => data[index]);
+    return Array.from({ length }, (_, index) => shortestStored(data[index], store));
+  }
+
+  // Chart.js makes one parsed row per element with `new Array(count)`, which throws "Invalid array length" for a count with a fraction, so it draws nothing
+  // for a `length` of 0.5 or 2.5. A length that is not a number, or is below zero, parses as an empty list, and a numeric string reads as its number.
+  // The first case is refused here as it is there, so a chart that cannot be drawn is not described as the first `floor(length)` values.
+  const MAX_ARRAY_LENGTH = 2 ** 32 - 1; // the largest length a JavaScript array can have
+  function assertDrawableLength(length) {
+    const count = +length; // a BigInt throws here, as it does in Chart.js
+    if (count > 0 && (!Number.isInteger(count) || count > MAX_ARRAY_LENGTH)) throw new RangeError("Invalid array length");
+  }
+
+  // Chart.js reads `data` as keyed values, one per key and each drawn at a new category, whenever Object.prototype.toString calls it "[object Object]".
+  // A typed array whose tag was set to "Object", or whose prototype was moved off TypedArray.prototype, reads that way, so it is keyed data here too.
+  const KEYED_TAG = "[object Object]";
+  const readsAsKeyed = (data) => Object.prototype.toString.call(data) === KEYED_TAG;
 
   // The built-in getter behind every typed array's Symbol.toStringTag: it reads the internal slot, so a subclass or another realm cannot change the answer,
   // and it returns undefined for anything that is not a typed array (a DataView).

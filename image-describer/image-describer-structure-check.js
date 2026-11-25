@@ -7,7 +7,8 @@
  * request for the first five.
  * No network, no DOM, no announcement. Nothing here reads window.PROMPT_*: the caller passes the text.
  * Loaded by tools.html before the controller's generate file (H-202). It also holds the keep-or-discard
- * checks for a fixed description (numbersPreserved, judgeFix).
+ * checks for a fixed description (numbersPreserved, judgeFix), and codeFix (H-207), which makes the
+ * TABLELATE, TEXTLATE and COUNTLINE fixes by code, with no AI.
  *
  * The rules are the H-194 rules (.claude/measurements/h194/rules.mjs, proved on 135 records), TEXTLATE from
  * H-200, and the request text is H-200's, with one change: TABLELATE names every late block.
@@ -80,6 +81,12 @@
   const REPORT_ONLY_RULES = Object.freeze([RULES.SECTIONS, RULES.ENDS, RULES.COUNTHIGH]);
 
   const SECTION_NUMBERS = Object.freeze([1, 2, 3, 4]);
+  /**
+   * A heading whose text starts with a section number 1. to 4. (H-207). H-206 found "### 4. Text Content"
+   * at the wrong level after the table: it is a missing section (SECTIONS reports it), never a late block,
+   * so neither code nor the AI is told to move it.
+   */
+  const SECTION_HEADING_TEXT = /^#{1,6}\s+[1-4]\./;
   const REPEAT_MIN_WORDS = 8; // a repeated sentence must be at least this long to count
   const MONTHS_IN_YEAR = 12;
 
@@ -157,7 +164,8 @@
 
   /**
    * Headings of every block that sits after the first table row of section 3 and before the
-   * Educational Significance heading, other than a "Data table:" heading. Empty when the layout is right.
+   * Educational Significance heading, other than a "Data table:" heading or a numbered section
+   * heading (SECTION_HEADING_TEXT, H-207). Empty when the layout is right.
    * Walks the lines as H-194's TABLELATE loop does, but collects every late heading, not the first.
    */
   function lateHeadings(text) {
@@ -169,7 +177,8 @@
       else if (
         seenRow &&
         /^#{1,6}\s/.test(line) &&
-        !/^#{2,6}\s*Data table:/i.test(line)
+        !/^#{2,6}\s*Data table:/i.test(line) &&
+        !SECTION_HEADING_TEXT.test(line)
       ) {
         found.push(line.replace(/^#+\s*/, "").trim());
       }
@@ -474,10 +483,194 @@
     return { keep: true, failed: null };
   }
 
+  // =========================================================================
+  // The code fix (H-207, ported from .claude/measurements/h206/codefix206.mjs with its plants
+  // and its REPEAT edit removed). For TABLELATE, TEXTLATE and COUNTLINE only, it makes the edit
+  // the problem line names: whole lines moved to just above the "Data table:" heading, or the
+  // count number raised to the list length. It writes no word; blank lines are the only other
+  // thing it adds or removes. H-206: 289 of 289 such slips cleared over the committed records.
+  // =========================================================================
+
+  /** The rules codeFix acts on. MONTHS and REPEAT are left to the AI (H-206: 7 of 13 REPEAT deletions unsafe). */
+  const CODE_FIX_RULES = Object.freeze([RULES.TABLELATE, RULES.TEXTLATE, RULES.COUNTLINE]);
+  const COUNT_SENTENCE = /There (?:are|is) (\d+) pieces? of (?:legible )?text/i; // countLine()'s pattern
+
+  /** The kinds of edit codeFix reports. */
+  const CODE_EDITS = Object.freeze({ MOVE: "MOVE", COUNT: "COUNT" });
+
+  const isRow = (line) => /^\|/.test(line);
+  const isHeading = (line) => /^#{1,6}\s/.test(line);
+  const isDataTableHeading = (line) => /^#{2,6}\s*Data table:/i.test(line);
+  const isEsHeading = (line) => /^#{1,6}\s+Educational Significance/i.test(line);
+
+  /** [start, end) line indexes of section n's body, or null. The same bounds as section(). */
+  function sectionBounds(lines, n) {
+    const start = lines.findIndex((l) => new RegExp(`^##\\s+${n}\\.`).test(l));
+    if (start < 0) return null;
+    let end = lines.length;
+    for (let i = start + 1; i < lines.length; i++) {
+      if (/^##\s+\d\./.test(lines[i])) {
+        end = i;
+        break;
+      }
+    }
+    return [start + 1, end];
+  }
+
+  /**
+   * The late blocks of section 3 as line ranges [start, end), trailing blank lines left out, in
+   * document order. TABLELATE: from a late heading (the headings lateHeadings names) to the next
+   * heading, table row or the Educational Significance heading. TEXTLATE: from the first text
+   * line after the last table row to the next heading.
+   */
+  function lateBlocks(lines, firedRules) {
+    const bounds = sectionBounds(lines, 3);
+    if (!bounds) return { blocks: [], firstRow: -1, bounds: null };
+    const [s, e] = bounds;
+    let firstRow = -1;
+    let lastRow = -1;
+    for (let i = s; i < e; i++) {
+      if (!isRow(lines[i])) continue;
+      if (firstRow < 0) firstRow = i;
+      lastRow = i;
+    }
+    if (firstRow < 0) return { blocks: [], firstRow, bounds };
+    const blocks = [];
+    const trimEnd = (start, end) => {
+      let k = end;
+      while (k > start + 1 && !lines[k - 1].trim()) k--;
+      return k;
+    };
+
+    if (firedRules.includes(RULES.TABLELATE)) {
+      let es = e;
+      for (let i = firstRow + 1; i < e; i++) {
+        if (isEsHeading(lines[i])) {
+          es = i;
+          break;
+        }
+      }
+      for (let i = firstRow + 1; i < es; i++) {
+        const line = lines[i];
+        if (!isHeading(line) || isDataTableHeading(line) || SECTION_HEADING_TEXT.test(line)) continue;
+        let j = i + 1;
+        while (j < es && !isHeading(lines[j]) && !isRow(lines[j])) j++;
+        blocks.push({ rule: RULES.TABLELATE, start: i, end: trimEnd(i, j) });
+        i = j - 1;
+      }
+    }
+    if (firedRules.includes(RULES.TEXTLATE)) {
+      let k = lastRow + 1;
+      while (k < e && !lines[k].trim()) k++;
+      if (k < e && !isHeading(lines[k])) {
+        let j = k + 1;
+        while (j < e && !isHeading(lines[j])) j++;
+        blocks.push({ rule: RULES.TEXTLATE, start: k, end: trimEnd(k, j) });
+      }
+    }
+    blocks.sort((x, y) => x.start - y.start);
+    return { blocks, firstRow, bounds };
+  }
+
+  /**
+   * The line a moved block is put before: the earliest "Data table:" heading above the first row
+   * with no other heading between it and the row (H-206: the AI put 43 of 55 blocks there), else
+   * the first row.
+   */
+  function destination(lines, firstRow, bounds) {
+    let dest = firstRow;
+    for (let i = firstRow - 1; i >= bounds[0]; i--) {
+      if (isDataTableHeading(lines[i])) dest = i;
+      else if (isHeading(lines[i]) || isRow(lines[i])) break;
+    }
+    return dest;
+  }
+
+  /** Inside section 3 only: no two blank lines in a row, and a blank line between a table row and a heading after it. */
+  function tidyBlankLines(lines) {
+    const bounds = sectionBounds(lines, 3);
+    if (!bounds) return lines;
+    const out = lines.slice(0, bounds[0]);
+    for (let i = bounds[0]; i < bounds[1]; i++) {
+      const line = lines[i];
+      const prev = out[out.length - 1] ?? "";
+      if (!line.trim() && !prev.trim()) continue;
+      if (isHeading(line) && isRow(prev)) out.push("");
+      out.push(line);
+    }
+    if (bounds[1] < lines.length && (out[out.length - 1] ?? "").trim()) out.push("");
+    return out.concat(lines.slice(bounds[1]));
+  }
+
+  function applyMoves(lines, firedRules, edits) {
+    const { blocks, firstRow, bounds } = lateBlocks(lines, firedRules);
+    if (!blocks.length) return lines;
+    const dest = destination(lines, firstRow, bounds);
+    const moving = new Set();
+    const moved = [];
+    for (const block of blocks) {
+      for (let i = block.start; i < block.end; i++) moving.add(i);
+      moved.push(...lines.slice(block.start, block.end), "");
+      edits.push({ kind: CODE_EDITS.MOVE, rule: block.rule, lines: block.end - block.start });
+    }
+    const out = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (i === dest) {
+        if (out.length && out[out.length - 1].trim()) out.push("");
+        out.push(...moved);
+      }
+      if (!moving.has(i)) out.push(lines[i]);
+    }
+    return tidyBlankLines(out);
+  }
+
+  /** Raise the number in the count sentence to the list length, on the text as it is after any move. */
+  function applyCountLine(lines, edits) {
+    const detail = check(lines.join("\n")).fired.find((f) => f.rule === RULES.COUNTLINE)?.detail;
+    if (!detail) return lines;
+    const index = lines.findIndex((l) => COUNT_SENTENCE.test(l));
+    if (index < 0) return lines;
+    const before = lines[index];
+    const match = COUNT_SENTENCE.exec(before);
+    const numberAt = match.index + match[0].indexOf(match[1]);
+    const out = lines.slice();
+    out[index] =
+      before.slice(0, numberAt) + String(detail.listed) + before.slice(numberAt + match[1].length);
+    edits.push({ kind: CODE_EDITS.COUNT, rule: RULES.COUNTLINE, from: detail.said, to: detail.listed });
+    return out;
+  }
+
+  /**
+   * Fix by code the slips that are a pure move or one number. Pure: reads only `text`, no DOM.
+   * The caller still judges the result with judgeFix before showing it.
+   * @param {string} text - the description Markdown
+   * @returns {{ text: string, edits: Array<object> }} text is the same string, and edits empty,
+   *   when none of TABLELATE, TEXTLATE and COUNTLINE fires
+   */
+  function codeFix(text) {
+    requireString(text, "text");
+    const fired = check(text).fired.map((f) => f.rule);
+    const edits = [];
+    if (!fired.some((rule) => CODE_FIX_RULES.includes(rule))) {
+      return Object.freeze({ text, edits: Object.freeze(edits) });
+    }
+    const eol = /\r\n/.test(text) ? "\r\n" : "\n";
+    let lines = text.split(/\r?\n/);
+    if (fired.includes(RULES.TABLELATE) || fired.includes(RULES.TEXTLATE)) {
+      lines = applyMoves(lines, fired, edits);
+    }
+    if (fired.includes(RULES.COUNTLINE)) lines = applyCountLine(lines, edits);
+    logDebug("codeFix edits", edits);
+    return Object.freeze({ text: lines.join(eol), edits: Object.freeze(edits) });
+  }
+
   window.ImageDescriberStructureCheck = Object.freeze({
     RULES,
     FIX_CHECKS,
+    CODE_FIX_RULES,
+    CODE_EDITS,
     check,
+    codeFix,
     buildRepairRequest,
     monthSentence,
     numbersPreserved,

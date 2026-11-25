@@ -105,6 +105,7 @@
     NO_FILES_ONE: "The one picture in this document has no file, so it cannot be described.",
     NO_FILES_MANY_TAIL: " in this document have no files, so none can be described.",
     NO_KEY: "No AI provider key is set.",
+    NO_QUIZ_TOOLS: "The quiz tools have not finished loading.",
   });
 
   /** How a model line says where its model came from. */
@@ -137,7 +138,19 @@
       short: "Picture descriptions",
       purpose: "alt-text",
     }),
+    // QZ-15: a fourth step, run last and never ticked for the person. Its logic is in mathpix-ai-quiz-step.js
+    // (loaded before this file); without that file the tab has three steps, as before.
+    ...(window.MathPixAIQuizStep ? [window.MathPixAIQuizStep.STEP] : []),
   ]);
+
+  /** QZ-15: the practice quiz step's key, and its own module (read at call time, never captured). */
+  const QUIZ_KEY = "quiz";
+  const quizStep = () => window.MathPixAIQuizStep || null;
+  /** { low, high } in US dollars from the quiz writer's estimate, or null. */
+  const quizRange = () => {
+    const quiz = quizStep();
+    return quiz ? quiz.range() : null;
+  };
 
   /**
    * MEASURED COST FIGURES, in US dollars, keyed by model id. A model absent
@@ -181,12 +194,15 @@
       "anthropic/claude-opus-5.5": 0.0369,
       "azure-openai/gpt-6-astra": 0.044,
     }),
+    // QZ-15: the quiz has a low-to-high ESTIMATE from the writer and never a measured point figure.
+    quiz: Object.freeze({}),
   });
 
-  /** AV-3 (AV-D3 E2): the two cost words on a model line. */
+  /** AV-3 (AV-D3 E2): the two cost words on a model line (QZ-15: and a range that is only an estimate). */
   const COST_WORDS = Object.freeze({
     MEASURED: "cost measured",
     NOT_MEASURED: "cost not measured",
+    ESTIMATED: "cost estimated",
   });
 
   /** The catalogue tags Foundry names "GPT-6.1 Sol (Foundry)"; the provider is said once, in the bar (AV-D3 E3). */
@@ -222,6 +238,7 @@
     correction: "no corrections were applied.",
     context: "no context was filled.",
     pictures: "no descriptions were written.",
+    quiz: "no quiz was written.",
   });
   const NO_LINE_TEXT = "no message was returned.";
   const THREW_TEXT = "stopped unexpectedly.";
@@ -445,6 +462,9 @@
    * recommendation (read through the peek, which never creates the singleton).
    */
   function chosenIdFor(step, recommendedId) {
+    // QZ-15: the quiz writer takes the registry's recommendation only. Without this line the quiz would fall
+    // through to the enhancer branch below and be given the CORRECTION's selected model.
+    if (step.key === QUIZ_KEY) return null;
     if (step.key === "context") {
       const ctx = window.MathPixContextAI;
       const pick =
@@ -540,11 +560,12 @@
       return { lead, name: null, plain: `none recommended for ${providerLabel(providerId)}` };
     }
     const measured = typeof MEASURED_COST_USD[step.key][modelId] === "number";
+    const estimated = step.key === QUIZ_KEY && quizRange() !== null;
     return {
       lead,
       name: (displayNameFor(modelId, providerId) || modelId).replace(PROVIDER_NAME_SUFFIX, ""),
       basis: chosenId ? BASIS.CHOSEN : BASIS.RECOMMENDED,
-      cost: measured ? COST_WORDS.MEASURED : COST_WORDS.NOT_MEASURED,
+      cost: estimated ? COST_WORDS.ESTIMATED : measured ? COST_WORDS.MEASURED : COST_WORDS.NOT_MEASURED,
     };
   }
 
@@ -711,6 +732,7 @@
    */
   function reasonFor(step) {
     if (!hasProviderKey()) return REASONS.NO_KEY;
+    if (step.key === QUIZ_KEY) return quizStep() ? quizStep().reason() : REASONS.NO_QUIZ_TOOLS;
     if (step.key === "pictures") {
       const entries = imageEntries();
       if (entries.length === 0) return REASONS.NO_PICTURES;
@@ -761,7 +783,8 @@
 
     // A refresh landing mid-run (a tab switch) must not re-enable a box.
     box.disabled = state.running;
-    if (!wasEligible) box.checked = true;
+    // QZ-15: the quiz costs money and is never ticked for the person; the other steps still are.
+    if (!wasEligible && step.key !== QUIZ_KEY) box.checked = true;
     box.dataset.aiEligible = "true";
     if (!hint) return;
     if (step.key === "pictures") {
@@ -829,18 +852,39 @@
     // model lines and the run confirm, and a long sentence wrapped into two
     // lines for the reader (OS-2 Key 2).
     let total = 0;
+    // QZ-16: the same arithmetic as the Run question, each item rounded to whole cents and then summed
+    let totalCents = 0;
     let unmeasured = 0;
+    let quizLowCents = null;
+    let quizHighCents = null;
     ticked.forEach((step) => {
+      // QZ-15: the quiz is a range, never a point figure
+      if (step.key === QUIZ_KEY) {
+        const range = quizRange();
+        if (!range) unmeasured += 1;
+        else {
+          quizLowCents = Math.round(range.low * CENTS_PER_USD);
+          quizHighCents = Math.round(range.high * CENTS_PER_USD);
+        }
+        return;
+      }
       const figure = MEASURED_COST_USD[step.key][resolvedModelId(step)];
       if (typeof figure !== "number") {
         unmeasured += 1;
         return;
       }
-      total += step.key === "pictures" ? figure * uncoveredPictures().length : figure;
+      const isPictures = step.key === "pictures";
+      total += isPictures ? figure * uncoveredPictures().length : figure;
+      totalCents += Math.round(figure * (isPictures ? uncoveredPictures().length : 1) * CENTS_PER_USD);
     });
 
     const stepsWords = countWords(ticked.length, "step", "steps", { words: true });
     if (unmeasured > 0) return `${ESTIMATE_LABEL} ${COST_NOT_FULLY_MEASURED_WORDS} for ${stepsWords}.`;
+    // QZ-15: with the quiz ticked the line is a range; with it unticked it is today's sentence, byte for byte.
+    // QZ-16: the range uses the Run question's whole-cent sums so the two never differ by a cent.
+    if (quizLowCents !== null) {
+      return `${ESTIMATE_LABEL} about ${usd((totalCents + quizLowCents) / CENTS_PER_USD, TOTAL_COST_DECIMALS)} to ${usd((totalCents + quizHighCents) / CENTS_PER_USD, TOTAL_COST_DECIMALS)} for ${stepsWords}.`;
+    }
     return `${ESTIMATE_LABEL} about ${usd(total, TOTAL_COST_DECIMALS)} for ${stepsWords}.`;
   }
 
@@ -848,7 +892,7 @@
    * RP-6b (RP-D10): the run confirm as a lead and a list, from one composer for the real run and the
    * rehearsal. The lead is the dialog's spoken description; the items go in an ordered list after it.
    * Each step's figure is rounded to whole cents first and the lead states the SUM of those rounded
-   * figures, so the box agrees with itself (the tab's estimate line keeps its own, unrounded total).
+   * figures, so the box agrees with itself. QZ-16: the tab's estimate line uses the same whole-cent sums when the quiz is ticked; with the quiz unticked it keeps its unrounded total (two steps read $0.96 there and $0.97 here, pinned by s133-2).
    * A step with no measured figure reads "cost not measured" and the lead drops the total.
    */
   const CENTS_PER_USD = 100;
@@ -870,11 +914,30 @@
     const providerId = activeProviderId();
     let totalCents = 0;
     let unmeasured = 0;
+    let quizLowCents = null;
+    let quizHighCents = null;
     const items = steps.map((step) => {
       const modelId = resolvedModelId(step);
       const name = modelId
         ? (displayNameFor(modelId, providerId) || modelId).replace(PROVIDER_NAME_SUFFIX, "")
         : null;
+      // QZ-15: the quiz item carries the writer's range, each end rounded to whole cents like the others
+      if (step.key === QUIZ_KEY) {
+        const range = quizRange();
+        const quizParts = [step.label];
+        if (name) quizParts.push(name);
+        if (!range) {
+          unmeasured += 1;
+          quizParts.push(COST_WORDS.NOT_MEASURED);
+          return quizParts.join(", ");
+        }
+        quizLowCents = Math.round(range.low * CENTS_PER_USD);
+        quizHighCents = Math.round(range.high * CENTS_PER_USD);
+        quizParts.push(
+          `about ${usd(quizLowCents / CENTS_PER_USD, TOTAL_COST_DECIMALS)} to ${usd(quizHighCents / CENTS_PER_USD, TOTAL_COST_DECIMALS)}`,
+        );
+        return quizParts.join(", ");
+      }
       const figure = modelId ? MEASURED_COST_USD[step.key][modelId] : undefined;
       const isPictures = step.key === "pictures";
       const parts = [step.label];
@@ -892,9 +955,13 @@
     });
 
     const stepsWords = countWords(steps.length, "step", "steps", { words: true });
+    const priced =
+      quizLowCents === null
+        ? `about ${usd(totalCents / CENTS_PER_USD, TOTAL_COST_DECIMALS)}`
+        : `about ${usd((totalCents + quizLowCents) / CENTS_PER_USD, TOTAL_COST_DECIMALS)} to ${usd((totalCents + quizHighCents) / CENTS_PER_USD, TOTAL_COST_DECIMALS)}`;
     const lead =
       unmeasured === 0
-        ? `Run ${stepsWords} for about ${usd(totalCents / CENTS_PER_USD, TOTAL_COST_DECIMALS)}?`
+        ? `Run ${stepsWords} for ${priced}?`
         : `Run ${stepsWords}? ${COST_NOT_FULLY_MEASURED_TEXT}`;
     return { lead, items };
   }
@@ -1925,6 +1992,8 @@
     correction: () => window.getMathPixAIEnhancer?.()?.cancelQuietRun?.() === true,
     context: () => window.MathPixContextAI?.cancelQuietRun?.() === true,
     pictures: () => window.cancelDescribeAllImages?.() === true,
+    // QZ-15: the writer's own cancel; the request's abort signal fires and a late reply is dropped
+    quiz: () => quizStep()?.cancel() === true,
   });
 
   /** M-5y: whether a correction's line is one of the enhancer's two sentences for a request that got no reply. */
@@ -1972,6 +2041,19 @@
         result && result.line,
       );
     },
+    // QZ-15: one writer call with the Quiz tab's form read at call time. No toast and no region write here: the
+    // step's own spoken line is the one voice for this event.
+    quiz: async () => {
+      const quiz = quizStep();
+      if (!quiz) return outcomeOf(false, null);
+      const result = await quiz.run();
+      if (result.cancelled) return cancelledOutcome(result.line);
+      if (result.ok) {
+        return outcomeOf(true, `${countWords(result.count, "question", "questions", { words: true })} written.`);
+      }
+      // the refusal sentence is already in this step's own spoken line, so the final line does not say it again
+      return { ...outcomeOf(false, result.line), saidAtStepEnd: result.refused === true };
+    },
   });
 
   /**
@@ -2001,6 +2083,7 @@
       return outcome.ok ? { ...outcome, checks: readChecks({ rehearsal: true }) } : outcome;
     },
     context: rehearsalStep("context"),
+    quiz: rehearsalStep("quiz"),
     pictures: async () => {
       const runner = window.MathPixAltTextBatchRunner;
       // the same rows and the same targets (the estimate's partition) as the real step
@@ -2057,7 +2140,7 @@
     if (missed.every((entry) => !entry.outcome.skipped && !entry.outcome.threw)) {
       // M-5y: the spoken line already carried a no-reply step's sentence at that step's end, so it is not said again
       const details = missed
-        .filter((entry) => !(spoken && entry.outcome.noReply))
+        .filter((entry) => !(spoken && (entry.outcome.noReply || entry.outcome.saidAtStepEnd)))
         .map((entry) => entry.outcome.detail);
       const count = `Done: ${ran} of ${results.length} steps ran.`;
       return details.length > 0 ? `${count} ${details.join(" ")}` : count;
@@ -2121,6 +2204,8 @@
 
   function setRunning(running) {
     state.running = running;
+    // QZ-15: one writer, two doors. While this run goes the Quiz tab cannot write, edit or delete.
+    quizStep()?.setLocked(running);
     STEPS.forEach((step) => {
       const box = byId(stepId(step));
       if (box) box.disabled = running;
@@ -2500,6 +2585,17 @@
   // WIRING
   // ==========================================================================
 
+  /**
+   * QZ-15: the page carries the quiz step's card and queue row; without the quiz step's own file the tab has three
+   * steps, so the card and the row are hidden and the tab reads as it did.
+   */
+  function hideQuizWithoutItsModule() {
+    if (quizStep()) return;
+    [byId("ai-card-quiz"), queueRow({ key: QUIZ_KEY })].forEach((el) => {
+      if (el) el.hidden = true;
+    });
+  }
+
   function init() {
     STEPS.forEach((step) => {
       // Each binding stands alone: a missing select must not skip the tick.
@@ -2525,6 +2621,17 @@
     });
 
     watchPickerClose();
+    hideQuizWithoutItsModule();
+    // QZ-15: a quiz written, deleted or restored, or the Quiz tab starting or ending a write, changes whether
+    // the quiz box may be used. Silent: the box and its hint are plain text.
+    if (!state.watchingQuiz) {
+      state.watchingQuiz = true;
+      ["mathpix:quiz-changed", "mathpix:quiz-writing"].forEach((name) => {
+        document.addEventListener(name, () => {
+          if (!state.running) refresh();
+        });
+      });
+    }
     if (!state.watchingProvider) {
       state.watchingProvider = true;
       window.addEventListener("provider:changed", () => {

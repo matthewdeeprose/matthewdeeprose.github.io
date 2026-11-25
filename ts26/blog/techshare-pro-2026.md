@@ -405,7 +405,7 @@ The online stream had technical problems and only started about 10 minutes into 
 <figcaption>On the recording, at 11:40. Frame from the AbilityNet TechShare Pro 2026 recording of my session.</figcaption>
 </figure>
 
-So I'm recording my own version of the talk this week and will put it on YouTube. Until then, the slides and links are on [my talk page](ts26.html).
+So I recorded my own version of the talk after the event. You can [watch it on YouTube](https://www.youtube.com/watch?v=TYaY9faoHq4), or read [the transcript, with the slides and diagrams](ts26-transcript.html). The slides and links are on [my talk page](ts26.html).
 
 ## Thank you
 

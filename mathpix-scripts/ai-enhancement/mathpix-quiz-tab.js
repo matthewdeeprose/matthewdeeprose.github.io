@@ -181,6 +181,10 @@
 
   /** A press is in flight (the confirm, the send and the result). A second press does nothing. */
   let running = false;
+  /** QZ-15: why the AI tab's run holds this tab's writing controls, or null. The writer keeps ONE write in flight. */
+  let externalLock = null;
+  let lockShown = false;
+  const WRITING_EVENT = "mathpix:quiz-writing";
 
   /** The transport the next press sends through. Null means the writer's own. */
   let transport = null;
@@ -393,14 +397,65 @@
     setText(byId(IDS.writeLabel), hasQuiz ? WRITE_LABEL.REPLACE : WRITE_LABEL.FIRST);
     const write = byId(IDS.write);
     if (write) {
-      const blocked = Boolean(assessed.reason) || running;
+      const blocked = Boolean(assessed.reason) || running || externalLock !== null;
       write.setAttribute("aria-disabled", blocked ? "true" : "false");
       if (running) write.setAttribute("aria-busy", "true");
       else write.removeAttribute("aria-busy");
     }
-    setText(byId(IDS.writeHint), running ? "" : assessed.reason || "");
+    // QZ-15: while the AI tab runs its steps, its reason leads (the key and session reasons stay on the state line)
+    setText(byId(IDS.writeHint), running ? "" : externalLock || assessed.reason || "");
 
     renderResult();
+    applyExternalLock();
+  }
+
+  /**
+   * QZ-15: while the AI tab runs its steps the write, delete-quiz and every edit and delete button say so and do
+   * nothing. aria-disabled keeps them focusable (a focused control that became `disabled` would drop focus to the
+   * body) and the visible reason is the write button's own hint, which they point at.
+   */
+  function applyExternalLock() {
+    const hintId = IDS.writeHint;
+    const targets = [byId(IDS.delete)];
+    const body = byId(IDS.resultBody);
+    if (body) {
+      body.querySelectorAll('button[data-quiz-action="edit"], button[data-quiz-action="delete"]').forEach((b) => targets.push(b));
+    }
+    const locked = externalLock !== null;
+    if (!locked && !lockShown) return; // nothing was locked, so nothing to give back
+    lockShown = locked;
+    targets.forEach((b) => {
+      if (!b) return;
+      const tokens = (b.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean);
+      const has = tokens.includes(hintId);
+      if (locked) {
+        b.setAttribute("aria-disabled", "true");
+        b.dataset.quizLocked = "true";
+        if (!has) b.setAttribute("aria-describedby", [...tokens, hintId].join(" "));
+        return;
+      }
+      if (b.dataset.quizLocked !== "true") return;
+      delete b.dataset.quizLocked;
+      const rest = tokens.filter((t) => t !== hintId);
+      if (rest.length) b.setAttribute("aria-describedby", rest.join(" "));
+      else b.removeAttribute("aria-describedby");
+      b.removeAttribute("aria-disabled");
+    });
+    // a quiz of one keeps its Delete explained, and an open editor keeps the others blocked
+    if (!locked) setOthersBlocked(editing ? editing.index : null);
+  }
+
+  /** QZ-15: the AI tab holds (a reason) or releases (null) this tab's writing controls. */
+  function setExternalLock(reason) {
+    const next = typeof reason === "string" && reason ? reason : null;
+    if (next === externalLock) return;
+    externalLock = next;
+    refresh();
+  }
+
+  /** QZ-15: tells the AI tab's quiz step that this tab started or finished a write. */
+  function emitWriting() {
+    document.dispatchEvent(new CustomEvent(WRITING_EVENT, { detail: { writing: running } }));
   }
 
   // ============================================================================
@@ -713,8 +768,9 @@
    * when nothing was sent.
    */
   async function write() {
-    if (running) return null;
+    if (running || externalLock !== null) return null; // QZ-15: the AI tab's run holds the one writer
     running = true; // claim it before the first await: a second press must find it taken
+    emitWriting();
 
     try {
       const assessed = assess();
@@ -750,6 +806,9 @@
       if (result && result.ok) {
         dismissRefusalToasts();
         notify("notifySuccess", `Practice quiz written: ${quizNoun(result.quiz.questions.length)}.`);
+      } else if (result && result.stopped) {
+        // QZ-15: a stopped write is not a refusal; nothing is drawn and no refusal toast is raised
+        logInfo("The write was stopped");
       } else {
         showRefusal(result ? result.errors : []);
         notifyRefusal(MESSAGES.refused);
@@ -768,12 +827,13 @@
         progress.hidden = true;
       }
       refresh();
+      emitWriting();
     }
   }
 
   async function deleteQuiz() {
     const s = store();
-    if (!s || s.count() === 0) return false;
+    if (!s || s.count() === 0 || externalLock !== null) return false;
 
     const confirmed = await window.safeConfirm(
       "This deletes the practice quiz. It cannot be undone, and writing a new one costs money.",
@@ -854,7 +914,7 @@
     const editor = window.MathPixQuizEditor;
     const s = store();
     const quiz = s ? s.get() : null;
-    if (!editor || !quiz || editing || !quiz.questions[index]) return false;
+    if (!editor || !quiz || editing || externalLock !== null || !quiz.questions[index]) return false;
 
     const section = questionSection(index);
     if (!section) return false;
@@ -950,7 +1010,7 @@
     const s = store();
     const format = window.MathPixQuizFormat;
     const quiz = s ? s.get() : null;
-    if (!s || !format || !quiz || editing || !quiz.questions[index]) return false;
+    if (!s || !format || !quiz || editing || externalLock !== null || !quiz.questions[index]) return false;
     if (quiz.questions.length < 2) return false; // the button already says why
 
     const n = index + 1;
@@ -1066,5 +1126,10 @@
     drawQuiz,
     readOptions,
     setTransport,
+    // QZ-15: the AI tab's quiz step reads and sets these (the refusal list, the one writer, the write in flight)
+    showRefusal,
+    clearRefusal,
+    setExternalLock,
+    isWriting: () => running,
   });
 })();
